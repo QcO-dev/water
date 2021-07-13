@@ -1,3 +1,6 @@
+![Water Programming Language Logo](https://repository-images.githubusercontent.com/385689309/445d2a70-a200-496e-9059-59274e38a5fa)
+
+
 # Water Programming Language
 
 ## What is it?
