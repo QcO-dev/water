@@ -113,7 +113,7 @@ public class Main {
 				program.preprocess(context);
 
 				byte[] klassRep = context.getClassWriter().toByteArray();
-				Class<?> klass = loader.define(context.getClassName(), klassRep);
+				Class<?> klass = loader.define(context.getClassName().replace('/', '.'), klassRep);
 				fileContexts.add(new FileContext(program, context, klass, path, optimizations));
 			} catch (IOException e) {
 				error(2, "Failure reading file '%s': %s", path.toString(), e.getClass().getSimpleName().replace("Exception", ""));
@@ -137,9 +137,13 @@ public class Main {
 
 			byte[] klassRep = fc.getContext().getClassWriter().toByteArray();
 
-			Path classFile = Path.of(outputDirectory == null ? fc.getPath().getParent().toString() : outputDirectory,
-					fc.getPath().getFileName().toString().replaceAll("(?<!^)[.].*", ".class"));
+			String outputDir = outputDirectory == null ? fc.getPath().getParent().toString() : outputDirectory;
+			String packageDir = fc.getContext().getPackageName();
+			String className = fc.getPath().getFileName().toString().replaceAll("(?<!^)[.].*", ".class");
+
+			Path classFile = Path.of(outputDir, packageDir, className);
 			try {
+				Files.createDirectories(classFile.getParent());
 				Files.write(classFile, klassRep);
 			} catch (IOException e) {
 				error(3, "Failure writing file '%s': %s", classFile.toString(), e.getClass().getSimpleName().replace("Exception", ""));

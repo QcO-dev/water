@@ -128,6 +128,7 @@ public class Lexer {
 
 		return makeToken(switch (val) {
 			case "import" -> TokenType.IMPORT;
+			case "package" -> TokenType.PACKAGE;
 			case "function" -> TokenType.FUNCTION;
 			case "var" -> TokenType.VAR;
 			case "as" -> TokenType.AS;
