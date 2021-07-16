@@ -44,6 +44,12 @@ public class TypeNode implements Node {
 		}
 	}
 
+	public Type getRawClassType() throws SemanticException {
+		if(isPrimitive) throw new SemanticException(root, "Unexpected primitive type");
+
+		return Type.getObjectType(path.replace('.', '/'));
+	}
+
 	@Override
 	public void visit(FileContext context) throws SemanticException {
 		// Do nothing

@@ -24,6 +24,7 @@ public enum TokenType {
 	// Identifiers / Keywords
 	IDENTIFIER,
 	IMPORT,
+	PACKAGE,
 	FUNCTION,
 	VAR,
 	AS,

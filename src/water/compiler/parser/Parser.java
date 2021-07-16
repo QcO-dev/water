@@ -12,6 +12,7 @@ import water.compiler.parser.nodes.function.FunctionCallNode;
 import water.compiler.parser.nodes.function.FunctionDeclarationNode;
 import water.compiler.parser.nodes.operation.*;
 import water.compiler.parser.nodes.special.ImportNode;
+import water.compiler.parser.nodes.special.PackageNode;
 import water.compiler.parser.nodes.statement.*;
 import water.compiler.parser.nodes.value.*;
 import water.compiler.parser.nodes.variable.AssignmentNode;
@@ -54,6 +55,13 @@ public class Parser {
 	private Node program() throws UnexpectedTokenException {
 		ArrayList<Node> declarations = new ArrayList<>();
 
+		Node packageName = null;
+
+		// A package statement must appear first in a file
+		if(match(TokenType.PACKAGE)) {
+			packageName = packageStatement();
+		}
+
 		// All import statements must appear at the top of the file, before standard declarations
 		while(!isAtEnd() && match(TokenType.IMPORT)) {
 			declarations.add(importStatement());
@@ -63,10 +71,21 @@ public class Parser {
 		while(!isAtEnd()) {
 			declarations.add(declaration());
 		}
-		return new ProgramNode(declarations);
+		return new ProgramNode(packageName, declarations);
 	}
 
 	//============================ Special Statements =============================
+
+	/** Forms grammar: 'package' type ';' */
+	private Node packageStatement() throws UnexpectedTokenException {
+		Token packageToken = tokens.get(index - 1);
+
+		Node name = type();
+
+		consume(TokenType.SEMI, "Expected ';' after package");
+
+		return new PackageNode(packageToken, (TypeNode) name);
+	}
 
 	/** Forms grammar: 'import' type ';' */
 	private Node importStatement() throws UnexpectedTokenException {

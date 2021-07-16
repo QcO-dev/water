@@ -15,16 +15,13 @@ import java.util.stream.Collectors;
 
 public class ProgramNode implements Node {
 	private final List<Node> declarations;
+	private final Node packageName;
 	/** This variable is true when a top level variable is present. Its use is to avoid unnecessary code generation. */
 	private boolean staticVariableInit = false;
 	
-	public ProgramNode(List<Node> declarations) {
+	public ProgramNode(Node packageName, List<Node> declarations) {
+		this.packageName = packageName;
 		this.declarations = declarations;
-	}
-
-	@Override
-	public String toString() {
-		return declarations.stream().map(Node::toString).collect(Collectors.joining());
 	}
 
 	@Override
@@ -73,13 +70,18 @@ public class ProgramNode implements Node {
 		writer.visitEnd();
 	}
 
-	private ClassWriter initClass(Context context) {
+	private ClassWriter initClass(Context context) throws SemanticException {
 		context.setType(ContextType.GLOBAL);
 
 		String source = context.getSource();
 		String name = source.substring(0, source.indexOf("."));
 
+		String packageN = packageName == null ? "" : packageName.getReturnType(context).getInternalName();
+
+		if(packageName != null) name = packageN + "/" + name;
+
 		context.setClassName(name);
+		context.setPackageName(packageN);
 
 		ClassWriter writer = new ClassWriter(ClassWriter.COMPUTE_MAXS | ClassWriter.COMPUTE_FRAMES);
 
@@ -90,5 +92,10 @@ public class ProgramNode implements Node {
 		context.setClassWriter(writer);
 
 		return writer;
+	}
+
+	@Override
+	public String toString() {
+		return (packageName == null ? "" : packageName.toString()) + declarations.stream().map(Node::toString).collect(Collectors.joining());
 	}
 }

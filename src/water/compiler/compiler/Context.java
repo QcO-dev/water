@@ -16,6 +16,7 @@ public class Context {
 	private ContextType type;
 	private String source;
 	private String className;
+	private String packageName;
 	private ClassWriter classWriter;
 	private MethodVisitor methodVisitor;
 	private MethodVisitor staticMethodVisitor;
@@ -49,6 +50,15 @@ public class Context {
 
 	public void setClassName(String className) {
 		this.className = className;
+	}
+
+	public String getPackageName() {
+		return packageName;
+	}
+
+	public Context setPackageName(String packageName) {
+		this.packageName = packageName;
+		return this;
 	}
 
 	public ClassWriter getClassWriter() {
