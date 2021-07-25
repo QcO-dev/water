@@ -76,21 +76,21 @@ public class Parser {
 
 	//============================ Special Statements =============================
 
-	/** Forms grammar: 'package' type ';' */
+	/** Forms grammar: 'package' classType ';' */
 	private Node packageStatement() throws UnexpectedTokenException {
 		Token packageToken = tokens.get(index - 1);
 
-		Node name = type();
+		Node name = classType();
 
 		consume(TokenType.SEMI, "Expected ';' after package");
 
 		return new PackageNode(packageToken, (TypeNode) name);
 	}
 
-	/** Forms grammar: 'import' type ';' */
+	/** Forms grammar: 'import' classType ';' */
 	private Node importStatement() throws UnexpectedTokenException {
 		Token importTok = tokens.get(index - 1);
-		Node type = type();
+		Node type = classType();
 
 		consume(TokenType.SEMI, "Expected ';' after import");
 
@@ -449,15 +449,20 @@ public class Parser {
 
 
 
-	/** Forms grammar: PRIMITIVE | IDENTIFIER ('.' IDENTIFIER)* */
+	/** Forms grammar: PRIMITIVE | classType */
 	private Node type() throws UnexpectedTokenException {
 		if(Lexer.PRIMITIVE_TYPES.contains(tokens.get(index).getType())) {
 			return new TypeNode(advance());
 		}
+		return classType();
+	}
+
+	/** Forms grammar: IDENTIFIER ('.' IDENTIFIER)* */
+	private Node classType() throws UnexpectedTokenException {
 		ArrayList<String> parts = new ArrayList<>();
 		Token start = tokens.get(index);
 		do {
-			Token part = consume(TokenType.IDENTIFIER, "Expected package/class name");
+			Token part = consume(TokenType.IDENTIFIER, "Expected class name");
 			parts.add(part.getValue());
 		} while(match(TokenType.DOT));
 		return new TypeNode(start, String.join(".", parts));
