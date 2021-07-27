@@ -13,7 +13,7 @@ import java.util.List;
 /**
  * Extra utility for dealing with ASM Type objects.
  *
- * @link org.objectweb.asm.Type
+ * @see org.objectweb.asm.Type
  */
 public class TypeUtil {
 

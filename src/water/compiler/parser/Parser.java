@@ -447,14 +447,27 @@ public class Parser {
 
 	//============================ Utility ============================
 
-
-
 	/** Forms grammar: PRIMITIVE | classType */
 	private Node type() throws UnexpectedTokenException {
+		Node type;
 		if(Lexer.PRIMITIVE_TYPES.contains(tokens.get(index).getType())) {
-			return new TypeNode(advance());
+			type = new TypeNode(advance());
 		}
-		return classType();
+		else {
+			type = classType();
+		}
+
+		int dim = 0;
+		while(match(TokenType.LSQBR)) {
+			consume(TokenType.RSQBR, "Expected closing ']'");
+			dim++;
+		}
+
+		if(dim != 0) {
+			type = new TypeNode((TypeNode) type, dim);
+		}
+
+		return type;
 	}
 
 	/** Forms grammar: IDENTIFIER ('.' IDENTIFIER)* */

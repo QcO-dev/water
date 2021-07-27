@@ -26,6 +26,7 @@ public class Context {
 
 	public Context() {
 		this.imports = new HashMap<>();
+		initImports();
 	}
 
 	public ContextType getType() {
@@ -112,5 +113,9 @@ public class Context {
 		MethodVisitor mv = type == ContextType.GLOBAL ? getStaticMethodVisitor() : getMethodVisitor();
 		mv.visitLabel(l);
 		mv.visitLineNumber(line, l);
+	}
+
+	private void initImports() {
+		imports.put("String", "java.lang.String");
 	}
 }
