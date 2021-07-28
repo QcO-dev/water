@@ -385,7 +385,15 @@ public class Parser {
 	private Node memberAccess() throws UnexpectedTokenException {
 		Node left = atom();
 
-		while(match(TokenType.DOT)) {
+		while(match(TokenType.DOT) || match(TokenType.LSQBR)) {
+			if(tokens.get(index - 1).getType() == TokenType.LSQBR) {
+				Token bracket = tokens.get(index - 1);
+				Node index = expression();
+				consume(TokenType.RSQBR, "Expected ']' after index");
+				left = new IndexAccessNode(bracket, left, index);
+				continue;
+			}
+
 			Token name = consume(TokenType.IDENTIFIER, "Expected member name");
 
 			if(tokens.get(index).getType() == TokenType.LPAREN) {
