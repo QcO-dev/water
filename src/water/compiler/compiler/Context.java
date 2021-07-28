@@ -57,9 +57,8 @@ public class Context {
 		return packageName;
 	}
 
-	public Context setPackageName(String packageName) {
+	public void setPackageName(String packageName) {
 		this.packageName = packageName;
-		return this;
 	}
 
 	public ClassWriter getClassWriter() {

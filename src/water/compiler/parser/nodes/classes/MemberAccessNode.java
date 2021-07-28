@@ -1,5 +1,6 @@
 package water.compiler.parser.nodes.classes;
 
+import org.objectweb.asm.Opcodes;
 import org.objectweb.asm.Type;
 import water.compiler.FileContext;
 import water.compiler.compiler.Context;
@@ -26,6 +27,12 @@ public class MemberAccessNode implements Node {
 	public void visit(FileContext context) throws SemanticException {
 		Type leftType = left.getReturnType(context.getContext());
 
+		if(leftType.getSort() == Type.ARRAY && name.getValue().equals("length")) {
+			left.visit(context);
+			context.getContext().getMethodVisitor().visitInsn(Opcodes.ARRAYLENGTH);
+			return;
+		}
+
 		if(leftType.getSort() != Type.OBJECT) {
 			throw new SemanticException(name, "Cannot access member on type '%s'".formatted(TypeUtil.stringify(leftType)));
 		}
@@ -38,6 +45,8 @@ public class MemberAccessNode implements Node {
 	@Override
 	public Type getReturnType(Context context) throws SemanticException {
 		Type leftType = left.getReturnType(context);
+
+		if(leftType.getSort() == Type.ARRAY && name.getValue().equals("length")) return Type.INT_TYPE;
 
 		return resolve(leftType, context, false);
 	}

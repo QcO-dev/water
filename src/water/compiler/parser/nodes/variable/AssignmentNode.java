@@ -179,7 +179,6 @@ public class AssignmentNode implements Node {
 		} catch (ClassNotFoundException e) {
 			throw new SemanticException(op, "Could not resolve class '%s'".formatted(e.getMessage()));
 		}
-
 		right.visit(context);
 
 		MethodVisitor methodVisitor = context.getContext().getMethodVisitor();
