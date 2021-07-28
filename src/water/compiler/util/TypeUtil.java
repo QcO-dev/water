@@ -410,8 +410,34 @@ public class TypeUtil {
 		return Modifier.isStatic(f.getModifiers()) ? Opcodes.PUTSTATIC : Opcodes.PUTFIELD;
 	}
 
+	/**
+	 * Returns the correct opcode for DUPY_X1 where Y is either 2 or not present, based on type size.
+	 * @param type The type to duplicate
+	 * @return The correct opcode
+	 */
 	public static int getDupX1Opcode(Type type) {
 		return type.getSize() == 2 ? Opcodes.DUP2_X1 : Opcodes.DUP_X1;
+	}
+
+	/**
+	 * Converts a primitive type to the {@link org.objectweb.asm.Opcodes}.T_TYPE integer constant, for use with integer instructions.
+	 * @param type A primitive type
+	 * @return The integer encoding of the type
+	 */
+	public static int primitiveToTType(Type type) {
+		if(!isPrimitive(type)) return -1;
+
+		return switch (type.getSort()) {
+			case Type.BOOLEAN -> Opcodes.T_BOOLEAN;
+			case Type.CHAR -> Opcodes.T_CHAR;
+			case Type.BYTE -> Opcodes.T_BYTE;
+			case Type.SHORT -> Opcodes.T_SHORT;
+			case Type.INT -> Opcodes.T_INT;
+			case Type.LONG -> Opcodes.T_LONG;
+			case Type.FLOAT -> Opcodes.T_FLOAT;
+			case Type.DOUBLE -> Opcodes.T_DOUBLE;
+			default -> 0;
+		};
 	}
 
 	/*

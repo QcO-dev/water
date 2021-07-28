@@ -419,11 +419,27 @@ public class Parser {
 	/** Forms grammar: type arguments */
 	private Node newObject() throws UnexpectedTokenException {
 		Token newToken = tokens.get(index - 1);
-		Node type = type();
+		Node type = basicType();
+
+		if(match(TokenType.LSQBR)) {
+			return newArray(newToken, type);
+		}
 
 		List<Node> args = arguments("constructor arguments");
 
 		return new ObjectConstructorNode(newToken, type, args);
+	}
+
+	private Node newArray(Token newToken, Node type) throws UnexpectedTokenException {
+		ArrayList<Node> dimensions = new ArrayList<>();
+
+		do {
+			dimensions.add(expression());
+			consume(TokenType.RSQBR, "Expected ']' after array size");
+		} while(match(TokenType.LSQBR));
+
+
+		return new ArrayConstructorNode(newToken, type, dimensions);
 	}
 
 	/** Forms grammar: '(' expression ')' */
@@ -447,15 +463,9 @@ public class Parser {
 
 	//============================ Utility ============================
 
-	/** Forms grammar: PRIMITIVE | classType */
+	/** Forms grammar: basicType('[' ']')* */
 	private Node type() throws UnexpectedTokenException {
-		Node type;
-		if(Lexer.PRIMITIVE_TYPES.contains(tokens.get(index).getType())) {
-			type = new TypeNode(advance());
-		}
-		else {
-			type = classType();
-		}
+		Node type = basicType();
 
 		int dim = 0;
 		while(match(TokenType.LSQBR)) {
@@ -468,6 +478,15 @@ public class Parser {
 		}
 
 		return type;
+	}
+
+	private Node basicType() throws UnexpectedTokenException {
+		if(Lexer.PRIMITIVE_TYPES.contains(tokens.get(index).getType())) {
+			return new TypeNode(advance());
+		}
+		else {
+			return classType();
+		}
 	}
 
 	/** Forms grammar: IDENTIFIER ('.' IDENTIFIER)* */
