@@ -6,6 +6,7 @@ import water.compiler.FileContext;
 import water.compiler.compiler.Context;
 import water.compiler.compiler.SemanticException;
 import water.compiler.lexer.Token;
+import water.compiler.parser.LValue;
 import water.compiler.parser.Node;
 import water.compiler.util.TypeUtil;
 
@@ -47,6 +48,16 @@ public class IndexAccessNode implements Node {
 		}
 
 		return leftType.getElementType();
+	}
+
+	@Override
+	public LValue getLValue() {
+		return LValue.ARRAY;
+	}
+
+	@Override
+	public Object[] getLValueData() {
+		return new Object[] { left, index };
 	}
 
 	@Override

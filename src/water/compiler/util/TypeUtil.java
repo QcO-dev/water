@@ -420,6 +420,15 @@ public class TypeUtil {
 	}
 
 	/**
+	 * Returns the correct opcode for DUPY_X2 where Y is either 2 or not present, based on type size.
+	 * @param type The type to duplicate
+	 * @return The correct opcode
+	 */
+	public static int getDupX2Opcode(Type type) {
+		return type.getSize() == 2 ? Opcodes.DUP2_X2 : Opcodes.DUP_X2;
+	}
+
+	/**
 	 * Converts a primitive type to the {@link org.objectweb.asm.Opcodes}.T_TYPE integer constant, for use with integer instructions.
 	 * @param type A primitive type
 	 * @return The integer encoding of the type
