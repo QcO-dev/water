@@ -240,7 +240,11 @@ public class TypeUtil {
 			return false;
 		}
 
-		//TODO Auto-boxing and arrays
+		if(to.getSort() == Type.ARRAY && from.getSort() == Type.ARRAY) {
+			return to.getElementType().getSort() == from.getElementType().getSort();
+		}
+
+		//TODO Auto-boxing
 
 		return false;
 	}

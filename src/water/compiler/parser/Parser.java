@@ -381,7 +381,7 @@ public class Parser {
 		return memberAccess();
 	}
 
-	/** Forms grammar: atom ('.' IDENTIFIER arguments?)* */
+	/** Forms grammar: atom (('.' IDENTIFIER arguments?) | ('[' expression ']'))* */
 	private Node memberAccess() throws UnexpectedTokenException {
 		Node left = atom();
 
