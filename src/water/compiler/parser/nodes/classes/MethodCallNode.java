@@ -1,5 +1,6 @@
 package water.compiler.parser.nodes.classes;
 
+import org.objectweb.asm.Opcodes;
 import org.objectweb.asm.Type;
 import water.compiler.FileContext;
 import water.compiler.compiler.Context;
@@ -31,6 +32,12 @@ public class MethodCallNode implements Node {
 	public void visit(FileContext context) throws SemanticException {
 		Type leftType = left.getReturnType(context.getContext());
 
+		if(leftType.getSort() == Type.ARRAY && name.getValue().equals("length") && args.size() == 0) {
+			left.visit(context);
+			context.getContext().getMethodVisitor().visitInsn(Opcodes.ARRAYLENGTH);
+			return;
+		}
+
 		if(leftType.getSort() != Type.OBJECT) {
 			throw new SemanticException(name, "Cannot invoke method on type '%s'".formatted(TypeUtil.stringify(leftType)));
 		}
@@ -53,6 +60,8 @@ public class MethodCallNode implements Node {
 	@Override
 	public Type getReturnType(Context context) throws SemanticException {
 		Type leftType = left.getReturnType(context);
+
+		if(leftType.getSort() == Type.ARRAY && name.getValue().equals("length") && args.size() == 0) return Type.INT_TYPE;
 
 		return Type.getType(resolve(leftType, context).getReturnType());
 	}

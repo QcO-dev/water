@@ -7,6 +7,7 @@ public enum TokenType {
 	//Single character
 	LBRACE, RBRACE,
 	LPAREN, RPAREN,
+	LSQBR, RSQBR,
 	SEMI, COLON,
 	COMMA, DOT,
 	PLUS, MINUS,

@@ -75,7 +75,6 @@ public class Main {
 			e.usage();
 			System.exit(1);
 		}
-
 		main.run();
 	}
 

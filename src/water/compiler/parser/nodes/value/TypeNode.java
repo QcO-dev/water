@@ -11,21 +11,38 @@ public class TypeNode implements Node {
 	private final Token root;
 	private final String path;
 	private final boolean isPrimitive;
+	private final int dimensions;
+	private final TypeNode element;
 
 	public TypeNode(Token value) {
 		this.root = value;
 		this.path = null;
 		this.isPrimitive = true;
+		this.dimensions = 0;
+		this.element = null;
 	}
 
 	public TypeNode(Token root, String path) {
 		this.root = root;
 		this.path = path;
 		this.isPrimitive = false;
+		this.dimensions = 0;
+		this.element = null;
+	}
+
+	public TypeNode(TypeNode element, int dimensions) {
+		this.root = element.root;
+		this.path = null;
+		this.isPrimitive = false;
+		this.dimensions = dimensions;
+		this.element = element;
 	}
 
 	@Override
 	public Type getReturnType(Context context) throws SemanticException {
+
+		if(dimensions != 0) return Type.getType("[".repeat(dimensions) + element.getReturnType(context).getDescriptor());
+
 		//TODO other primitive types
 		if(isPrimitive) return switch (root.getType()) {
 			case VOID -> Type.VOID_TYPE;
@@ -57,6 +74,8 @@ public class TypeNode implements Node {
 
 	@Override
 	public String toString() {
+		if(dimensions != 0) return element.toString() + "[]".repeat(dimensions);
+
 		return isPrimitive ? root.getValue() : path;
 	}
 }

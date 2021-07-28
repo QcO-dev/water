@@ -48,7 +48,9 @@ public class AssignmentNode implements Node {
 		else if(valueType == LValue.PROPERTY) {
 			property(context, returnType);
 		}
-		//TODO Arrays
+		else if(valueType == LValue.ARRAY) {
+			array(context, returnType);
+		}
 	}
 
 	private void variable(FileContext context, Type returnType) throws SemanticException {
@@ -147,6 +149,43 @@ public class AssignmentNode implements Node {
 
 		}
 
+	}
+
+	private void array(FileContext context, Type returnType) throws SemanticException {
+		Object[] lValueData = left.getLValueData();
+
+		Node array = (Node) lValueData[0];
+		Node index = (Node) lValueData[1];
+
+		Type arrayType = array.getReturnType(context.getContext());
+		Type indexType = index.getReturnType(context.getContext());
+
+		if(arrayType.getSort() != Type.ARRAY) {
+			throw new SemanticException(op, "Cannot get index of type '%s'".formatted(TypeUtil.stringify(arrayType)));
+		}
+		if(!TypeUtil.isInteger(indexType)) {
+			throw new SemanticException(op, "Index must be an integer type (got '%s')".formatted(TypeUtil.stringify(indexType)));
+		}
+
+		array.visit(context);
+		index.visit(context);
+
+		try {
+			if(!TypeUtil.isAssignableFrom(arrayType.getElementType(), returnType, context.getContext(), true)) {
+				throw new SemanticException(op,
+						"Cannot assign type '%s' to element of type '%s'"
+								.formatted(TypeUtil.stringify(returnType), TypeUtil.stringify(arrayType.getElementType())));
+			}
+		} catch (ClassNotFoundException e) {
+			throw new SemanticException(op, "Could not resolve class '%s'".formatted(e.getMessage()));
+		}
+		right.visit(context);
+
+		MethodVisitor methodVisitor = context.getContext().getMethodVisitor();
+
+		if(!isExpressionStatementBody) methodVisitor.visitInsn(TypeUtil.getDupX2Opcode(returnType));
+
+		methodVisitor.visitInsn(arrayType.getElementType().getOpcode(Opcodes.IASTORE));
 	}
 
 	@Override

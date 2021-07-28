@@ -74,6 +74,8 @@ public class Lexer {
 					case '}' -> TokenType.RBRACE;
 					case '(' -> TokenType.LPAREN;
 					case ')' -> TokenType.RPAREN;
+					case '[' -> TokenType.LSQBR;
+					case ']' -> TokenType.RSQBR;
 					case ';' -> TokenType.SEMI;
 					case ',' -> TokenType.COMMA;
 					case '+' -> TokenType.PLUS;

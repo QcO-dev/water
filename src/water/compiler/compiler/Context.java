@@ -26,6 +26,7 @@ public class Context {
 
 	public Context() {
 		this.imports = new HashMap<>();
+		initImports();
 	}
 
 	public ContextType getType() {
@@ -56,9 +57,8 @@ public class Context {
 		return packageName;
 	}
 
-	public Context setPackageName(String packageName) {
+	public void setPackageName(String packageName) {
 		this.packageName = packageName;
-		return this;
 	}
 
 	public ClassWriter getClassWriter() {
@@ -112,5 +112,9 @@ public class Context {
 		MethodVisitor mv = type == ContextType.GLOBAL ? getStaticMethodVisitor() : getMethodVisitor();
 		mv.visitLabel(l);
 		mv.visitLineNumber(line, l);
+	}
+
+	private void initImports() {
+		imports.put("String", "java.lang.String");
 	}
 }
