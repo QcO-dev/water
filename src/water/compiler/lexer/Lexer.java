@@ -147,6 +147,8 @@ public class Lexer {
 			case "int" -> TokenType.INT;
 			case "double" -> TokenType.DOUBLE;
 			case "boolean" -> TokenType.BOOLEAN;
+			case "public" -> TokenType.PUBLIC;
+			case "private" -> TokenType.PRIVATE;
 			default -> TokenType.IDENTIFIER;
 		});
 	}

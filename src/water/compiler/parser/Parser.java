@@ -105,16 +105,22 @@ public class Parser {
 	 *  Forms grammar: functionDeclaration | variableDeclaration
 	 */
 	private Node declaration() throws UnexpectedTokenException {
+		Token accessModifier = null;
+
+		if(match(TokenType.PUBLIC) || match(TokenType.PRIVATE)) {
+			accessModifier = tokens.get(index - 1);
+		}
+
 		Token tok = advance();
 		return switch(tok.getType()) {
-			case FUNCTION -> functionDeclaration();
+			case FUNCTION -> functionDeclaration(accessModifier);
 			case VAR -> variableDeclaration();
 			default -> throw new UnexpectedTokenException(tok, "Expected declaration");
 		};
 	}
 
 	/** Forms grammar: 'function' IDENTIFIER typedParameters (('->' type)? blockStatement) | ('=' expression ';') */
-	private Node functionDeclaration() throws UnexpectedTokenException {
+	private Node functionDeclaration(Token access) throws UnexpectedTokenException {
 		Token name = consume(TokenType.IDENTIFIER, "Expected function name");
 
 		List<Pair<Token, Node>> parameters = typedParameters("function parameter list");
@@ -140,7 +146,7 @@ public class Parser {
 			body = blockStatement();
 		}
 
-		return new FunctionDeclarationNode(type, name, body, parameters, returnType);
+		return new FunctionDeclarationNode(type, name, body, parameters, returnType, access);
 	}
 
 	/** Forms grammar: 'var' IDENTIFIER '=' expression ';' */

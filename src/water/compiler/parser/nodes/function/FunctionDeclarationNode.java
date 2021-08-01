@@ -27,15 +27,17 @@ public class FunctionDeclarationNode implements Node {
 	private final Node body;
 	private final List<Pair<Token, Node>> parameters;
 	private final Node returnTypeNode;
+	private final Token access;
 	private Type returnType;
 	private String descriptor;
 
-	public FunctionDeclarationNode(DeclarationType type, Token name, Node body, List<Pair<Token, Node>> parameters, Node returnType) {
+	public FunctionDeclarationNode(DeclarationType type, Token name, Node body, List<Pair<Token, Node>> parameters, Node returnType, Token access) {
 		this.type = type;
 		this.name = name;
 		this.body = body;
 		this.parameters = parameters;
 		this.returnTypeNode = returnType;
+		this.access = access;
 	}
 
 	@Override
@@ -161,13 +163,18 @@ public class FunctionDeclarationNode implements Node {
 		mv.visitEnd();
 	}
 
-	private MethodVisitor makeGlobalFunction(Context context) {
-		return context.getClassWriter().visitMethod(Opcodes.ACC_PUBLIC | Opcodes.ACC_STATIC | Opcodes.ACC_FINAL, name.getValue(), descriptor, null, null);
+	private MethodVisitor makeGlobalFunction(Context context) throws SemanticException {
+		int access = verifyAccess();
+		return context.getClassWriter().visitMethod(access | Opcodes.ACC_STATIC | Opcodes.ACC_FINAL, name.getValue(), descriptor, null, null);
 	}
 
-	private void createMainMethod(Context context) {
+	private void createMainMethod(Context context) throws SemanticException {
 		//TODO
-		if(!"main".equals(name.getValue()) || parameters.size() != 0 || returnType.getSort() != Type.VOID) return;
+		if(!"main".equals(name.getValue()) // main
+				|| parameters.size() != 0  // no args
+				|| verifyAccess() != Opcodes.ACC_PUBLIC // public
+				|| returnType.getSort() != Type.VOID) // return void
+			return;
 
 		MethodVisitor mainMethodWithArgs = context.getClassWriter().visitMethod(Opcodes.ACC_PUBLIC | Opcodes.ACC_STATIC | Opcodes.ACC_SYNTHETIC, "main", "([Ljava/lang/String;)V", null, null);
 
@@ -176,5 +183,14 @@ public class FunctionDeclarationNode implements Node {
 		mainMethodWithArgs.visitInsn(Opcodes.RETURN);
 		mainMethodWithArgs.visitMaxs(0, 0);
 		mainMethodWithArgs.visitEnd();
+	}
+
+	private int verifyAccess() throws SemanticException {
+		if(access == null) return Opcodes.ACC_PUBLIC;
+		return switch (access.getType()) {
+			case PUBLIC -> Opcodes.ACC_PUBLIC;
+			case PRIVATE -> Opcodes.ACC_PRIVATE;
+			default -> throw new SemanticException(access, "Invalid access modifier for function '%s'".formatted(access.getValue()));
+		};
 	}
 }
