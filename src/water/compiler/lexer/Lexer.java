@@ -133,6 +133,7 @@ public class Lexer {
 			case "package" -> TokenType.PACKAGE;
 			case "function" -> TokenType.FUNCTION;
 			case "var" -> TokenType.VAR;
+			case "const" -> TokenType.CONST;
 			case "as" -> TokenType.AS;
 			case "return" -> TokenType.RETURN;
 			case "while" -> TokenType.WHILE;

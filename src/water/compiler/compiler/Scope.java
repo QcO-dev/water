@@ -6,6 +6,7 @@ import water.compiler.util.TypeUtil;
 
 import java.lang.reflect.Field;
 import java.lang.reflect.Method;
+import java.lang.reflect.Modifier;
 import java.util.ArrayList;
 import java.util.HashMap;
 
@@ -41,7 +42,7 @@ public class Scope {
 		}
 
 		for(Field f : context.getKlass().getDeclaredFields()) {
-			addVariable(new Variable(VariableType.GLOBAL, f.getName(), Type.getInternalName(context.getKlass()), Type.getType(f.getType())));
+			addVariable(new Variable(VariableType.GLOBAL, f.getName(), Type.getInternalName(context.getKlass()), Type.getType(f.getType()), Modifier.isFinal(f.getModifiers())));
 		}
 	}
 

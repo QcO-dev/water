@@ -12,11 +12,13 @@ public class VariableDeclarationNode implements Node {
 
 	private final Token name;
 	private final Node value;
+	private final boolean isConst;
 	private final Token access;
 
-	public VariableDeclarationNode(Token name, Node value, Token access) {
+	public VariableDeclarationNode(Token name, Node value, boolean isConst, Token access) {
 		this.name = name;
 		this.value = value;
+		this.isConst = isConst;
 		this.access = access;
 	}
 
@@ -26,7 +28,7 @@ public class VariableDeclarationNode implements Node {
 			if(context.getScope().lookupVariable(name.getValue()) != null) throw new SemanticException(name, "Redefinition of variable '%s' in global scope.".formatted(name.getValue()));
 			defineGlobal(context);
 
-			context.getScope().addVariable(new Variable(VariableType.GLOBAL, name.getValue(), "", value.getReturnType(context)));
+			context.getScope().addVariable(new Variable(VariableType.GLOBAL, name.getValue(), "", value.getReturnType(context), isConst));
 		}
 	}
 
@@ -57,7 +59,7 @@ public class VariableDeclarationNode implements Node {
 			value.visit(context);
 
 
-			Variable var = new Variable(VariableType.LOCAL, name.getValue(), scope.nextLocal(), returnType);
+			Variable var = new Variable(VariableType.LOCAL, name.getValue(), scope.nextLocal(), returnType, isConst);
 			scope.addVariable(var);
 
 			context.getContext().getMethodVisitor().visitVarInsn(returnType.getOpcode(Opcodes.ISTORE), var.getIndex());
@@ -69,7 +71,9 @@ public class VariableDeclarationNode implements Node {
 
 	private void defineGlobal(Context context) throws SemanticException {
 
-		context.getClassWriter().visitField(Opcodes.ACC_PRIVATE | Opcodes.ACC_STATIC, name.getValue(), value.getReturnType(context).getDescriptor(), null, null);
+		int finalMod = isConst ? Opcodes.ACC_FINAL : 0;
+
+		context.getClassWriter().visitField(Opcodes.ACC_PRIVATE | Opcodes.ACC_STATIC | finalMod, name.getValue(), value.getReturnType(context).getDescriptor(), null, null);
 
 		String beanName = name.getValue().substring(0, 1).toUpperCase() + name.getValue().substring(1);
 
@@ -87,7 +91,7 @@ public class VariableDeclarationNode implements Node {
 			visitor.visitEnd();
 		}
 		//Setter
-		if(verifyAccess()) {
+		if(verifyAccess() && !isConst) {
 			String fName = "set" + (name.getValue().matches("^is[\\p{Lu}].*") ? beanName.substring(2) : beanName);
 			MethodVisitor visitor = context.getClassWriter().visitMethod(Opcodes.ACC_PUBLIC | Opcodes.ACC_STATIC | Opcodes.ACC_FINAL | Opcodes.ACC_SYNTHETIC, fName, "("  + descriptor + ")V", null, null);
 			visitor.visitCode();
@@ -111,6 +115,6 @@ public class VariableDeclarationNode implements Node {
 
 	@Override
 	public String toString() {
-		return "var %s = %s;".formatted(name.getValue(), value);
+		return (isConst ? "const" : "var") + " %s = %s;".formatted(name.getValue(), value);
 	}
 }

@@ -114,7 +114,7 @@ public class Parser {
 		Token tok = advance();
 		return switch(tok.getType()) {
 			case FUNCTION -> functionDeclaration(accessModifier);
-			case VAR -> variableDeclaration(accessModifier);
+			case VAR, CONST -> variableDeclaration(accessModifier);
 			default -> throw new UnexpectedTokenException(tok, "Expected declaration");
 		};
 	}
@@ -151,6 +151,7 @@ public class Parser {
 
 	/** Forms grammar: 'var' IDENTIFIER '=' expression ';' */
 	private Node variableDeclaration(Token access) throws UnexpectedTokenException {
+		boolean isConst = tokens.get(index - 1).getType() == TokenType.CONST;
 		Token name = consume(TokenType.IDENTIFIER, "Expected variable name");
 
 		consume(TokenType.EQUALS, "Expected '=' after variable name");
@@ -159,7 +160,7 @@ public class Parser {
 
 		consume(TokenType.SEMI, "Expected ';' after variable assignment");
 
-		return new VariableDeclarationNode(name, value, access);
+		return new VariableDeclarationNode(name, value, isConst, access);
 	}
 
 	//============================ Statements =============================
@@ -169,7 +170,7 @@ public class Parser {
 		ArrayList<Node> nodes = new ArrayList<>();
 		if(tokens.get(index).getType() != TokenType.RBRACE) {
 			do {
-				if(match(TokenType.VAR)) nodes.add(variableDeclaration(null));
+				if(match(TokenType.VAR) || match(TokenType.CONST)) nodes.add(variableDeclaration(null));
 				else nodes.add(statement());
 			} while (!isAtEnd() && tokens.get(index).getType() != TokenType.RBRACE);
 		}
@@ -241,7 +242,7 @@ public class Parser {
 
 		Node init;
 
-		if(match(TokenType.VAR)) {
+		if(match(TokenType.VAR) || match(TokenType.CONST)) {
 			init = variableDeclaration(null);
 		}
 		else {

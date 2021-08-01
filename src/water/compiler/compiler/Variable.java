@@ -11,20 +11,23 @@ public class Variable {
 	private final Type type;
 	private final VariableType variableType;
 	private final int index;
+	private final boolean isConst;
 
-	public Variable(VariableType variableType, String name, String owner, Type type) {
+	public Variable(VariableType variableType, String name, String owner, Type type, boolean isConst) {
 		this.name = name;
 		this.owner = owner;
 		this.type = type;
 		this.variableType = variableType;
+		this.isConst = isConst;
 		this.index = 0;
 	}
 
-	public Variable(VariableType variableType, String name, int index, Type type) {
+	public Variable(VariableType variableType, String name, int index, Type type, boolean isConst) {
 		this.variableType = variableType;
 		this.index = index;
 		this.type = type;
 		this.name = name;
+		this.isConst = isConst;
 		this.owner = null;
 	}
 
@@ -46,5 +49,9 @@ public class Variable {
 
 	public int getIndex() {
 		return index;
+	}
+
+	public boolean isConst() {
+		return isConst;
 	}
 }
