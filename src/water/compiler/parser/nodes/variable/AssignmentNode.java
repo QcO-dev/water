@@ -63,6 +63,10 @@ public class AssignmentNode implements Node {
 			throw new SemanticException(op, "Cannot resolve variable '%s' in current scope.".formatted(name.getValue()));
 		}
 
+		if(variable.isConst()) {
+			throw new SemanticException(name, "Reassignment of constant '%s'.".formatted(name.getValue()));
+		}
+
 		try {
 			if(!TypeUtil.isAssignableFrom(variable.getType(), returnType, context.getContext(), true)) {
 				throw new SemanticException(op,

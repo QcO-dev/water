@@ -81,7 +81,7 @@ public class FunctionDeclarationNode implements Node {
 				for (int i = 0; i < parameters.size(); i++) {
 					Pair<Token, Node> parameter = parameters.get(i);
 
-					context.getScope().addVariable(new Variable(VariableType.LOCAL, parameter.getFirst().getValue(), i, parameter.getSecond().getReturnType(context)));
+					context.getScope().addVariable(new Variable(VariableType.LOCAL, parameter.getFirst().getValue(), i, parameter.getSecond().getReturnType(context), false));
 				}
 
 				returnType = body.getReturnType(context);
@@ -142,7 +142,7 @@ public class FunctionDeclarationNode implements Node {
 		for (int i = 0; i < parameters.size(); i++) {
 			Pair<Token, Node> parameter = parameters.get(i);
 
-			context.getContext().getScope().addVariable(new Variable(VariableType.LOCAL, parameter.getFirst().getValue(), i, parameter.getSecond().getReturnType(context.getContext())));
+			context.getContext().getScope().addVariable(new Variable(VariableType.LOCAL, parameter.getFirst().getValue(), i, parameter.getSecond().getReturnType(context.getContext()), false));
 		}
 
 		body.visit(context);

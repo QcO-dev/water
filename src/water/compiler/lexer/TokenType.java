@@ -28,6 +28,7 @@ public enum TokenType {
 	PACKAGE,
 	FUNCTION,
 	VAR,
+	CONST,
 	AS,
 	RETURN,
 	FOR,
