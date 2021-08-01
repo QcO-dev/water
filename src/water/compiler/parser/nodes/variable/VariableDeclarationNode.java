@@ -12,10 +12,12 @@ public class VariableDeclarationNode implements Node {
 
 	private final Token name;
 	private final Node value;
+	private final Token access;
 
-	public VariableDeclarationNode(Token name, Node value) {
+	public VariableDeclarationNode(Token name, Node value, Token access) {
 		this.name = name;
 		this.value = value;
+		this.access = access;
 	}
 
 	@Override
@@ -75,7 +77,7 @@ public class VariableDeclarationNode implements Node {
 		String descriptor = fieldType.getDescriptor();
 
 		// Getter
-		{
+		if(verifyAccess()) {
 			String fName = name.getValue().matches("^is[\\p{Lu}].*") ? name.getValue() : "get" + beanName;
 			MethodVisitor visitor = context.getClassWriter().visitMethod(Opcodes.ACC_PUBLIC | Opcodes.ACC_STATIC | Opcodes.ACC_FINAL | Opcodes.ACC_SYNTHETIC, fName, "()" + descriptor, null, null);
 			visitor.visitCode();
@@ -85,7 +87,7 @@ public class VariableDeclarationNode implements Node {
 			visitor.visitEnd();
 		}
 		//Setter
-		{
+		if(verifyAccess()) {
 			String fName = "set" + (name.getValue().matches("^is[\\p{Lu}].*") ? beanName.substring(2) : beanName);
 			MethodVisitor visitor = context.getClassWriter().visitMethod(Opcodes.ACC_PUBLIC | Opcodes.ACC_STATIC | Opcodes.ACC_FINAL | Opcodes.ACC_SYNTHETIC, fName, "("  + descriptor + ")V", null, null);
 			visitor.visitCode();
@@ -96,6 +98,15 @@ public class VariableDeclarationNode implements Node {
 			visitor.visitEnd();
 		}
 
+	}
+
+	private boolean verifyAccess() throws SemanticException {
+		if(access == null) return true;
+		return switch (access.getType()) {
+			case PUBLIC -> true;
+			case PRIVATE -> false;
+			default -> throw new SemanticException(access, "Invalid access modifier for variable '%s'".formatted(access.getValue()));
+		};
 	}
 
 	@Override
