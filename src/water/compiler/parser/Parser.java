@@ -105,16 +105,22 @@ public class Parser {
 	 *  Forms grammar: functionDeclaration | variableDeclaration
 	 */
 	private Node declaration() throws UnexpectedTokenException {
+		Token accessModifier = null;
+
+		if(match(TokenType.PUBLIC) || match(TokenType.PRIVATE)) {
+			accessModifier = tokens.get(index - 1);
+		}
+
 		Token tok = advance();
 		return switch(tok.getType()) {
-			case FUNCTION -> functionDeclaration();
-			case VAR -> variableDeclaration();
+			case FUNCTION -> functionDeclaration(accessModifier);
+			case VAR -> variableDeclaration(accessModifier);
 			default -> throw new UnexpectedTokenException(tok, "Expected declaration");
 		};
 	}
 
 	/** Forms grammar: 'function' IDENTIFIER typedParameters (('->' type)? blockStatement) | ('=' expression ';') */
-	private Node functionDeclaration() throws UnexpectedTokenException {
+	private Node functionDeclaration(Token access) throws UnexpectedTokenException {
 		Token name = consume(TokenType.IDENTIFIER, "Expected function name");
 
 		List<Pair<Token, Node>> parameters = typedParameters("function parameter list");
@@ -140,11 +146,11 @@ public class Parser {
 			body = blockStatement();
 		}
 
-		return new FunctionDeclarationNode(type, name, body, parameters, returnType);
+		return new FunctionDeclarationNode(type, name, body, parameters, returnType, access);
 	}
 
 	/** Forms grammar: 'var' IDENTIFIER '=' expression ';' */
-	private Node variableDeclaration() throws UnexpectedTokenException {
+	private Node variableDeclaration(Token access) throws UnexpectedTokenException {
 		Token name = consume(TokenType.IDENTIFIER, "Expected variable name");
 
 		consume(TokenType.EQUALS, "Expected '=' after variable name");
@@ -153,7 +159,7 @@ public class Parser {
 
 		consume(TokenType.SEMI, "Expected ';' after variable assignment");
 
-		return new VariableDeclarationNode(name, value);
+		return new VariableDeclarationNode(name, value, access);
 	}
 
 	//============================ Statements =============================
@@ -163,7 +169,7 @@ public class Parser {
 		ArrayList<Node> nodes = new ArrayList<>();
 		if(tokens.get(index).getType() != TokenType.RBRACE) {
 			do {
-				if(match(TokenType.VAR)) nodes.add(variableDeclaration());
+				if(match(TokenType.VAR)) nodes.add(variableDeclaration(null));
 				else nodes.add(statement());
 			} while (!isAtEnd() && tokens.get(index).getType() != TokenType.RBRACE);
 		}
@@ -236,7 +242,7 @@ public class Parser {
 		Node init;
 
 		if(match(TokenType.VAR)) {
-			init = variableDeclaration();
+			init = variableDeclaration(null);
 		}
 		else {
 			init = expressionStatement();

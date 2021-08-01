@@ -42,6 +42,8 @@ public enum TokenType {
 	INT,
 	DOUBLE,
 	BOOLEAN,
+	PUBLIC,
+	PRIVATE,
 
 	// Literals
 	NUMBER,
