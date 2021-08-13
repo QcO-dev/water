@@ -37,12 +37,13 @@ public class Scope {
 		addFunction(new Function(FunctionType.SOUT, "println", "java/io/PrintStream", Type.getMethodType("(Z)V")));
 		addFunction(new Function(FunctionType.SOUT, "println", "java/io/PrintStream", Type.getMethodType("(Ljava/lang/Object;)V")));
 
-		for(Method m : context.getKlass().getDeclaredMethods()) {
-			addFunction(new Function(FunctionType.STATIC, m.getName(), Type.getInternalName(context.getKlass()), Type.getType(m)));
+		Class<?> klass = context.getCurrentClass();
+		for(Method m : klass.getDeclaredMethods()) {
+			addFunction(new Function(FunctionType.STATIC, m.getName(), Type.getInternalName(klass), Type.getType(m)));
 		}
 
-		for(Field f : context.getKlass().getDeclaredFields()) {
-			addVariable(new Variable(VariableType.GLOBAL, f.getName(), Type.getInternalName(context.getKlass()), Type.getType(f.getType()), Modifier.isFinal(f.getModifiers())));
+		for(Field f : klass.getDeclaredFields()) {
+			addVariable(new Variable(VariableType.GLOBAL, f.getName(), Type.getInternalName(klass), Type.getType(f.getType()), Modifier.isFinal(f.getModifiers())));
 		}
 	}
 

@@ -44,7 +44,7 @@ public class VariableDeclarationNode implements Node {
 			context.getContext().setMethodVisitor(context.getContext().getStaticMethodVisitor());
 			value.visit(context);
 
-			context.getContext().getMethodVisitor().visitFieldInsn(Opcodes.PUTSTATIC, Type.getInternalName(context.getKlass()), name.getValue(), returnType.getDescriptor());
+			context.getContext().getMethodVisitor().visitFieldInsn(Opcodes.PUTSTATIC, Type.getInternalName(context.getCurrentClass()), name.getValue(), returnType.getDescriptor());
 		}
 		else if(context.getContext().getType() == ContextType.FUNCTION) {
 
@@ -73,7 +73,7 @@ public class VariableDeclarationNode implements Node {
 
 		int finalMod = isConst ? Opcodes.ACC_FINAL : 0;
 
-		context.getClassWriter().visitField(Opcodes.ACC_PRIVATE | Opcodes.ACC_STATIC | finalMod, name.getValue(), value.getReturnType(context).getDescriptor(), null, null);
+		context.getCurrentClassWriter().visitField(Opcodes.ACC_PRIVATE | Opcodes.ACC_STATIC | finalMod, name.getValue(), value.getReturnType(context).getDescriptor(), null, null);
 
 		String beanName = name.getValue().substring(0, 1).toUpperCase() + name.getValue().substring(1);
 
@@ -83,9 +83,9 @@ public class VariableDeclarationNode implements Node {
 		// Getter
 		if(verifyAccess()) {
 			String fName = name.getValue().matches("^is[\\p{Lu}].*") ? name.getValue() : "get" + beanName;
-			MethodVisitor visitor = context.getClassWriter().visitMethod(Opcodes.ACC_PUBLIC | Opcodes.ACC_STATIC | Opcodes.ACC_FINAL | Opcodes.ACC_SYNTHETIC, fName, "()" + descriptor, null, null);
+			MethodVisitor visitor = context.getCurrentClassWriter().visitMethod(Opcodes.ACC_PUBLIC | Opcodes.ACC_STATIC | Opcodes.ACC_FINAL | Opcodes.ACC_SYNTHETIC, fName, "()" + descriptor, null, null);
 			visitor.visitCode();
-			visitor.visitFieldInsn(Opcodes.GETSTATIC, context.getClassName(), name.getValue(), descriptor);
+			visitor.visitFieldInsn(Opcodes.GETSTATIC, context.getCurrentClass(), name.getValue(), descriptor);
 			visitor.visitInsn(fieldType.getOpcode(Opcodes.IRETURN));
 			visitor.visitMaxs(1, 0);
 			visitor.visitEnd();
@@ -93,10 +93,10 @@ public class VariableDeclarationNode implements Node {
 		//Setter
 		if(verifyAccess() && !isConst) {
 			String fName = "set" + (name.getValue().matches("^is[\\p{Lu}].*") ? beanName.substring(2) : beanName);
-			MethodVisitor visitor = context.getClassWriter().visitMethod(Opcodes.ACC_PUBLIC | Opcodes.ACC_STATIC | Opcodes.ACC_FINAL | Opcodes.ACC_SYNTHETIC, fName, "("  + descriptor + ")V", null, null);
+			MethodVisitor visitor = context.getCurrentClassWriter().visitMethod(Opcodes.ACC_PUBLIC | Opcodes.ACC_STATIC | Opcodes.ACC_FINAL | Opcodes.ACC_SYNTHETIC, fName, "("  + descriptor + ")V", null, null);
 			visitor.visitCode();
 			visitor.visitVarInsn(fieldType.getOpcode(Opcodes.ILOAD), 0);
-			visitor.visitFieldInsn(Opcodes.PUTSTATIC, context.getClassName(), name.getValue(), descriptor);
+			visitor.visitFieldInsn(Opcodes.PUTSTATIC, context.getCurrentClass(), name.getValue(), descriptor);
 			visitor.visitInsn(Opcodes.RETURN);
 			visitor.visitMaxs(1, 1);
 			visitor.visitEnd();

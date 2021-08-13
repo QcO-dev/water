@@ -165,7 +165,7 @@ public class FunctionDeclarationNode implements Node {
 
 	private MethodVisitor makeGlobalFunction(Context context) throws SemanticException {
 		int access = verifyAccess();
-		return context.getClassWriter().visitMethod(access | Opcodes.ACC_STATIC | Opcodes.ACC_FINAL, name.getValue(), descriptor, null, null);
+		return context.getCurrentClassWriter().visitMethod(access | Opcodes.ACC_STATIC | Opcodes.ACC_FINAL, name.getValue(), descriptor, null, null);
 	}
 
 	private void createMainMethod(Context context) throws SemanticException {
@@ -176,10 +176,10 @@ public class FunctionDeclarationNode implements Node {
 				|| returnType.getSort() != Type.VOID) // return void
 			return;
 
-		MethodVisitor mainMethodWithArgs = context.getClassWriter().visitMethod(Opcodes.ACC_PUBLIC | Opcodes.ACC_STATIC | Opcodes.ACC_SYNTHETIC, "main", "([Ljava/lang/String;)V", null, null);
+		MethodVisitor mainMethodWithArgs = context.getCurrentClassWriter().visitMethod(Opcodes.ACC_PUBLIC | Opcodes.ACC_STATIC | Opcodes.ACC_SYNTHETIC, "main", "([Ljava/lang/String;)V", null, null);
 
 		mainMethodWithArgs.visitCode();
-		mainMethodWithArgs.visitMethodInsn(Opcodes.INVOKESTATIC, context.getClassName(), "main", "()V", false);
+		mainMethodWithArgs.visitMethodInsn(Opcodes.INVOKESTATIC, context.getCurrentClass(), "main", "()V", false);
 		mainMethodWithArgs.visitInsn(Opcodes.RETURN);
 		mainMethodWithArgs.visitMaxs(0, 0);
 		mainMethodWithArgs.visitEnd();

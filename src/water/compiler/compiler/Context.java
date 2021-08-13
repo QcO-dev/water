@@ -6,6 +6,7 @@ import org.objectweb.asm.MethodVisitor;
 import water.compiler.WaterClassLoader;
 
 import java.util.HashMap;
+import java.util.Map;
 
 /**
  * Provides information to the compiler about its current state
@@ -15,9 +16,9 @@ public class Context {
 	private final HashMap<String, String> imports;
 	private ContextType type;
 	private String source;
-	private String className;
 	private String packageName;
-	private ClassWriter classWriter;
+	private String currentClass;
+	private Map<String, ClassWriter> classWriterMap;
 	private MethodVisitor methodVisitor;
 	private MethodVisitor staticMethodVisitor;
 	private WaterClassLoader loader;
@@ -26,6 +27,7 @@ public class Context {
 
 	public Context() {
 		this.imports = new HashMap<>();
+		this.classWriterMap = new HashMap<>();
 		initImports();
 	}
 
@@ -45,14 +47,6 @@ public class Context {
 		this.source = source;
 	}
 
-	public String getClassName() {
-		return className;
-	}
-
-	public void setClassName(String className) {
-		this.className = className;
-	}
-
 	public String getPackageName() {
 		return packageName;
 	}
@@ -61,12 +55,16 @@ public class Context {
 		this.packageName = packageName;
 	}
 
-	public ClassWriter getClassWriter() {
-		return classWriter;
+	public String getCurrentClass() {
+		return currentClass;
 	}
 
-	public void setClassWriter(ClassWriter classWriter) {
-		this.classWriter = classWriter;
+	public void setCurrentClass(String currentClass) {
+		this.currentClass = currentClass;
+	}
+
+	public Map<String, ClassWriter> getClassWriterMap() {
+		return classWriterMap;
 	}
 
 	public MethodVisitor getMethodVisitor() {
@@ -112,6 +110,10 @@ public class Context {
 		MethodVisitor mv = type == ContextType.GLOBAL ? getStaticMethodVisitor() : getMethodVisitor();
 		mv.visitLabel(l);
 		mv.visitLineNumber(line, l);
+	}
+
+	public ClassWriter getCurrentClassWriter() {
+		return classWriterMap.get(currentClass);
 	}
 
 	private void initImports() {

@@ -80,7 +80,7 @@ public class ProgramNode implements Node {
 
 		if(packageName != null) name = packageN + "/" + name;
 
-		context.setClassName(name);
+		context.setCurrentClass(name);
 		context.setPackageName(packageN);
 
 		ClassWriter writer = new ClassWriter(ClassWriter.COMPUTE_MAXS | ClassWriter.COMPUTE_FRAMES);
@@ -89,7 +89,7 @@ public class ProgramNode implements Node {
 
 		writer.visitSource(source, null);
 
-		context.setClassWriter(writer);
+		context.getClassWriterMap().put(name, writer);
 
 		return writer;
 	}
