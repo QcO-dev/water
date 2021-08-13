@@ -5,6 +5,7 @@ import water.compiler.lexer.Token;
 import water.compiler.lexer.TokenType;
 import water.compiler.parser.nodes.block.BlockNode;
 import water.compiler.parser.nodes.block.ProgramNode;
+import water.compiler.parser.nodes.classes.ClassDeclarationNode;
 import water.compiler.parser.nodes.classes.MemberAccessNode;
 import water.compiler.parser.nodes.classes.MethodCallNode;
 import water.compiler.parser.nodes.classes.ObjectConstructorNode;
@@ -114,6 +115,7 @@ public class Parser {
 		Token tok = advance();
 		return switch(tok.getType()) {
 			case FUNCTION -> functionDeclaration(accessModifier);
+			case CLASS -> classDeclaration(accessModifier);
 			case VAR, CONST -> variableDeclaration(accessModifier);
 			default -> throw new UnexpectedTokenException(tok, "Expected declaration");
 		};
@@ -147,6 +149,15 @@ public class Parser {
 		}
 
 		return new FunctionDeclarationNode(type, name, body, parameters, returnType, access);
+	}
+
+	private Node classDeclaration(Token access) throws UnexpectedTokenException {
+		Token name = consume(TokenType.IDENTIFIER, "Expected class name");
+
+		consume(TokenType.LBRACE, "Expected '{' before class body");
+		consume(TokenType.RBRACE, "Expected '}' after class body");
+
+		return new ClassDeclarationNode(name, access);
 	}
 
 	/** Forms grammar: 'var' IDENTIFIER '=' expression ';' */

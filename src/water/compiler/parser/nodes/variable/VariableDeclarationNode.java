@@ -83,7 +83,7 @@ public class VariableDeclarationNode implements Node {
 		// Getter
 		if(verifyAccess()) {
 			String fName = name.getValue().matches("^is[\\p{Lu}].*") ? name.getValue() : "get" + beanName;
-			MethodVisitor visitor = context.getCurrentClassWriter().visitMethod(Opcodes.ACC_PUBLIC | Opcodes.ACC_STATIC | Opcodes.ACC_FINAL | Opcodes.ACC_SYNTHETIC, fName, "()" + descriptor, null, null);
+			MethodVisitor visitor = context.getCurrentClassWriter().visitMethod(Opcodes.ACC_PUBLIC | Opcodes.ACC_STATIC | Opcodes.ACC_FINAL, fName, "()" + descriptor, null, null);
 			visitor.visitCode();
 			visitor.visitFieldInsn(Opcodes.GETSTATIC, context.getCurrentClass(), name.getValue(), descriptor);
 			visitor.visitInsn(fieldType.getOpcode(Opcodes.IRETURN));
@@ -93,7 +93,7 @@ public class VariableDeclarationNode implements Node {
 		//Setter
 		if(verifyAccess() && !isConst) {
 			String fName = "set" + (name.getValue().matches("^is[\\p{Lu}].*") ? beanName.substring(2) : beanName);
-			MethodVisitor visitor = context.getCurrentClassWriter().visitMethod(Opcodes.ACC_PUBLIC | Opcodes.ACC_STATIC | Opcodes.ACC_FINAL | Opcodes.ACC_SYNTHETIC, fName, "("  + descriptor + ")V", null, null);
+			MethodVisitor visitor = context.getCurrentClassWriter().visitMethod(Opcodes.ACC_PUBLIC | Opcodes.ACC_STATIC | Opcodes.ACC_FINAL, fName, "("  + descriptor + ")V", null, null);
 			visitor.visitCode();
 			visitor.visitVarInsn(fieldType.getOpcode(Opcodes.ILOAD), 0);
 			visitor.visitFieldInsn(Opcodes.PUTSTATIC, context.getCurrentClass(), name.getValue(), descriptor);

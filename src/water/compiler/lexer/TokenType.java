@@ -29,6 +29,7 @@ public enum TokenType {
 	FUNCTION,
 	VAR,
 	CONST,
+	CLASS,
 	AS,
 	RETURN,
 	FOR,
