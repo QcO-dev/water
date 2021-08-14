@@ -46,6 +46,7 @@ public enum TokenType {
 	BOOLEAN,
 	PUBLIC,
 	PRIVATE,
+	STATIC,
 
 	// Literals
 	NUMBER,

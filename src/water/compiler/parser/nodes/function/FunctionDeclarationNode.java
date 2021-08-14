@@ -28,16 +28,19 @@ public class FunctionDeclarationNode implements Node {
 	private final List<Pair<Token, Node>> parameters;
 	private final Node returnTypeNode;
 	private final Token access;
+	private final Token staticModifier;
 	private Type returnType;
 	private String descriptor;
 
-	public FunctionDeclarationNode(DeclarationType type, Token name, Node body, List<Pair<Token, Node>> parameters, Node returnType, Token access) {
+	public FunctionDeclarationNode(DeclarationType type, Token name, Node body, List<Pair<Token, Node>> parameters, Node returnType, Token access,
+								   Token staticModifier) {
 		this.type = type;
 		this.name = name;
 		this.body = body;
 		this.parameters = parameters;
 		this.returnTypeNode = returnType;
 		this.access = access;
+		this.staticModifier = staticModifier;
 	}
 
 	@Override
@@ -108,13 +111,9 @@ public class FunctionDeclarationNode implements Node {
 	@Override
 	public void visit(FileContext context) throws SemanticException {
 		MethodVisitor mv;
-		if(context.getContext().getType() == ContextType.GLOBAL) {
-			mv = makeGlobalFunction(context.getContext());
-			createMainMethod(context.getContext());
-		}
-		else {
-			mv = makeClassFunction(context.getContext());
-		}
+		if(context.getContext().getType() == ContextType.GLOBAL) mv = makeGlobalFunction(context.getContext());
+		else mv = makeClassFunction(context.getContext());
+		createMainMethod(context.getContext());
 		mv.visitCode();
 
 		context.getContext().setMethodVisitor(mv);
@@ -129,8 +128,7 @@ public class FunctionDeclarationNode implements Node {
 
 		context.getContext().getScope().setReturnType(returnType);
 
-		// TODO: Static class methods
-		addParameters(context.getContext(), prev == ContextType.GLOBAL);
+		addParameters(context.getContext(), isStatic(context.getContext()));
 
 		body.visit(context);
 		if(type == DeclarationType.EXPRESSION) mv.visitInsn(returnType.getOpcode(Opcodes.IRETURN));
@@ -157,7 +155,8 @@ public class FunctionDeclarationNode implements Node {
 
 	private MethodVisitor makeClassFunction(Context context) throws SemanticException {
 		int access = verifyAccess();
-		return context.getCurrentClassWriter().visitMethod(access, name.getValue(), descriptor, null, null);
+		int staticAccess = isStatic(context) ? Opcodes.ACC_STATIC : 0;
+		return context.getCurrentClassWriter().visitMethod(access | staticAccess, name.getValue(), descriptor, null, null);
 	}
 
 	private void finalizeMethod(MethodVisitor mv) {
@@ -224,6 +223,7 @@ public class FunctionDeclarationNode implements Node {
 		if(!"main".equals(name.getValue()) // main
 				|| parameters.size() != 0  // no args
 				|| verifyAccess() != Opcodes.ACC_PUBLIC // public
+				|| !isStatic(context) // static
 				|| returnType.getSort() != Type.VOID) // return void
 			return;
 
@@ -243,6 +243,12 @@ public class FunctionDeclarationNode implements Node {
 			case PRIVATE -> Opcodes.ACC_PRIVATE;
 			default -> throw new SemanticException(access, "Invalid access modifier for function '%s'".formatted(access.getValue()));
 		};
+	}
+
+	private boolean isStatic(Context context) {
+		if(staticModifier != null) return true;
+		if(context.getType() == ContextType.GLOBAL) return true;
+		return false;
 	}
 
 	@Override

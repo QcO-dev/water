@@ -14,12 +14,14 @@ public class VariableDeclarationNode implements Node {
 	private final Node value;
 	private final boolean isConst;
 	private final Token access;
+	private final Token staticModifier;
 
-	public VariableDeclarationNode(Token name, Node value, boolean isConst, Token access) {
+	public VariableDeclarationNode(Token name, Node value, boolean isConst, Token access, Token staticModifier) {
 		this.name = name;
 		this.value = value;
 		this.isConst = isConst;
 		this.access = access;
+		this.staticModifier = staticModifier;
 	}
 
 	@Override
