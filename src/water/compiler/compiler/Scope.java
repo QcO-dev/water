@@ -50,6 +50,7 @@ public class Scope {
 
 	public void updateCurrentClassMethods(FileContext context) {
 		Class<?> klass = context.getCurrentClass();
+		if(klass == null) return;
 		for(Method m : klass.getDeclaredMethods()) {
 			int modifier = m.getModifiers();
 			boolean isStatic = Modifier.isStatic(modifier);

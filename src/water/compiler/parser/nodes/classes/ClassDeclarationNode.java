@@ -125,6 +125,15 @@ public class ClassDeclarationNode implements Node {
 		return 0;
 	}
 
+	public String getName() {
+		return name.getValue();
+	}
+
+	@Override
+	public boolean isNewClass() {
+		return true;
+	}
+
 	@Override
 	public String toString() {
 		return "class %s {%s}".formatted(name.getValue(), declarations.stream().map(Node::toString).collect(Collectors.joining()));

@@ -55,6 +55,7 @@ public class Parser {
 	 */
 	private Node program() throws UnexpectedTokenException {
 		ArrayList<Node> declarations = new ArrayList<>();
+		ArrayList<Node> imports = new ArrayList<>();
 
 		Node packageName = null;
 
@@ -65,14 +66,14 @@ public class Parser {
 
 		// All import statements must appear at the top of the file, before standard declarations
 		while(!isAtEnd() && match(TokenType.IMPORT)) {
-			declarations.add(importStatement());
+			imports.add(importStatement());
 		}
 
 		// Top level declarations
 		while(!isAtEnd()) {
 			declarations.add(declaration());
 		}
-		return new ProgramNode(packageName, declarations);
+		return new ProgramNode(packageName, imports, declarations);
 	}
 
 	//============================ Special Statements =============================

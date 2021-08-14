@@ -23,4 +23,6 @@ public interface Node {
 	default LValue getLValue() { return LValue.NONE; }
 	/** Get data needed to assign to LValue */
 	default Object[] getLValueData() { return new Object[0]; }
+	/** If the Node produces a new class file */
+	default boolean isNewClass() { return false; }
 }
