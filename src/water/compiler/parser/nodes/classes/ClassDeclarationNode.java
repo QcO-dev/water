@@ -6,28 +6,30 @@ import org.objectweb.asm.Opcodes;
 import water.compiler.FileContext;
 import water.compiler.compiler.Context;
 import water.compiler.compiler.ContextType;
+import water.compiler.compiler.Scope;
 import water.compiler.compiler.SemanticException;
 import water.compiler.lexer.Token;
 import water.compiler.lexer.TokenType;
 import water.compiler.parser.Node;
 
+import java.util.List;
+import java.util.stream.Collectors;
+
 public class ClassDeclarationNode implements Node {
 
 	private final Token name;
+	private final List<Node> declarations;
 	private final Token access;
 
-	public ClassDeclarationNode(Token name, Token access) {
+	public ClassDeclarationNode(Token name, List<Node> declarations, Token access) {
 		this.name = name;
+		this.declarations = declarations;
 		this.access = access;
 	}
 
 	@Override
-	public void visit(FileContext context) throws SemanticException {
-
-	}
-
-	@Override
-	public void preprocess(Context context) {
+	public void visit(FileContext fc) throws SemanticException {
+		Context context = fc.getContext();
 		ContextType prevType = context.getType();
 		String prevClass = context.getCurrentClass();
 
@@ -35,24 +37,60 @@ public class ClassDeclarationNode implements Node {
 
 		createDefaultConstructor(writer);
 
+		Scope outer = context.getScope();
+		context.setScope(outer.nextDepth());
+		context.getScope().updateCurrentClassMethods(fc);
+
+		for(Node declaration : declarations) {
+			declaration.visit(fc);
+		}
+
 		writer.visitEnd();
 
+		context.setScope(outer);
+		context.setType(prevType);
+		context.setCurrentClass(prevClass);
+	}
+
+	@Override
+	public void preprocess(Context context) throws SemanticException {
+		ContextType prevType = context.getType();
+		String prevClass = context.getCurrentClass();
+
+		ClassWriter writer = initClass(context);
+
+		createDefaultConstructor(writer);
+
+		Scope outer = context.getScope();
+		context.setScope(outer.nextDepth());
+
+		for(Node declaration : declarations) {
+			declaration.preprocess(context);
+		}
+
+		writer.visitEnd();
+
+		context.setScope(outer);
 		context.setType(prevType);
 		context.setCurrentClass(prevClass);
 	}
 
 	private ClassWriter initClass(Context context) {
 		context.setType(ContextType.CLASS);
-		//TODO Package name
-
 		int accessLevel = getAccessLevel();
 
-		String className = name.getValue();
+		String baseName = name.getValue();
+		String className = baseName;
 
 		// "private" class
 		if(accessLevel == 0) {
-			className = context.getCurrentClass() + "$" + className;
-			context.getImports().put(name.getValue(), className);
+			className = context.getCurrentClass() + "$" + baseName;
+		}
+		if(!context.getPackageName().isEmpty()) {
+			className = context.getPackageName() + "/" + className;
+		}
+		if(!className.equals(baseName)) {
+			context.getImports().put(baseName, className.replace('/', '.'));
 		}
 
 		context.setCurrentClass(className);
@@ -89,6 +127,6 @@ public class ClassDeclarationNode implements Node {
 
 	@Override
 	public String toString() {
-		return "class %s {}".formatted(name.getValue());
+		return "class %s {%s}".formatted(name.getValue(), declarations.stream().map(Node::toString).collect(Collectors.joining()));
 	}
 }

@@ -41,55 +41,23 @@ public class FunctionDeclarationNode implements Node {
 	}
 
 	@Override
-	public String toString() {
-		if(type == DeclarationType.EXPRESSION) {
-			return "function %s(%s) = %s;".formatted(name.getValue(),
-					parameters.stream().map(p -> p.getFirst().getValue() + ": " + p.getSecond()).collect(Collectors.joining(", ")),
-					body);
+	public void preprocess(Context context) throws SemanticException {
+		if(context.getType() == ContextType.GLOBAL) {
+			preprocessGlobal(context);
+		}
+		// ContextType.CLASS
+		else {
+			preprocessClass(context);
 		}
 
-		return "function %s(%s)%s %s".formatted(name.getValue(),
-				parameters.stream().map(p -> p.getFirst().getValue() + ": " + p.getSecond()).collect(Collectors.joining(", ")),
-				returnTypeNode == null ? "" : " -> " + returnTypeNode,
-				body);
 	}
 
-	@Override
-	public void preprocess(Context context) throws SemanticException {
-		//TODO non-global
-
+	private void preprocessGlobal(Context context) throws SemanticException {
 		try {
 			if (context.getScope().lookupFunction(name.getValue(), parameters.stream().map(n -> Unthrow.wrap(() -> n.getSecond().getReturnType(context))).toArray(Type[]::new)) != null) throw new SemanticException(name,
 					"Redefinition of function '%s' in global scope.".formatted(name.getValue()));
 
-			returnType = returnTypeNode == null ? Type.VOID_TYPE : returnTypeNode.getReturnType(context);
-
-			if(type == DeclarationType.EXPRESSION) {
-				// For the return type to be computed the parameter types may be needed, therefore a new Context is created.
-				ContextType prev = context.getType();
-
-				context.setType(ContextType.FUNCTION);
-
-				Scope outer = context.getScope();
-
-				context.setScope(outer.nextDepth());
-
-				context.getScope().setLocalIndex(parameters.size());
-
-				context.getScope().setReturnType(returnType);
-
-				for (int i = 0; i < parameters.size(); i++) {
-					Pair<Token, Node> parameter = parameters.get(i);
-
-					context.getScope().addVariable(new Variable(VariableType.LOCAL, parameter.getFirst().getValue(), i, parameter.getSecond().getReturnType(context), false));
-				}
-
-				returnType = body.getReturnType(context);
-
-				context.setScope(outer);
-
-				context.setType(prev);
-			}
+			computeReturnType(context, true);
 
 			ArrayList<Function> functions = context.getScope().lookupFunctions(name.getValue());
 			if(functions != null) {
@@ -101,28 +69,52 @@ public class FunctionDeclarationNode implements Node {
 				}
 			}
 
-			descriptor = "(%s)%s".formatted(parameters.stream().map(Pair::getSecond).map(n -> Unthrow.wrap(() -> n.getReturnType(context).getDescriptor())).collect(Collectors.joining()), returnType.getDescriptor());
+			makeDescriptor(context);
 		} catch (ClassNotFoundException e) {
 			throw new SemanticException(name, "Could not resolve class '%s'".formatted(e.getMessage()));
 		}
 
 		MethodVisitor mv = makeGlobalFunction(context);
-		mv.visitCode();
+		finalizeMethod(mv);
 
-		if(returnType.getSort() != Type.VOID) mv.visitInsn(TypeUtil.dummyConstant(returnType));
-		mv.visitInsn(returnType.getOpcode(Opcodes.IRETURN));
+		context.getScope().addFunction(new Function(FunctionType.STATIC, name.getValue(), context.getCurrentClass(), Type.getMethodType(descriptor)));
+	}
 
-		mv.visitMaxs(0, 0);
-		mv.visitEnd();
+	private void preprocessClass(Context context) throws SemanticException {
+		try {
+			// Verify this function is unique
+			Function function = context.getScope().lookupFunction(name.getValue(), parameters.stream().map(n -> Unthrow.wrap(() -> n.getSecond().getReturnType(context))).toArray(Type[]::new));
 
-		context.getScope().addFunction(new Function(FunctionType.STATIC, name.getValue(), "", Type.getMethodType(descriptor)));
+			if(function != null && function.getFunctionType() == FunctionType.CLASS) {
+				throw new SemanticException(name, "Redefinition of function '%s' in current class.".formatted(name.getValue()));
+			}
+
+			computeReturnType(context, false);
+
+			//TODO different return types
+
+
+			makeDescriptor(context);
+		} catch (ClassNotFoundException e) {
+			throw new SemanticException(name, "Could not resolve class '%s'".formatted(e.getMessage()));
+		}
+
+		MethodVisitor mv = makeClassFunction(context);
+		finalizeMethod(mv);
+
+		context.getScope().addFunction(new Function(FunctionType.CLASS, name.getValue(), context.getCurrentClass(), Type.getMethodType(descriptor)));
 	}
 
 	@Override
 	public void visit(FileContext context) throws SemanticException {
-		//TODO non-global
-		MethodVisitor mv = makeGlobalFunction(context.getContext());
-		if(context.getContext().getType() == ContextType.GLOBAL) createMainMethod(context.getContext());
+		MethodVisitor mv;
+		if(context.getContext().getType() == ContextType.GLOBAL) {
+			mv = makeGlobalFunction(context.getContext());
+			createMainMethod(context.getContext());
+		}
+		else {
+			mv = makeClassFunction(context.getContext());
+		}
 		mv.visitCode();
 
 		context.getContext().setMethodVisitor(mv);
@@ -135,15 +127,10 @@ public class FunctionDeclarationNode implements Node {
 
 		context.getContext().setScope(outer.nextDepth());
 
-		context.getContext().getScope().setLocalIndex(parameters.size());
-
 		context.getContext().getScope().setReturnType(returnType);
 
-		for (int i = 0; i < parameters.size(); i++) {
-			Pair<Token, Node> parameter = parameters.get(i);
-
-			context.getContext().getScope().addVariable(new Variable(VariableType.LOCAL, parameter.getFirst().getValue(), i, parameter.getSecond().getReturnType(context.getContext()), false));
-		}
+		// TODO: Static class methods
+		addParameters(context.getContext(), prev == ContextType.GLOBAL);
 
 		body.visit(context);
 		if(type == DeclarationType.EXPRESSION) mv.visitInsn(returnType.getOpcode(Opcodes.IRETURN));
@@ -168,8 +155,72 @@ public class FunctionDeclarationNode implements Node {
 		return context.getCurrentClassWriter().visitMethod(access | Opcodes.ACC_STATIC | Opcodes.ACC_FINAL, name.getValue(), descriptor, null, null);
 	}
 
+	private MethodVisitor makeClassFunction(Context context) throws SemanticException {
+		int access = verifyAccess();
+		return context.getCurrentClassWriter().visitMethod(access, name.getValue(), descriptor, null, null);
+	}
+
+	private void finalizeMethod(MethodVisitor mv) {
+		mv.visitCode();
+
+		if(returnType.getSort() != Type.VOID) mv.visitInsn(TypeUtil.dummyConstant(returnType));
+		mv.visitInsn(returnType.getOpcode(Opcodes.IRETURN));
+
+		mv.visitMaxs(0, 0);
+		mv.visitEnd();
+	}
+
+	private void makeDescriptor(Context context) {
+		descriptor = "(%s)%s".formatted(parameters.stream().map(Pair::getSecond).map(n -> Unthrow.wrap(() -> n.getReturnType(context).getDescriptor())).collect(Collectors.joining()), returnType.getDescriptor());
+	}
+
+	private void computeReturnType(Context context, boolean isStatic) throws SemanticException {
+		returnType = returnTypeNode == null ? Type.VOID_TYPE : returnTypeNode.getReturnType(context);
+
+		if(type == DeclarationType.EXPRESSION) {
+			// For the return type to be computed the parameter types may be needed, therefore a new Context is created.
+			ContextType prev = context.getType();
+
+			context.setType(ContextType.FUNCTION);
+
+			Scope outer = context.getScope();
+
+			context.setScope(outer.nextDepth());
+
+			context.getScope().setReturnType(returnType);
+
+			addParameters(context, isStatic);
+
+			returnType = body.getReturnType(context);
+
+			context.setScope(outer);
+
+			context.setType(prev);
+		}
+	}
+
+	private void addParameters(Context context, boolean isStatic) throws SemanticException {
+		if(isStatic) {
+			context.getScope().setLocalIndex(parameters.size());
+			for (int i = 0; i < parameters.size(); i++) {
+				Pair<Token, Node> parameter = parameters.get(i);
+
+				context.getScope().addVariable(new Variable(VariableType.LOCAL, parameter.getFirst().getValue(), i, parameter.getSecond().getReturnType(context), false));
+			}
+		}
+		else {
+			context.getScope().setLocalIndex(1 + parameters.size());
+			context.getScope().addVariable(new Variable(VariableType.LOCAL, "this", 0, Type.getObjectType(context.getCurrentClass()), true));
+
+			for (int i = 0; i < parameters.size(); i++) {
+				Pair<Token, Node> parameter = parameters.get(i);
+
+				context.getScope().addVariable(new Variable(VariableType.LOCAL, parameter.getFirst().getValue(), i + 1, parameter.getSecond().getReturnType(context), false));
+			}
+		}
+	}
+
 	private void createMainMethod(Context context) throws SemanticException {
-		//TODO
 		if(!"main".equals(name.getValue()) // main
 				|| parameters.size() != 0  // no args
 				|| verifyAccess() != Opcodes.ACC_PUBLIC // public
@@ -192,5 +243,19 @@ public class FunctionDeclarationNode implements Node {
 			case PRIVATE -> Opcodes.ACC_PRIVATE;
 			default -> throw new SemanticException(access, "Invalid access modifier for function '%s'".formatted(access.getValue()));
 		};
+	}
+
+	@Override
+	public String toString() {
+		if(type == DeclarationType.EXPRESSION) {
+			return "function %s(%s) = %s;".formatted(name.getValue(),
+					parameters.stream().map(p -> p.getFirst().getValue() + ": " + p.getSecond()).collect(Collectors.joining(", ")),
+					body);
+		}
+
+		return "function %s(%s)%s %s".formatted(name.getValue(),
+				parameters.stream().map(p -> p.getFirst().getValue() + ": " + p.getSecond()).collect(Collectors.joining(", ")),
+				returnTypeNode == null ? "" : " -> " + returnTypeNode,
+				body);
 	}
 }

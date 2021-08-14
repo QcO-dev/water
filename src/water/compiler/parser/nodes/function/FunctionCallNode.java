@@ -45,6 +45,8 @@ public class FunctionCallNode implements Node {
 
 			if(function.getFunctionType() == FunctionType.SOUT)
 				context.getContext().getMethodVisitor().visitFieldInsn(Opcodes.GETSTATIC, "java/lang/System", "out", "Ljava/io/PrintStream;");
+			else if(function.getFunctionType() == FunctionType.CLASS)
+				context.getContext().getMethodVisitor().visitVarInsn(Opcodes.ALOAD, 0);
 
 			for(Node n : args) n.visit(context);
 

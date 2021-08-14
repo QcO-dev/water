@@ -5,6 +5,7 @@ package water.compiler.compiler;
  * sout allows the compiler to insert a 'System.out' access before the function - used for 'println' and related
  */
 public enum FunctionType {
+	CLASS,
 	STATIC,
 	SOUT
 }

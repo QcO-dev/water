@@ -20,6 +20,8 @@ public class TypeUtil {
 	private static final List<Integer> TYPE_SIZE = List.of(Type.DOUBLE, Type.FLOAT, Type.LONG, Type.INT, Type.SHORT, Type.CHAR, Type.BYTE);
 	/** A constant defining a Type representing the java.lang.String class */
 	public static final Type STRING_TYPE = Type.getObjectType("java/lang/String");
+	/** A constant defining a Type representing the java.lang.Object class */
+	public static final Type OBJECT_TYPE = Type.getObjectType("java/lang/Object");
 
 	/** Returns the correct opcode given a type. */
 	public static int getPopOpcode(Type type) {

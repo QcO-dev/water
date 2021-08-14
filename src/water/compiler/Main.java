@@ -15,6 +15,7 @@ import water.compiler.parser.Node;
 import water.compiler.parser.Parser;
 import water.compiler.parser.UnexpectedTokenException;
 
+import java.io.File;
 import java.io.IOException;
 import java.nio.file.Files;
 import java.nio.file.Path;
@@ -125,6 +126,7 @@ public class Main {
 			} catch (UnexpectedTokenException e) {
 				error(-1, e.getErrorMessage(path.toString()));
 			} catch (SemanticException e) {
+				e.printStackTrace();
 				error(-2, e.getErrorMessage(path.toString()));
 			}
 		}
@@ -137,16 +139,22 @@ public class Main {
 			try {
 				fc.getAst().visit(fc);
 			} catch (SemanticException e) {
+				e.printStackTrace();
 				error(-2, e.getErrorMessage(fc.getPath().toString()));
 			}
 
 			String outputDir = outputDirectory == null ? fc.getPath().getParent().toString() : outputDirectory;
-			String packageDir = fc.getContext().getPackageName();
+			String packageDir = fc.getContext().getPackageName().replace('/', File.separatorChar);
 
 			for(Map.Entry<String, Class<?>> classEntry : fc.getClassMap().entrySet()) {
-				byte[] klassRep = fc.getContext().getClassWriterMap().get(classEntry.getKey()).toByteArray();
+				String baseClassName = classEntry.getKey();
+				byte[] klassRep = fc.getContext().getClassWriterMap().get(baseClassName).toByteArray();
 
-				String className = classEntry.getKey() + ".class";
+				String className = baseClassName + ".class";
+
+				if(className.contains("/")) {
+					className = className.substring(className.lastIndexOf('/'));
+				}
 
 				Path classFile = Path.of(outputDir, packageDir, className);
 				try {

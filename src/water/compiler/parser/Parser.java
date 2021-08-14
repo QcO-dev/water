@@ -155,9 +155,16 @@ public class Parser {
 		Token name = consume(TokenType.IDENTIFIER, "Expected class name");
 
 		consume(TokenType.LBRACE, "Expected '{' before class body");
+
+		ArrayList<Node> declarations = new ArrayList<>();
+
+		while(!isAtEnd() && tokens.get(index).getType() != TokenType.RBRACE) {
+			declarations.add(declaration());
+		}
+
 		consume(TokenType.RBRACE, "Expected '}' after class body");
 
-		return new ClassDeclarationNode(name, access);
+		return new ClassDeclarationNode(name, declarations, access);
 	}
 
 	/** Forms grammar: 'var' IDENTIFIER '=' expression ';' */
