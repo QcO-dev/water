@@ -7,6 +7,7 @@ import water.compiler.compiler.Context;
 import water.compiler.compiler.SemanticException;
 import water.compiler.lexer.Token;
 import water.compiler.parser.Node;
+import water.compiler.parser.nodes.variable.VariableAccessNode;
 import water.compiler.util.TypeUtil;
 import water.compiler.util.Unthrow;
 
@@ -30,6 +31,7 @@ public class MethodCallNode implements Node {
 
 	@Override
 	public void visit(FileContext context) throws SemanticException {
+		if(left instanceof VariableAccessNode) ((VariableAccessNode) left).setMemberAccess(true);
 		Type leftType = left.getReturnType(context.getContext());
 
 		if(leftType.getSort() == Type.ARRAY && name.getValue().equals("length") && args.size() == 0) {
@@ -59,6 +61,7 @@ public class MethodCallNode implements Node {
 
 	@Override
 	public Type getReturnType(Context context) throws SemanticException {
+		if(left instanceof VariableAccessNode) ((VariableAccessNode) left).setMemberAccess(true);
 		Type leftType = left.getReturnType(context);
 
 		if(leftType.getSort() == Type.ARRAY && name.getValue().equals("length") && args.size() == 0) return Type.INT_TYPE;
@@ -84,7 +87,6 @@ public class MethodCallNode implements Node {
 			out:
 			for (Method method : klass.getMethods()) {
 				if(!method.getName().equals(name.getValue())) continue;
-
 				Type[] expectArgs = Type.getType(method).getArgumentTypes();
 
 				if (expectArgs.length != argTypes.length) continue;

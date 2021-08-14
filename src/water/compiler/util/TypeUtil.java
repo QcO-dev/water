@@ -455,6 +455,21 @@ public class TypeUtil {
 		};
 	}
 
+	/**
+	 * Looks up a class for the given name, using imports to resolve.
+	 * @param name The name of the class
+	 * @param context The context to use for the {@link water.compiler.WaterClassLoader} and imports
+	 * @return The resolved Class
+	 * @throws ClassNotFoundException If the class cannot be resolved
+	 */
+	public static Class<?> classForName(String name, Context context) throws ClassNotFoundException {
+		String className = name;
+
+		if(context.getImports().get(name) != null) className = context.getImports().get(name);
+
+		return Class.forName(className, false, context.getLoader());
+	}
+
 	/*
 	 Copyright Notice for use of ASM code (if link dies):
 

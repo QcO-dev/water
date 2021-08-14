@@ -10,12 +10,15 @@ import water.compiler.compiler.VariableType;
 import water.compiler.lexer.Token;
 import water.compiler.parser.LValue;
 import water.compiler.parser.Node;
+import water.compiler.util.TypeUtil;
 
 public class VariableAccessNode implements Node {
 	private final Token name;
+	private boolean isMemberAccess;
 
 	public VariableAccessNode(Token name) {
 		this.name = name;
+		this.isMemberAccess = false;
 	}
 
 	@Override
@@ -23,7 +26,17 @@ public class VariableAccessNode implements Node {
 		context.getContext().updateLine(name.getLine());
 		Variable v = context.getContext().getScope().lookupVariable(name.getValue());
 
-		if(v == null) throw new SemanticException(name, "Cannot resolve variable '%s' in current scope.".formatted(name.getValue()));
+		if(v == null) {
+			if(isMemberAccess) {
+				try {
+					TypeUtil.classForName(name.getValue(), context.getContext());
+					return;
+				} catch (ClassNotFoundException e) {
+					throw new SemanticException(name, "Cannot resolve variable '%s' in current scope.".formatted(name.getValue()));
+				}
+			}
+			throw new SemanticException(name, "Cannot resolve variable '%s' in current scope.".formatted(name.getValue()));
+		}
 
 		if(v.getVariableType() == VariableType.GLOBAL) {
 			context.getContext().getMethodVisitor().visitFieldInsn(Opcodes.GETSTATIC, v.getOwner(), v.getName(), v.getType().getDescriptor());
@@ -37,7 +50,17 @@ public class VariableAccessNode implements Node {
 	public Type getReturnType(Context context) throws SemanticException {
 		Variable v = context.getScope().lookupVariable(name.getValue());
 
-		if(v == null) throw new SemanticException(name, "Cannot resolve variable '%s' in current scope.".formatted(name.getValue()));
+		if(v == null) {
+			if(isMemberAccess) {
+				try {
+					Class<?> staticClass = TypeUtil.classForName(name.getValue(), context);
+					return Type.getType(staticClass);
+				} catch (ClassNotFoundException e) {
+					throw new SemanticException(name, "Cannot resolve variable '%s' in current scope.".formatted(name.getValue()));
+				}
+			}
+			throw new SemanticException(name, "Cannot resolve variable '%s' in current scope.".formatted(name.getValue()));
+		}
 
 		return v.getType();
 	}
@@ -50,6 +73,10 @@ public class VariableAccessNode implements Node {
 	@Override
 	public Object[] getLValueData() {
 		return new Object[] { name };
+	}
+
+	public void setMemberAccess(boolean memberAccess) {
+		isMemberAccess = memberAccess;
 	}
 
 	@Override

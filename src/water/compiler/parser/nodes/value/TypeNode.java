@@ -6,6 +6,7 @@ import water.compiler.compiler.Context;
 import water.compiler.compiler.SemanticException;
 import water.compiler.lexer.Token;
 import water.compiler.parser.Node;
+import water.compiler.util.TypeUtil;
 
 public class TypeNode implements Node {
 	private final Token root;
@@ -53,9 +54,7 @@ public class TypeNode implements Node {
 		};
 
 		try {
-			if(context.getImports().get(path) != null) return Type.getType(Class.forName(context.getImports().get(path), false, context.getLoader()));
-
-			return Type.getType(Class.forName(path, false, context.getLoader()));
+			return Type.getType(TypeUtil.classForName(path, context));
 		} catch (ClassNotFoundException e) {
 			throw new SemanticException(root, "Could not resolve class '%s'".formatted(e.getMessage()));
 		}

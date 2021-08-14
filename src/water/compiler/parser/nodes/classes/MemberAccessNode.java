@@ -8,6 +8,7 @@ import water.compiler.compiler.SemanticException;
 import water.compiler.lexer.Token;
 import water.compiler.parser.LValue;
 import water.compiler.parser.Node;
+import water.compiler.parser.nodes.variable.VariableAccessNode;
 import water.compiler.util.TypeUtil;
 
 import java.lang.reflect.Field;
@@ -25,6 +26,7 @@ public class MemberAccessNode implements Node {
 
 	@Override
 	public void visit(FileContext context) throws SemanticException {
+		if(left instanceof VariableAccessNode) ((VariableAccessNode) left).setMemberAccess(true);
 		Type leftType = left.getReturnType(context.getContext());
 
 		if(leftType.getSort() == Type.ARRAY && name.getValue().equals("length")) {
@@ -44,6 +46,7 @@ public class MemberAccessNode implements Node {
 
 	@Override
 	public Type getReturnType(Context context) throws SemanticException {
+		if(left instanceof VariableAccessNode) ((VariableAccessNode) left).setMemberAccess(true);
 		Type leftType = left.getReturnType(context);
 
 		if(leftType.getSort() == Type.ARRAY && name.getValue().equals("length")) return Type.INT_TYPE;
