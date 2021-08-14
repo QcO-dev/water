@@ -60,7 +60,7 @@ public class Scope {
 		for(Field f : klass.getDeclaredFields()) {
 			int modifier = f.getModifiers();
 			boolean isStatic = Modifier.isStatic(modifier);
-			addVariable(new Variable(isStatic ? VariableType.GLOBAL : VariableType.CLASS, f.getName(), Type.getInternalName(klass), Type.getType(f.getType()), Modifier.isFinal(f.getModifiers())));
+			addVariable(new Variable(isStatic ? VariableType.STATIC : VariableType.CLASS, f.getName(), Type.getInternalName(klass), Type.getType(f.getType()), Modifier.isFinal(f.getModifiers())));
 		}
 	}
 

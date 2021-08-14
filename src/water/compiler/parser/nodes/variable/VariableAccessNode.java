@@ -38,7 +38,7 @@ public class VariableAccessNode implements Node {
 			throw new SemanticException(name, "Cannot resolve variable '%s' in current scope.".formatted(name.getValue()));
 		}
 
-		if(v.getVariableType() == VariableType.GLOBAL) {
+		if(v.getVariableType() == VariableType.STATIC) {
 			context.getContext().getMethodVisitor().visitFieldInsn(Opcodes.GETSTATIC, v.getOwner(), v.getName(), v.getType().getDescriptor());
 		}
 		else if(v.getVariableType() == VariableType.CLASS) {

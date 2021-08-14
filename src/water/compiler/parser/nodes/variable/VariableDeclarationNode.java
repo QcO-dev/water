@@ -8,8 +8,6 @@ import water.compiler.compiler.*;
 import water.compiler.lexer.Token;
 import water.compiler.parser.Node;
 
-import java.nio.file.OpenOption;
-
 public class VariableDeclarationNode implements Node {
 
 	private final Token name;
@@ -32,15 +30,17 @@ public class VariableDeclarationNode implements Node {
 			if(context.getScope().lookupVariable(name.getValue()) != null) throw new SemanticException(name, "Redefinition of variable '%s' in global scope.".formatted(name.getValue()));
 			defineGetAndSet(true, true, context);
 
-			context.getScope().addVariable(new Variable(VariableType.GLOBAL, name.getValue(), "", value.getReturnType(context), isConst));
+			context.getScope().addVariable(new Variable(VariableType.STATIC, name.getValue(), "", value.getReturnType(context), isConst));
 		}
 		else if(context.getType() == ContextType.CLASS) {
 			Variable variable = context.getScope().lookupVariable(name.getValue());
 			if(variable != null && variable.getVariableType() == VariableType.CLASS) throw new SemanticException(name, "Redefinition of variable '%s' within class.".formatted(name.getValue()));
 
-			defineGetAndSet(false, false, context);
+			boolean isStatic = isStatic(context);
 
-			context.getScope().addVariable(new Variable(VariableType.CLASS, name.getValue(), context.getCurrentClass(), value.getReturnType(context), isConst));
+			defineGetAndSet(false, isStatic, context);
+
+			context.getScope().addVariable(new Variable(isStatic ? VariableType.STATIC : VariableType.CLASS, name.getValue(), context.getCurrentClass(), value.getReturnType(context), isConst));
 		}
 	}
 
@@ -79,10 +79,10 @@ public class VariableDeclarationNode implements Node {
 			if(returnType.getSize() == 2) scope.nextLocal();
 		}
 		else if(context.getContext().getType() == ContextType.CLASS) {
-			defineGetAndSet(false, false, context.getContext());
+			defineGetAndSet(false, isStatic(context.getContext()), context.getContext());
 
 			context.getContext().setMethodVisitor(context.getContext().getDefaultConstructor());
-			context.getContext().getMethodVisitor().visitVarInsn(Opcodes.ALOAD, 0);
+			if(!isStatic(context.getContext())) context.getContext().getMethodVisitor().visitVarInsn(Opcodes.ALOAD, 0);
 			value.visit(context);
 
 			int setOpcode = isStatic(context.getContext()) ? Opcodes.PUTSTATIC : Opcodes.PUTFIELD;
@@ -112,7 +112,7 @@ public class VariableDeclarationNode implements Node {
 			String fName = name.getValue().matches("^is[\\p{Lu}].*") ? name.getValue() : "get" + beanName;
 			MethodVisitor visitor = context.getCurrentClassWriter().visitMethod(Opcodes.ACC_PUBLIC | staticMod | methodFinalMod, fName, "()" + descriptor, null, null);
 			visitor.visitCode();
-			if(getOpcode == Opcodes.GETFIELD) visitor.visitVarInsn(Opcodes.ALOAD, 0);
+			if(!isStatic) visitor.visitVarInsn(Opcodes.ALOAD, 0);
 			visitor.visitFieldInsn(getOpcode, context.getCurrentClass(), name.getValue(), descriptor);
 			visitor.visitInsn(fieldType.getOpcode(Opcodes.IRETURN));
 			visitor.visitMaxs(1, 0);
@@ -123,8 +123,8 @@ public class VariableDeclarationNode implements Node {
 			String fName = "set" + (name.getValue().matches("^is[\\p{Lu}].*") ? beanName.substring(2) : beanName);
 			MethodVisitor visitor = context.getCurrentClassWriter().visitMethod(Opcodes.ACC_PUBLIC | staticMod | methodFinalMod, fName, "("  + descriptor + ")V", null, null);
 			visitor.visitCode();
-			if(getOpcode == Opcodes.GETFIELD) visitor.visitVarInsn(Opcodes.ALOAD, 0);
-			visitor.visitVarInsn(fieldType.getOpcode(Opcodes.ILOAD), 1);
+			if(!isStatic) visitor.visitVarInsn(Opcodes.ALOAD, 0);
+			visitor.visitVarInsn(fieldType.getOpcode(Opcodes.ILOAD), isStatic ? 0 : 1);
 			visitor.visitFieldInsn(setOpcode, context.getCurrentClass(), name.getValue(), descriptor);
 			visitor.visitInsn(Opcodes.RETURN);
 			visitor.visitMaxs(1, 1);
@@ -143,8 +143,7 @@ public class VariableDeclarationNode implements Node {
 	}
 
 	private boolean isStatic(Context context) {
-		if(staticModifier != null || context.getType() == ContextType.GLOBAL) return true;
-		return false;
+		return staticModifier != null || context.getType() == ContextType.GLOBAL;
 	}
 
 	@Override

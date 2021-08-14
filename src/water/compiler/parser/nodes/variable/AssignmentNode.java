@@ -82,7 +82,7 @@ public class AssignmentNode implements Node {
 		MethodVisitor methodVisitor = context.getContext().getMethodVisitor();
 		if(!isExpressionStatementBody) methodVisitor.visitInsn(TypeUtil.getDupOpcode(returnType));
 
-		if(variable.getVariableType() == VariableType.GLOBAL) {
+		if(variable.getVariableType() == VariableType.STATIC) {
 			methodVisitor.visitFieldInsn(Opcodes.PUTSTATIC, variable.getOwner(), variable.getName(), variable.getType().getDescriptor());
 		}
 		else {
