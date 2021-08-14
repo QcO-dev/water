@@ -81,8 +81,14 @@ public class VariableDeclarationNode implements Node {
 		else if(context.getContext().getType() == ContextType.CLASS) {
 			defineGetAndSet(false, isStatic(context.getContext()), context.getContext());
 
-			context.getContext().setMethodVisitor(context.getContext().getDefaultConstructor());
-			if(!isStatic(context.getContext())) context.getContext().getMethodVisitor().visitVarInsn(Opcodes.ALOAD, 0);
+			if(isStatic(context.getContext())) {
+				context.getContext().setMethodVisitor(context.getContext().getStaticMethodVisitor());
+			}
+			else {
+				context.getContext().setMethodVisitor(context.getContext().getDefaultConstructor());
+				context.getContext().getMethodVisitor().visitVarInsn(Opcodes.ALOAD, 0);
+			}
+
 			value.visit(context);
 
 			int setOpcode = isStatic(context.getContext()) ? Opcodes.PUTSTATIC : Opcodes.PUTFIELD;
@@ -142,7 +148,7 @@ public class VariableDeclarationNode implements Node {
 		};
 	}
 
-	private boolean isStatic(Context context) {
+	public boolean isStatic(Context context) {
 		return staticModifier != null || context.getType() == ContextType.GLOBAL;
 	}
 

@@ -4,13 +4,12 @@ import org.objectweb.asm.ClassWriter;
 import org.objectweb.asm.MethodVisitor;
 import org.objectweb.asm.Opcodes;
 import water.compiler.FileContext;
-import water.compiler.compiler.Context;
-import water.compiler.compiler.ContextType;
-import water.compiler.compiler.Scope;
-import water.compiler.compiler.SemanticException;
+import water.compiler.compiler.*;
 import water.compiler.lexer.Token;
 import water.compiler.lexer.TokenType;
 import water.compiler.parser.Node;
+import water.compiler.parser.nodes.variable.VariableAccessNode;
+import water.compiler.parser.nodes.variable.VariableDeclarationNode;
 
 import java.util.List;
 import java.util.stream.Collectors;
@@ -20,11 +19,13 @@ public class ClassDeclarationNode implements Node {
 	private final Token name;
 	private final List<Node> declarations;
 	private final Token access;
+	private boolean staticVariableInit;
 
 	public ClassDeclarationNode(Token name, List<Node> declarations, Token access) {
 		this.name = name;
 		this.declarations = declarations;
 		this.access = access;
+		this.staticVariableInit = false;
 	}
 
 	@Override
@@ -39,6 +40,14 @@ public class ClassDeclarationNode implements Node {
 
 		context.setDefaultConstructor(defaultConstructor);
 
+		MethodVisitor staticMethod = null;
+		if(staticVariableInit) {
+			staticMethod = writer.visitMethod(Opcodes.ACC_STATIC, "<clinit>", "()V", null, null);
+			context.setStaticMethodVisitor(staticMethod);
+
+			staticMethod.visitCode();
+		}
+
 		Scope outer = context.getScope();
 		context.setScope(outer.nextDepth());
 		context.getScope().updateCurrentClassMethods(fc);
@@ -50,6 +59,12 @@ public class ClassDeclarationNode implements Node {
 		defaultConstructor.visitInsn(Opcodes.RETURN);
 		defaultConstructor.visitMaxs(0, 0);
 		defaultConstructor.visitEnd();
+
+		if(staticVariableInit) {
+			staticMethod.visitInsn(Opcodes.RETURN);
+			staticMethod.visitMaxs(0, 0);
+			staticMethod.visitEnd();
+		}
 
 		writer.visitEnd();
 
@@ -74,11 +89,21 @@ public class ClassDeclarationNode implements Node {
 
 		for(Node declaration : declarations) {
 			declaration.preprocess(context);
+			if(declaration instanceof VariableDeclarationNode && ((VariableDeclarationNode) declaration).isStatic(context))
+				staticVariableInit = true;
 		}
 
 		defaultConstructor.visitInsn(Opcodes.RETURN);
 		defaultConstructor.visitMaxs(0, 0);
 		defaultConstructor.visitEnd();
+
+		if(staticVariableInit) {
+			MethodVisitor staticMethod = writer.visitMethod(Opcodes.ACC_STATIC, "<clinit>", "()V", null, null);
+			staticMethod.visitCode();
+			staticMethod.visitInsn(Opcodes.RETURN);
+			staticMethod.visitMaxs(0, 0);
+			staticMethod.visitEnd();
+		}
 
 		writer.visitEnd();
 
