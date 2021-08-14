@@ -5,5 +5,6 @@ package water.compiler.compiler;
  */
 public enum VariableType {
 	GLOBAL,
+	CLASS,
 	LOCAL
 }

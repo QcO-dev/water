@@ -8,6 +8,8 @@ import water.compiler.compiler.*;
 import water.compiler.lexer.Token;
 import water.compiler.parser.Node;
 
+import java.nio.file.OpenOption;
+
 public class VariableDeclarationNode implements Node {
 
 	private final Token name;
@@ -28,9 +30,17 @@ public class VariableDeclarationNode implements Node {
 	public void preprocess(Context context) throws SemanticException {
 		if(context.getType() == ContextType.GLOBAL) {
 			if(context.getScope().lookupVariable(name.getValue()) != null) throw new SemanticException(name, "Redefinition of variable '%s' in global scope.".formatted(name.getValue()));
-			defineGlobal(context);
+			defineGetAndSet(true, true, context);
 
 			context.getScope().addVariable(new Variable(VariableType.GLOBAL, name.getValue(), "", value.getReturnType(context), isConst));
+		}
+		else if(context.getType() == ContextType.CLASS) {
+			Variable variable = context.getScope().lookupVariable(name.getValue());
+			if(variable != null && variable.getVariableType() == VariableType.CLASS) throw new SemanticException(name, "Redefinition of variable '%s' within class.".formatted(name.getValue()));
+
+			defineGetAndSet(false, false, context);
+
+			context.getScope().addVariable(new Variable(VariableType.CLASS, name.getValue(), context.getCurrentClass(), value.getReturnType(context), isConst));
 		}
 	}
 
@@ -41,7 +51,7 @@ public class VariableDeclarationNode implements Node {
 		context.getContext().updateLine(name.getLine());
 
 		if(context.getContext().getType() == ContextType.GLOBAL) {
-			defineGlobal(context.getContext());
+			defineGetAndSet(true, true, context.getContext());
 
 			context.getContext().setMethodVisitor(context.getContext().getStaticMethodVisitor());
 			value.visit(context);
@@ -68,14 +78,29 @@ public class VariableDeclarationNode implements Node {
 
 			if(returnType.getSize() == 2) scope.nextLocal();
 		}
-		//TODO class
+		else if(context.getContext().getType() == ContextType.CLASS) {
+			defineGetAndSet(false, false, context.getContext());
+
+			context.getContext().setMethodVisitor(context.getContext().getDefaultConstructor());
+			context.getContext().getMethodVisitor().visitVarInsn(Opcodes.ALOAD, 0);
+			value.visit(context);
+
+			int setOpcode = isStatic(context.getContext()) ? Opcodes.PUTSTATIC : Opcodes.PUTFIELD;
+
+			context.getContext().getMethodVisitor().visitFieldInsn(setOpcode, Type.getInternalName(context.getCurrentClass()), name.getValue(), returnType.getDescriptor());
+		}
 	}
 
-	private void defineGlobal(Context context) throws SemanticException {
+	private void defineGetAndSet(boolean isFinal, boolean isStatic, Context context) throws SemanticException {
 
 		int finalMod = isConst ? Opcodes.ACC_FINAL : 0;
+		int staticMod = isStatic ? Opcodes.ACC_STATIC : 0;
+		int methodFinalMod = isFinal ? Opcodes.ACC_FINAL : 0;
 
-		context.getCurrentClassWriter().visitField(Opcodes.ACC_PRIVATE | Opcodes.ACC_STATIC | finalMod, name.getValue(), value.getReturnType(context).getDescriptor(), null, null);
+		int getOpcode = isStatic ? Opcodes.GETSTATIC : Opcodes.GETFIELD;
+		int setOpcode = isStatic ? Opcodes.PUTSTATIC : Opcodes.PUTFIELD;
+
+		context.getCurrentClassWriter().visitField(Opcodes.ACC_PRIVATE | staticMod | finalMod, name.getValue(), value.getReturnType(context).getDescriptor(), null, null);
 
 		String beanName = name.getValue().substring(0, 1).toUpperCase() + name.getValue().substring(1);
 
@@ -85,9 +110,10 @@ public class VariableDeclarationNode implements Node {
 		// Getter
 		if(verifyAccess()) {
 			String fName = name.getValue().matches("^is[\\p{Lu}].*") ? name.getValue() : "get" + beanName;
-			MethodVisitor visitor = context.getCurrentClassWriter().visitMethod(Opcodes.ACC_PUBLIC | Opcodes.ACC_STATIC | Opcodes.ACC_FINAL, fName, "()" + descriptor, null, null);
+			MethodVisitor visitor = context.getCurrentClassWriter().visitMethod(Opcodes.ACC_PUBLIC | staticMod | methodFinalMod, fName, "()" + descriptor, null, null);
 			visitor.visitCode();
-			visitor.visitFieldInsn(Opcodes.GETSTATIC, context.getCurrentClass(), name.getValue(), descriptor);
+			if(getOpcode == Opcodes.GETFIELD) visitor.visitVarInsn(Opcodes.ALOAD, 0);
+			visitor.visitFieldInsn(getOpcode, context.getCurrentClass(), name.getValue(), descriptor);
 			visitor.visitInsn(fieldType.getOpcode(Opcodes.IRETURN));
 			visitor.visitMaxs(1, 0);
 			visitor.visitEnd();
@@ -95,10 +121,11 @@ public class VariableDeclarationNode implements Node {
 		//Setter
 		if(verifyAccess() && !isConst) {
 			String fName = "set" + (name.getValue().matches("^is[\\p{Lu}].*") ? beanName.substring(2) : beanName);
-			MethodVisitor visitor = context.getCurrentClassWriter().visitMethod(Opcodes.ACC_PUBLIC | Opcodes.ACC_STATIC | Opcodes.ACC_FINAL, fName, "("  + descriptor + ")V", null, null);
+			MethodVisitor visitor = context.getCurrentClassWriter().visitMethod(Opcodes.ACC_PUBLIC | staticMod | methodFinalMod, fName, "("  + descriptor + ")V", null, null);
 			visitor.visitCode();
-			visitor.visitVarInsn(fieldType.getOpcode(Opcodes.ILOAD), 0);
-			visitor.visitFieldInsn(Opcodes.PUTSTATIC, context.getCurrentClass(), name.getValue(), descriptor);
+			if(getOpcode == Opcodes.GETFIELD) visitor.visitVarInsn(Opcodes.ALOAD, 0);
+			visitor.visitVarInsn(fieldType.getOpcode(Opcodes.ILOAD), 1);
+			visitor.visitFieldInsn(setOpcode, context.getCurrentClass(), name.getValue(), descriptor);
 			visitor.visitInsn(Opcodes.RETURN);
 			visitor.visitMaxs(1, 1);
 			visitor.visitEnd();
@@ -113,6 +140,11 @@ public class VariableDeclarationNode implements Node {
 			case PRIVATE -> false;
 			default -> throw new SemanticException(access, "Invalid access modifier for variable '%s'".formatted(access.getValue()));
 		};
+	}
+
+	private boolean isStatic(Context context) {
+		if(staticModifier != null || context.getType() == ContextType.GLOBAL) return true;
+		return false;
 	}
 
 	@Override

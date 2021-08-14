@@ -41,6 +41,10 @@ public class VariableAccessNode implements Node {
 		if(v.getVariableType() == VariableType.GLOBAL) {
 			context.getContext().getMethodVisitor().visitFieldInsn(Opcodes.GETSTATIC, v.getOwner(), v.getName(), v.getType().getDescriptor());
 		}
+		else if(v.getVariableType() == VariableType.CLASS) {
+			context.getContext().getMethodVisitor().visitVarInsn(Opcodes.ALOAD, 0);
+			context.getContext().getMethodVisitor().visitFieldInsn(Opcodes.GETFIELD, v.getOwner(), v.getName(), v.getType().getDescriptor());
+		}
 		else {
 			context.getContext().getMethodVisitor().visitVarInsn(v.getType().getOpcode(Opcodes.ILOAD), v.getIndex());
 		}

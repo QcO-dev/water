@@ -35,7 +35,9 @@ public class ClassDeclarationNode implements Node {
 
 		ClassWriter writer = initClass(context);
 
-		createDefaultConstructor(writer);
+		MethodVisitor defaultConstructor = createDefaultConstructor(writer);
+
+		context.setDefaultConstructor(defaultConstructor);
 
 		Scope outer = context.getScope();
 		context.setScope(outer.nextDepth());
@@ -44,6 +46,10 @@ public class ClassDeclarationNode implements Node {
 		for(Node declaration : declarations) {
 			declaration.visit(fc);
 		}
+
+		defaultConstructor.visitInsn(Opcodes.RETURN);
+		defaultConstructor.visitMaxs(0, 0);
+		defaultConstructor.visitEnd();
 
 		writer.visitEnd();
 
@@ -59,7 +65,9 @@ public class ClassDeclarationNode implements Node {
 
 		ClassWriter writer = initClass(context);
 
-		createDefaultConstructor(writer);
+		MethodVisitor defaultConstructor = createDefaultConstructor(writer);
+
+		context.setDefaultConstructor(defaultConstructor);
 
 		Scope outer = context.getScope();
 		context.setScope(outer.nextDepth());
@@ -67,6 +75,10 @@ public class ClassDeclarationNode implements Node {
 		for(Node declaration : declarations) {
 			declaration.preprocess(context);
 		}
+
+		defaultConstructor.visitInsn(Opcodes.RETURN);
+		defaultConstructor.visitMaxs(0, 0);
+		defaultConstructor.visitEnd();
 
 		writer.visitEnd();
 
@@ -112,10 +124,6 @@ public class ClassDeclarationNode implements Node {
 
 		constructor.visitVarInsn(Opcodes.ALOAD, 0);
 		constructor.visitMethodInsn(Opcodes.INVOKESPECIAL, "java/lang/Object", "<init>", "()V", false);
-		constructor.visitInsn(Opcodes.RETURN);
-
-		constructor.visitMaxs(0, 0);
-		constructor.visitEnd();
 
 		return constructor;
 	}

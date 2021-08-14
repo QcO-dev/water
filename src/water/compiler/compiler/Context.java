@@ -21,6 +21,7 @@ public class Context {
 	private Map<String, ClassWriter> classWriterMap;
 	private MethodVisitor methodVisitor;
 	private MethodVisitor staticMethodVisitor;
+	private MethodVisitor defaultConstructor;
 	private WaterClassLoader loader;
 	private Scope scope;
 	private int currentLine;
@@ -83,6 +84,14 @@ public class Context {
 		this.staticMethodVisitor = staticMethodVisitor;
 	}
 
+	public MethodVisitor getDefaultConstructor() {
+		return defaultConstructor;
+	}
+
+	public void setDefaultConstructor(MethodVisitor defaultConstructor) {
+		this.defaultConstructor = defaultConstructor;
+	}
+
 	public WaterClassLoader getLoader() {
 		return loader;
 	}
@@ -108,6 +117,7 @@ public class Context {
 		currentLine = line;
 		Label l = new Label();
 		MethodVisitor mv = type == ContextType.GLOBAL ? getStaticMethodVisitor() : getMethodVisitor();
+		if(mv == null) mv = getDefaultConstructor();
 		mv.visitLabel(l);
 		mv.visitLineNumber(line, l);
 	}
