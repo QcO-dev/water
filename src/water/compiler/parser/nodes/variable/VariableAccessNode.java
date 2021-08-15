@@ -15,10 +15,12 @@ import water.compiler.util.TypeUtil;
 public class VariableAccessNode implements Node {
 	private final Token name;
 	private boolean isMemberAccess;
+	private boolean isStaticClassAccess;
 
 	public VariableAccessNode(Token name) {
 		this.name = name;
 		this.isMemberAccess = false;
+		this.isStaticClassAccess = false;
 	}
 
 	@Override
@@ -30,6 +32,7 @@ public class VariableAccessNode implements Node {
 			if(isMemberAccess) {
 				try {
 					TypeUtil.classForName(name.getValue(), context.getContext());
+					isStaticClassAccess = true;
 					return;
 				} catch (ClassNotFoundException e) {
 					throw new SemanticException(name, "Cannot resolve variable '%s' in current scope.".formatted(name.getValue()));
@@ -59,6 +62,7 @@ public class VariableAccessNode implements Node {
 			if(isMemberAccess) {
 				try {
 					Class<?> staticClass = TypeUtil.classForName(name.getValue(), context);
+					isStaticClassAccess = true;
 					return Type.getType(staticClass);
 				} catch (ClassNotFoundException e) {
 					throw new SemanticException(name, "Cannot resolve variable '%s' in current scope.".formatted(name.getValue()));
@@ -82,6 +86,10 @@ public class VariableAccessNode implements Node {
 
 	public void setMemberAccess(boolean memberAccess) {
 		isMemberAccess = memberAccess;
+	}
+
+	public boolean isStaticClassAccess() {
+		return isStaticClassAccess;
 	}
 
 	@Override

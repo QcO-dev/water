@@ -40,6 +40,7 @@ public class ConstructorDeclarationNode implements Node {
 
 		for(Node variable : variablesInit) {
 			variable.visit(fc);
+			context.setMethodVisitor(constructor);
 		}
 
 		context.getScope().setLocalIndex(1 + parameters.size());

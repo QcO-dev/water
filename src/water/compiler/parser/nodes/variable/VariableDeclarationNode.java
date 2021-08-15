@@ -51,7 +51,7 @@ public class VariableDeclarationNode implements Node {
 		boolean buildConstructor = context.getContext().getConstructors().size() != 0;
 
 		if(context.getContext().getType() == ContextType.GLOBAL) {
-			if(!buildConstructor) defineGetAndSet(true, true, context.getContext());
+			defineGetAndSet(true, true, context.getContext());
 
 			context.getContext().setMethodVisitor(context.getContext().getStaticMethodVisitor());
 			context.getContext().setStaticMethod(true);
