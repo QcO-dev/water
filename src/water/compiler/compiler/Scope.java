@@ -37,13 +37,7 @@ public class Scope {
 		addFunction(new Function(FunctionType.SOUT, "println", "java/io/PrintStream", Type.getMethodType("(Z)V")));
 		addFunction(new Function(FunctionType.SOUT, "println", "java/io/PrintStream", Type.getMethodType("(Ljava/lang/Object;)V")));
 
-		for(Method m : context.getKlass().getDeclaredMethods()) {
-			addFunction(new Function(FunctionType.STATIC, m.getName(), Type.getInternalName(context.getKlass()), Type.getType(m)));
-		}
-
-		for(Field f : context.getKlass().getDeclaredFields()) {
-			addVariable(new Variable(VariableType.GLOBAL, f.getName(), Type.getInternalName(context.getKlass()), Type.getType(f.getType()), Modifier.isFinal(f.getModifiers())));
-		}
+		updateCurrentClassMethods(context);
 	}
 
 	public Scope(Context context) {
@@ -53,6 +47,22 @@ public class Scope {
 	}
 
 	private Scope() {}
+
+	public void updateCurrentClassMethods(FileContext context) {
+		Class<?> klass = context.getCurrentClass();
+		if(klass == null) return;
+		for(Method m : klass.getDeclaredMethods()) {
+			int modifier = m.getModifiers();
+			boolean isStatic = Modifier.isStatic(modifier);
+			addFunction(new Function(isStatic ? FunctionType.STATIC : FunctionType.CLASS, m.getName(), Type.getInternalName(klass), Type.getType(m)));
+		}
+
+		for(Field f : klass.getDeclaredFields()) {
+			int modifier = f.getModifiers();
+			boolean isStatic = Modifier.isStatic(modifier);
+			addVariable(new Variable(isStatic ? VariableType.STATIC : VariableType.CLASS, f.getName(), Type.getInternalName(klass), Type.getType(f.getType()), Modifier.isFinal(f.getModifiers())));
+		}
+	}
 
 	public Scope nextDepth() {
 		Scope scope = new Scope();

@@ -20,6 +20,8 @@ public class TypeUtil {
 	private static final List<Integer> TYPE_SIZE = List.of(Type.DOUBLE, Type.FLOAT, Type.LONG, Type.INT, Type.SHORT, Type.CHAR, Type.BYTE);
 	/** A constant defining a Type representing the java.lang.String class */
 	public static final Type STRING_TYPE = Type.getObjectType("java/lang/String");
+	/** A constant defining a Type representing the java.lang.Object class */
+	public static final Type OBJECT_TYPE = Type.getObjectType("java/lang/Object");
 
 	/** Returns the correct opcode given a type. */
 	public static int getPopOpcode(Type type) {
@@ -451,6 +453,21 @@ public class TypeUtil {
 			case Type.DOUBLE -> Opcodes.T_DOUBLE;
 			default -> 0;
 		};
+	}
+
+	/**
+	 * Looks up a class for the given name, using imports to resolve.
+	 * @param name The name of the class
+	 * @param context The context to use for the {@link water.compiler.WaterClassLoader} and imports
+	 * @return The resolved Class
+	 * @throws ClassNotFoundException If the class cannot be resolved
+	 */
+	public static Class<?> classForName(String name, Context context) throws ClassNotFoundException {
+		String className = name;
+
+		if(context.getImports().get(name) != null) className = context.getImports().get(name);
+
+		return Class.forName(className, false, context.getLoader());
 	}
 
 	/*

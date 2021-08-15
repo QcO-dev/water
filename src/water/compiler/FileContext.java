@@ -4,6 +4,7 @@ import water.compiler.compiler.Context;
 import water.compiler.parser.Node;
 
 import java.nio.file.Path;
+import java.util.Map;
 import java.util.Properties;
 
 /**
@@ -15,14 +16,14 @@ import java.util.Properties;
 public class FileContext {
 	private final Node ast;
 	private final Context context;
-	private final Class<?> klass;
+	private final Map<String, Class<?>> classMap;
 	private final Path path;
 	private final Properties optimizations;
 
-	public FileContext(Node ast, Context context, Class<?> klass, Path path, Properties optimizations) {
+	public FileContext(Node ast, Context context, Map<String, Class<?>> classMap, Path path, Properties optimizations) {
 		this.ast = ast;
 		this.context = context;
-		this.klass = klass;
+		this.classMap = classMap;
 		this.path = path;
 		this.optimizations = optimizations;
 	}
@@ -35,12 +36,16 @@ public class FileContext {
 		return context;
 	}
 
-	public Class<?> getKlass() {
-		return klass;
+	public Map<String, Class<?>> getClassMap() {
+		return classMap;
 	}
 
 	public Path getPath() {
 		return path;
+	}
+
+	public Class<?> getCurrentClass() {
+		return classMap.get(context.getCurrentClass());
 	}
 
 	/**

@@ -8,24 +8,28 @@ import water.compiler.compiler.SemanticException;
 import water.compiler.lexer.Token;
 import water.compiler.parser.LValue;
 import water.compiler.parser.Node;
+import water.compiler.parser.nodes.variable.VariableAccessNode;
 import water.compiler.util.TypeUtil;
 
 import java.lang.reflect.Field;
 import java.lang.reflect.Method;
+import java.lang.reflect.Modifier;
 
 public class MemberAccessNode implements Node {
 
 	private final Node left;
 	private final Token name;
+	private boolean isStaticAccess;
 
 	public MemberAccessNode(Node left, Token name) {
 		this.left = left;
 		this.name = name;
+		this.isStaticAccess = false;
 	}
 
 	@Override
 	public void visit(FileContext context) throws SemanticException {
-		Type leftType = left.getReturnType(context.getContext());
+		Type leftType = getLeftType(context.getContext());
 
 		if(leftType.getSort() == Type.ARRAY && name.getValue().equals("length")) {
 			left.visit(context);
@@ -44,11 +48,22 @@ public class MemberAccessNode implements Node {
 
 	@Override
 	public Type getReturnType(Context context) throws SemanticException {
-		Type leftType = left.getReturnType(context);
+		Type leftType = getLeftType(context);
 
 		if(leftType.getSort() == Type.ARRAY && name.getValue().equals("length")) return Type.INT_TYPE;
 
 		return resolve(leftType, context, false);
+	}
+
+	private Type getLeftType(Context context) throws SemanticException {
+		if(left instanceof VariableAccessNode) {
+			VariableAccessNode van = (VariableAccessNode) left;
+			van.setMemberAccess(true);
+			Type leftType = left.getReturnType(context);
+			isStaticAccess = van.isStaticClassAccess();
+			return  leftType;
+		}
+		return left.getReturnType(context);
 	}
 
 	private Type resolve(Type leftType, Context context, boolean generate) throws SemanticException {
@@ -61,7 +76,16 @@ public class MemberAccessNode implements Node {
 		}
 
 		try {
-			Field f = klass.getField(name.getValue());
+			Field f = klass.getDeclaredField(name.getValue());
+
+			//TODO Protected
+			if(!Modifier.isPublic(f.getModifiers()) && !leftType.equals(Type.getObjectType(context.getCurrentClass()))) {
+				throw new NoSuchFieldException();
+			}
+
+			if(!isStaticAccess && Modifier.isStatic(f.getModifiers())) {
+				throw new SemanticException(name, "Cannot access static member from non-static object.");
+			}
 
 			if(generate) {
 				context.getMethodVisitor().visitFieldInsn(TypeUtil.getAccessOpcode(f),
@@ -86,10 +110,14 @@ public class MemberAccessNode implements Node {
 		}
 	}
 
-	private Type attemptMethodCall(Class<?> klass, Type leftType, String methodName, boolean generate, Context context) throws NoSuchMethodException {
+	private Type attemptMethodCall(Class<?> klass, Type leftType, String methodName, boolean generate, Context context) throws NoSuchMethodException, SemanticException {
 		Method m = klass.getMethod(methodName);
 
 		Type returnType = Type.getType(m.getReturnType());
+
+		if(!isStaticAccess && Modifier.isStatic(m.getModifiers())) {
+			throw new SemanticException(name, "Cannot access static member from non-static object.");
+		}
 
 		if(generate) {
 			context.getMethodVisitor().visitMethodInsn(TypeUtil.getInvokeOpcode(m),

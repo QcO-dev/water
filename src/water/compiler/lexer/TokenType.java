@@ -29,6 +29,8 @@ public enum TokenType {
 	FUNCTION,
 	VAR,
 	CONST,
+	CLASS,
+	CONSTRUCTOR,
 	AS,
 	RETURN,
 	FOR,
@@ -45,6 +47,7 @@ public enum TokenType {
 	BOOLEAN,
 	PUBLIC,
 	PRIVATE,
+	STATIC,
 
 	// Literals
 	NUMBER,

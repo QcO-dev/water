@@ -42,7 +42,7 @@ public class Function {
 	public int getAccess() {
 		return switch (functionType) {
 			case STATIC -> Opcodes.INVOKESTATIC;
-			case SOUT -> Opcodes.INVOKEVIRTUAL;
+			case CLASS, SOUT -> Opcodes.INVOKEVIRTUAL;
 		};
 	}
 }

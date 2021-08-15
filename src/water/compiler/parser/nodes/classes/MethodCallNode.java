@@ -7,10 +7,12 @@ import water.compiler.compiler.Context;
 import water.compiler.compiler.SemanticException;
 import water.compiler.lexer.Token;
 import water.compiler.parser.Node;
+import water.compiler.parser.nodes.variable.VariableAccessNode;
 import water.compiler.util.TypeUtil;
 import water.compiler.util.Unthrow;
 
 import java.lang.reflect.Method;
+import java.lang.reflect.Modifier;
 import java.util.Arrays;
 import java.util.List;
 import java.util.stream.Collectors;
@@ -21,16 +23,18 @@ public class MethodCallNode implements Node {
 	private final Node left;
 	private final Token name;
 	private final List<Node> args;
+	private boolean isStaticAccess;
 
 	public MethodCallNode(Node left, Token name, List<Node> args) {
 		this.left = left;
 		this.name = name;
 		this.args = args;
+		this.isStaticAccess = false;
 	}
 
 	@Override
 	public void visit(FileContext context) throws SemanticException {
-		Type leftType = left.getReturnType(context.getContext());
+		Type leftType = getLeftType(context.getContext());
 
 		if(leftType.getSort() == Type.ARRAY && name.getValue().equals("length") && args.size() == 0) {
 			left.visit(context);
@@ -59,11 +63,22 @@ public class MethodCallNode implements Node {
 
 	@Override
 	public Type getReturnType(Context context) throws SemanticException {
-		Type leftType = left.getReturnType(context);
+		Type leftType = getLeftType(context);
 
 		if(leftType.getSort() == Type.ARRAY && name.getValue().equals("length") && args.size() == 0) return Type.INT_TYPE;
 
 		return Type.getType(resolve(leftType, context).getReturnType());
+	}
+
+	private Type getLeftType(Context context) throws SemanticException {
+		if(left instanceof VariableAccessNode) {
+			VariableAccessNode van = (VariableAccessNode) left;
+			van.setMemberAccess(true);
+			Type leftType = left.getReturnType(context);
+			isStaticAccess = van.isStaticClassAccess();
+			return  leftType;
+		}
+		return left.getReturnType(context);
 	}
 
 	private Method resolve(Type leftType, Context context) throws SemanticException {
@@ -84,7 +99,6 @@ public class MethodCallNode implements Node {
 			out:
 			for (Method method : klass.getMethods()) {
 				if(!method.getName().equals(name.getValue())) continue;
-
 				Type[] expectArgs = Type.getType(method).getArgumentTypes();
 
 				if (expectArgs.length != argTypes.length) continue;
@@ -106,6 +120,18 @@ public class MethodCallNode implements Node {
 		catch(ClassNotFoundException e) {
 			throw new SemanticException(name, "Could not resolve class '%s'".formatted(e.getMessage()));
 		}
+
+		if(toCall == null) {
+			throw new SemanticException(name,
+					"Could not resolve method '%s' with arguments: %s".formatted(name.getValue(),
+							argTypes.length == 0 ? "(none)" :
+									List.of(argTypes).stream().map(TypeUtil::stringify).collect(Collectors.joining(", "))));
+		}
+
+		if(!isStaticAccess && Modifier.isStatic(toCall.getModifiers())) {
+			throw new SemanticException(name, "Cannot access static member from non-static object.");
+		}
+
 		return toCall;
 	}
 

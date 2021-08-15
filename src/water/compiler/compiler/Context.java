@@ -4,8 +4,11 @@ import org.objectweb.asm.ClassWriter;
 import org.objectweb.asm.Label;
 import org.objectweb.asm.MethodVisitor;
 import water.compiler.WaterClassLoader;
+import water.compiler.parser.nodes.classes.ConstructorDeclarationNode;
 
 import java.util.HashMap;
+import java.util.List;
+import java.util.Map;
 
 /**
  * Provides information to the compiler about its current state
@@ -13,19 +16,23 @@ import java.util.HashMap;
  */
 public class Context {
 	private final HashMap<String, String> imports;
+	private final Map<String, ClassWriter> classWriterMap;
 	private ContextType type;
 	private String source;
-	private String className;
 	private String packageName;
-	private ClassWriter classWriter;
+	private String currentClass;
+	private List<ConstructorDeclarationNode> constructors;
 	private MethodVisitor methodVisitor;
 	private MethodVisitor staticMethodVisitor;
+	private MethodVisitor defaultConstructor;
 	private WaterClassLoader loader;
 	private Scope scope;
+	private boolean isStaticMethod;
 	private int currentLine;
 
 	public Context() {
 		this.imports = new HashMap<>();
+		this.classWriterMap = new HashMap<>();
 		initImports();
 	}
 
@@ -45,14 +52,6 @@ public class Context {
 		this.source = source;
 	}
 
-	public String getClassName() {
-		return className;
-	}
-
-	public void setClassName(String className) {
-		this.className = className;
-	}
-
 	public String getPackageName() {
 		return packageName;
 	}
@@ -61,12 +60,24 @@ public class Context {
 		this.packageName = packageName;
 	}
 
-	public ClassWriter getClassWriter() {
-		return classWriter;
+	public String getCurrentClass() {
+		return currentClass;
 	}
 
-	public void setClassWriter(ClassWriter classWriter) {
-		this.classWriter = classWriter;
+	public void setCurrentClass(String currentClass) {
+		this.currentClass = currentClass;
+	}
+
+	public List<ConstructorDeclarationNode> getConstructors() {
+		return constructors;
+	}
+
+	public void setConstructors(List<ConstructorDeclarationNode> constructors) {
+		this.constructors = constructors;
+	}
+
+	public Map<String, ClassWriter> getClassWriterMap() {
+		return classWriterMap;
 	}
 
 	public MethodVisitor getMethodVisitor() {
@@ -85,6 +96,14 @@ public class Context {
 		this.staticMethodVisitor = staticMethodVisitor;
 	}
 
+	public MethodVisitor getDefaultConstructor() {
+		return defaultConstructor;
+	}
+
+	public void setDefaultConstructor(MethodVisitor defaultConstructor) {
+		this.defaultConstructor = defaultConstructor;
+	}
+
 	public WaterClassLoader getLoader() {
 		return loader;
 	}
@@ -101,6 +120,14 @@ public class Context {
 		this.scope = scope;
 	}
 
+	public boolean isStaticMethod() {
+		return isStaticMethod;
+	}
+
+	public void setStaticMethod(boolean staticMethod) {
+		isStaticMethod = staticMethod;
+	}
+
 	public HashMap<String, String> getImports() {
 		return imports;
 	}
@@ -110,8 +137,13 @@ public class Context {
 		currentLine = line;
 		Label l = new Label();
 		MethodVisitor mv = type == ContextType.GLOBAL ? getStaticMethodVisitor() : getMethodVisitor();
+		if(mv == null) mv = getDefaultConstructor();
 		mv.visitLabel(l);
 		mv.visitLineNumber(line, l);
+	}
+
+	public ClassWriter getCurrentClassWriter() {
+		return classWriterMap.get(currentClass);
 	}
 
 	private void initImports() {

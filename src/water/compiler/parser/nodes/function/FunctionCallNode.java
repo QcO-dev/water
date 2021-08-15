@@ -45,6 +45,10 @@ public class FunctionCallNode implements Node {
 
 			if(function.getFunctionType() == FunctionType.SOUT)
 				context.getContext().getMethodVisitor().visitFieldInsn(Opcodes.GETSTATIC, "java/lang/System", "out", "Ljava/io/PrintStream;");
+			else if(function.getFunctionType() == FunctionType.CLASS) {
+				if(context.getContext().isStaticMethod()) throw new SemanticException(name, "Cannot invoke instance method '%s' from static context.".formatted(name.getValue()));
+				context.getContext().getMethodVisitor().visitVarInsn(Opcodes.ALOAD, 0);
+			}
 
 			for(Node n : args) n.visit(context);
 

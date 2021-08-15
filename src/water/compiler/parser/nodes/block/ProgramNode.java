@@ -8,6 +8,7 @@ import water.compiler.compiler.Context;
 import water.compiler.compiler.ContextType;
 import water.compiler.compiler.SemanticException;
 import water.compiler.parser.Node;
+import water.compiler.parser.nodes.classes.ClassDeclarationNode;
 import water.compiler.parser.nodes.variable.VariableDeclarationNode;
 
 import java.util.List;
@@ -15,73 +16,97 @@ import java.util.stream.Collectors;
 
 public class ProgramNode implements Node {
 	private final List<Node> declarations;
+	private final List<Node> imports;
 	private final Node packageName;
 	/** This variable is true when a top level variable is present. Its use is to avoid unnecessary code generation. */
 	private boolean staticVariableInit = false;
+	/** Records if this program needs to generate a Wtr.class file, or if it only defines other classes */
+	// This behaviour is what causes the strange looking if statements, where different code only needs to happen for a standalone class.
+	private boolean standaloneClass = false;
 	
-	public ProgramNode(Node packageName, List<Node> declarations) {
+	public ProgramNode(Node packageName, List<Node> imports, List<Node> declarations) {
 		this.packageName = packageName;
+		this.imports = imports;
 		this.declarations = declarations;
 	}
 
 	@Override
 	public void preprocess(Context context) throws SemanticException {
-		ClassWriter writer = initClass(context);
-		
+		String packageN = packageName == null ? "" : packageName.getReturnType(context).getInternalName();
+		context.setPackageName(packageN);
+
+		String source = context.getSource();
+		String name = source.substring(0, source.indexOf(".")) + "Wtr";
+
+		standaloneClass = declarations.stream().filter(n -> !n.isNewClass()).toArray().length != 0;
+
+		ClassWriter writer = null;
+
+		if(standaloneClass) {
+			writer = initClass(name, context);
+		}
+
+		for(Node n : imports) n.preprocess(context);
+
 		for(Node n : declarations) {
 			n.preprocess(context);
 			if(n instanceof VariableDeclarationNode) staticVariableInit = true;
 		}
-		
-		if(staticVariableInit) {
-			MethodVisitor staticMethod = writer.visitMethod(Opcodes.ACC_STATIC, "<clinit>", "()V", null, null);
-			staticMethod.visitCode();
-			staticMethod.visitInsn(Opcodes.RETURN);
-			staticMethod.visitMaxs(0, 0);
-			staticMethod.visitEnd();
-		}
 
-		writer.visitEnd();
+		if(standaloneClass) {
+			if(staticVariableInit) {
+				MethodVisitor staticMethod = writer.visitMethod(Opcodes.ACC_STATIC, "<clinit>", "()V", null, null);
+				staticMethod.visitCode();
+				staticMethod.visitInsn(Opcodes.RETURN);
+				staticMethod.visitMaxs(0, 0);
+				staticMethod.visitEnd();
+			}
+
+			writer.visitEnd();
+		}
 	}
 
 	@Override
 	public void visit(FileContext context) throws SemanticException {
-
-		ClassWriter writer = initClass(context.getContext());
-
+		ClassWriter writer = null;
 		MethodVisitor staticMethod = null;
-		if(staticVariableInit) {
-			staticMethod = writer.visitMethod(Opcodes.ACC_STATIC, "<clinit>", "()V", null, null);
-			context.getContext().setStaticMethodVisitor(staticMethod);
+		if(standaloneClass) {
+			String source = context.getContext().getSource();
+			String name = source.substring(0, source.indexOf(".")) + "Wtr";
 
-			staticMethod.visitCode();
+			writer = initClass(name, context.getContext());
+
+			if(staticVariableInit) {
+				staticMethod = writer.visitMethod(Opcodes.ACC_STATIC, "<clinit>", "()V", null, null);
+				context.getContext().setStaticMethodVisitor(staticMethod);
+
+				staticMethod.visitCode();
+			}
 		}
 
 		for(Node n : declarations) {
 			n.visit(context);
 		}
-		
-		if(staticVariableInit) {
-			staticMethod.visitInsn(Opcodes.RETURN);
-			staticMethod.visitMaxs(0, 0);
-			staticMethod.visitEnd();
-		}
 
-		writer.visitEnd();
+		if(standaloneClass) {
+			if(staticVariableInit) {
+				staticMethod.visitInsn(Opcodes.RETURN);
+				staticMethod.visitMaxs(0, 0);
+				staticMethod.visitEnd();
+			}
+
+			writer.visitEnd();
+		}
 	}
 
-	private ClassWriter initClass(Context context) throws SemanticException {
+	private ClassWriter initClass(String name, Context context) throws SemanticException {
 		context.setType(ContextType.GLOBAL);
 
 		String source = context.getSource();
-		String name = source.substring(0, source.indexOf("."));
 
-		String packageN = packageName == null ? "" : packageName.getReturnType(context).getInternalName();
+		if(packageName != null) name = context.getPackageName() + "/" + name;
 
-		if(packageName != null) name = packageN + "/" + name;
-
-		context.setClassName(name);
-		context.setPackageName(packageN);
+		context.setCurrentClass(name);
 
 		ClassWriter writer = new ClassWriter(ClassWriter.COMPUTE_MAXS | ClassWriter.COMPUTE_FRAMES);
 
@@ -89,7 +114,7 @@ public class ProgramNode implements Node {
 
 		writer.visitSource(source, null);
 
-		context.setClassWriter(writer);
+		context.getClassWriterMap().put(name, writer);
 
 		return writer;
 	}

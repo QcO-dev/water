@@ -134,6 +134,8 @@ public class Lexer {
 			case "function" -> TokenType.FUNCTION;
 			case "var" -> TokenType.VAR;
 			case "const" -> TokenType.CONST;
+			case "class" -> TokenType.CLASS;
+			case "constructor" -> TokenType.CONSTRUCTOR;
 			case "as" -> TokenType.AS;
 			case "return" -> TokenType.RETURN;
 			case "while" -> TokenType.WHILE;
@@ -150,6 +152,7 @@ public class Lexer {
 			case "boolean" -> TokenType.BOOLEAN;
 			case "public" -> TokenType.PUBLIC;
 			case "private" -> TokenType.PRIVATE;
+			case "static" -> TokenType.STATIC;
 			default -> TokenType.IDENTIFIER;
 		});
 	}

@@ -5,9 +5,7 @@ import water.compiler.lexer.Token;
 import water.compiler.lexer.TokenType;
 import water.compiler.parser.nodes.block.BlockNode;
 import water.compiler.parser.nodes.block.ProgramNode;
-import water.compiler.parser.nodes.classes.MemberAccessNode;
-import water.compiler.parser.nodes.classes.MethodCallNode;
-import water.compiler.parser.nodes.classes.ObjectConstructorNode;
+import water.compiler.parser.nodes.classes.*;
 import water.compiler.parser.nodes.function.FunctionCallNode;
 import water.compiler.parser.nodes.function.FunctionDeclarationNode;
 import water.compiler.parser.nodes.operation.*;
@@ -21,6 +19,7 @@ import water.compiler.parser.nodes.variable.VariableDeclarationNode;
 import water.compiler.util.Pair;
 
 import java.util.ArrayList;
+import java.util.LinkedList;
 import java.util.List;
 
 /**
@@ -34,6 +33,7 @@ public class Parser {
 
 	private int index;
 	private List<Token> tokens;
+	private boolean isParsingClass;
 
 	/**
 	 * Produces a syntax tree based on tokens outputted by {@link Lexer}.
@@ -44,6 +44,7 @@ public class Parser {
 	public Node parse(List<Token> tokens) throws UnexpectedTokenException {
 		this.tokens = tokens;
 		this.index = 0;
+		this.isParsingClass = false;
 
 		return program();
 	}
@@ -54,6 +55,7 @@ public class Parser {
 	 */
 	private Node program() throws UnexpectedTokenException {
 		ArrayList<Node> declarations = new ArrayList<>();
+		ArrayList<Node> imports = new ArrayList<>();
 
 		Node packageName = null;
 
@@ -64,14 +66,14 @@ public class Parser {
 
 		// All import statements must appear at the top of the file, before standard declarations
 		while(!isAtEnd() && match(TokenType.IMPORT)) {
-			declarations.add(importStatement());
+			imports.add(importStatement());
 		}
 
 		// Top level declarations
 		while(!isAtEnd()) {
 			declarations.add(declaration());
 		}
-		return new ProgramNode(packageName, declarations);
+		return new ProgramNode(packageName, imports, declarations);
 	}
 
 	//============================ Special Statements =============================
@@ -106,21 +108,28 @@ public class Parser {
 	 */
 	private Node declaration() throws UnexpectedTokenException {
 		Token accessModifier = null;
+		Token staticModifier = null;
 
 		if(match(TokenType.PUBLIC) || match(TokenType.PRIVATE)) {
 			accessModifier = tokens.get(index - 1);
 		}
 
+		if(isParsingClass && match(TokenType.STATIC)) {
+			staticModifier = tokens.get(index - 1);
+		}
+
 		Token tok = advance();
 		return switch(tok.getType()) {
-			case FUNCTION -> functionDeclaration(accessModifier);
-			case VAR, CONST -> variableDeclaration(accessModifier);
+			case FUNCTION -> functionDeclaration(accessModifier, staticModifier);
+			case CLASS -> classDeclaration(accessModifier, staticModifier);
+			case CONSTRUCTOR -> constructorDeclaration(accessModifier, staticModifier);
+			case VAR, CONST -> variableDeclaration(accessModifier, staticModifier);
 			default -> throw new UnexpectedTokenException(tok, "Expected declaration");
 		};
 	}
 
 	/** Forms grammar: 'function' IDENTIFIER typedParameters (('->' type)? blockStatement) | ('=' expression ';') */
-	private Node functionDeclaration(Token access) throws UnexpectedTokenException {
+	private Node functionDeclaration(Token access, Token staticModifier) throws UnexpectedTokenException {
 		Token name = consume(TokenType.IDENTIFIER, "Expected function name");
 
 		List<Pair<Token, Node>> parameters = typedParameters("function parameter list");
@@ -146,11 +155,46 @@ public class Parser {
 			body = blockStatement();
 		}
 
-		return new FunctionDeclarationNode(type, name, body, parameters, returnType, access);
+		return new FunctionDeclarationNode(type, name, body, parameters, returnType, access, staticModifier);
+	}
+
+	/** Forms grammar: 'constructor' typedParameters blockStatement */
+	private Node constructorDeclaration(Token access, Token staticModifier) throws UnexpectedTokenException {
+		if(!isParsingClass) throw new UnexpectedTokenException(tokens.get(index - 1), "Cannot declare constructor outside of class");
+		if(staticModifier != null) throw new UnexpectedTokenException(staticModifier, "Cannot declare constructor as static");
+
+		List<Pair<Token, Node>> parameters = typedParameters("constructor parameter list");
+
+		consume(TokenType.LBRACE, "Expected '{' before constructor body");
+
+		Node body = blockStatement();
+
+		return new ConstructorDeclarationNode(access, parameters, body);
+	}
+
+	/** Forms grammar: 'class' IDENTIFIER '{' declaration* '}' */
+	private Node classDeclaration(Token access, Token staticModifier) throws UnexpectedTokenException {
+		if(staticModifier != null) throw new UnexpectedTokenException(staticModifier, "Cannot mark a class as static");
+		Token name = consume(TokenType.IDENTIFIER, "Expected class name");
+
+		consume(TokenType.LBRACE, "Expected '{' before class body");
+
+		LinkedList<Node> declarations = new LinkedList<>();
+
+		boolean wasParsingClass = isParsingClass;
+		isParsingClass = true;
+		while(!isAtEnd() && tokens.get(index).getType() != TokenType.RBRACE) {
+			declarations.add(declaration());
+		}
+		isParsingClass = wasParsingClass;
+
+		consume(TokenType.RBRACE, "Expected '}' after class body");
+
+		return new ClassDeclarationNode(name, declarations, access);
 	}
 
 	/** Forms grammar: 'var' IDENTIFIER '=' expression ';' */
-	private Node variableDeclaration(Token access) throws UnexpectedTokenException {
+	private Node variableDeclaration(Token access, Token staticModifier) throws UnexpectedTokenException {
 		boolean isConst = tokens.get(index - 1).getType() == TokenType.CONST;
 		Token name = consume(TokenType.IDENTIFIER, "Expected variable name");
 
@@ -160,7 +204,7 @@ public class Parser {
 
 		consume(TokenType.SEMI, "Expected ';' after variable assignment");
 
-		return new VariableDeclarationNode(name, value, isConst, access);
+		return new VariableDeclarationNode(name, value, isConst, access, staticModifier);
 	}
 
 	//============================ Statements =============================
@@ -170,7 +214,7 @@ public class Parser {
 		ArrayList<Node> nodes = new ArrayList<>();
 		if(tokens.get(index).getType() != TokenType.RBRACE) {
 			do {
-				if(match(TokenType.VAR) || match(TokenType.CONST)) nodes.add(variableDeclaration(null));
+				if(match(TokenType.VAR) || match(TokenType.CONST)) nodes.add(variableDeclaration(null, null));
 				else nodes.add(statement());
 			} while (!isAtEnd() && tokens.get(index).getType() != TokenType.RBRACE);
 		}
@@ -243,7 +287,7 @@ public class Parser {
 		Node init;
 
 		if(match(TokenType.VAR) || match(TokenType.CONST)) {
-			init = variableDeclaration(null);
+			init = variableDeclaration(null, null);
 		}
 		else {
 			init = expressionStatement();

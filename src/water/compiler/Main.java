@@ -4,6 +4,7 @@ import com.beust.jcommander.JCommander;
 import com.beust.jcommander.Parameter;
 import com.beust.jcommander.ParameterException;
 import com.beust.jcommander.Parameters;
+import org.objectweb.asm.ClassWriter;
 import water.compiler.compiler.Context;
 import water.compiler.compiler.Scope;
 import water.compiler.compiler.SemanticException;
@@ -14,12 +15,11 @@ import water.compiler.parser.Node;
 import water.compiler.parser.Parser;
 import water.compiler.parser.UnexpectedTokenException;
 
+import java.io.File;
 import java.io.IOException;
 import java.nio.file.Files;
 import java.nio.file.Path;
-import java.util.ArrayList;
-import java.util.List;
-import java.util.Properties;
+import java.util.*;
 import java.util.stream.Collectors;
 
 /**
@@ -111,9 +111,16 @@ public class Main {
 
 				program.preprocess(context);
 
-				byte[] klassRep = context.getClassWriter().toByteArray();
-				Class<?> klass = loader.define(context.getClassName().replace('/', '.'), klassRep);
-				fileContexts.add(new FileContext(program, context, klass, path, optimizations));
+				Map<String, Class<?>> classMap = new HashMap<>();
+
+				for(Map.Entry<String, ClassWriter> classes : context.getClassWriterMap().entrySet()) {
+					byte[] klassRep = classes.getValue().toByteArray();
+					Class<?> klass = loader.define(classes.getKey().replace('/', '.'), klassRep);
+
+					classMap.put(classes.getKey(), klass);
+				}
+
+				fileContexts.add(new FileContext(program, context, classMap, path, optimizations));
 			} catch (IOException e) {
 				error(2, "Failure reading file '%s': %s", path.toString(), e.getClass().getSimpleName().replace("Exception", ""));
 			} catch (UnexpectedTokenException e) {
@@ -131,21 +138,30 @@ public class Main {
 			try {
 				fc.getAst().visit(fc);
 			} catch (SemanticException e) {
+				e.printStackTrace();
 				error(-2, e.getErrorMessage(fc.getPath().toString()));
 			}
 
-			byte[] klassRep = fc.getContext().getClassWriter().toByteArray();
-
 			String outputDir = outputDirectory == null ? fc.getPath().getParent().toString() : outputDirectory;
-			String packageDir = fc.getContext().getPackageName();
-			String className = fc.getPath().getFileName().toString().replaceAll("(?<!^)[.].*", ".class");
+			String packageDir = fc.getContext().getPackageName().replace('/', File.separatorChar);
 
-			Path classFile = Path.of(outputDir, packageDir, className);
-			try {
-				Files.createDirectories(classFile.getParent());
-				Files.write(classFile, klassRep);
-			} catch (IOException e) {
-				error(3, "Failure writing file '%s': %s", classFile.toString(), e.getClass().getSimpleName().replace("Exception", ""));
+			for(Map.Entry<String, Class<?>> classEntry : fc.getClassMap().entrySet()) {
+				String baseClassName = classEntry.getKey();
+				byte[] klassRep = fc.getContext().getClassWriterMap().get(baseClassName).toByteArray();
+
+				String className = baseClassName + ".class";
+
+				if(className.contains("/")) {
+					className = className.substring(className.lastIndexOf('/'));
+				}
+
+				Path classFile = Path.of(outputDir, packageDir, className);
+				try {
+					Files.createDirectories(classFile.getParent());
+					Files.write(classFile, klassRep);
+				} catch (IOException e) {
+					error(3, "Failure writing file '%s': %s", classFile.toString(), e.getClass().getSimpleName().replace("Exception", ""));
+				}
 			}
 		}
 	}
