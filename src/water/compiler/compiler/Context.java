@@ -14,16 +14,17 @@ import java.util.Map;
  */
 public class Context {
 	private final HashMap<String, String> imports;
+	private final Map<String, ClassWriter> classWriterMap;
 	private ContextType type;
 	private String source;
 	private String packageName;
 	private String currentClass;
-	private Map<String, ClassWriter> classWriterMap;
 	private MethodVisitor methodVisitor;
 	private MethodVisitor staticMethodVisitor;
 	private MethodVisitor defaultConstructor;
 	private WaterClassLoader loader;
 	private Scope scope;
+	private boolean isStaticMethod;
 	private int currentLine;
 
 	public Context() {
@@ -106,6 +107,14 @@ public class Context {
 
 	public void setScope(Scope scope) {
 		this.scope = scope;
+	}
+
+	public boolean isStaticMethod() {
+		return isStaticMethod;
+	}
+
+	public void setStaticMethod(boolean staticMethod) {
+		isStaticMethod = staticMethod;
 	}
 
 	public HashMap<String, String> getImports() {

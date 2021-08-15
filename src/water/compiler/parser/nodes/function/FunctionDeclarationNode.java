@@ -128,6 +128,8 @@ public class FunctionDeclarationNode implements Node {
 
 		context.getContext().getScope().setReturnType(returnType);
 
+		context.getContext().setStaticMethod(isStatic(context.getContext()));
+
 		addParameters(context.getContext(), isStatic(context.getContext()));
 
 		body.visit(context);

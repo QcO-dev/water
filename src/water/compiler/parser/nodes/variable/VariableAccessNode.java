@@ -42,6 +42,7 @@ public class VariableAccessNode implements Node {
 			context.getContext().getMethodVisitor().visitFieldInsn(Opcodes.GETSTATIC, v.getOwner(), v.getName(), v.getType().getDescriptor());
 		}
 		else if(v.getVariableType() == VariableType.CLASS) {
+			if(context.getContext().isStaticMethod())  throw new SemanticException(name, "Cannot access instance member '%s' in a static context".formatted(name.getValue()));
 			context.getContext().getMethodVisitor().visitVarInsn(Opcodes.ALOAD, 0);
 			context.getContext().getMethodVisitor().visitFieldInsn(Opcodes.GETFIELD, v.getOwner(), v.getName(), v.getType().getDescriptor());
 		}

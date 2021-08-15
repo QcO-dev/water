@@ -54,6 +54,7 @@ public class VariableDeclarationNode implements Node {
 			defineGetAndSet(true, true, context.getContext());
 
 			context.getContext().setMethodVisitor(context.getContext().getStaticMethodVisitor());
+			context.getContext().setStaticMethod(true);
 			value.visit(context);
 
 			context.getContext().getMethodVisitor().visitFieldInsn(Opcodes.PUTSTATIC, Type.getInternalName(context.getCurrentClass()), name.getValue(), returnType.getDescriptor());
@@ -83,10 +84,12 @@ public class VariableDeclarationNode implements Node {
 
 			if(isStatic(context.getContext())) {
 				context.getContext().setMethodVisitor(context.getContext().getStaticMethodVisitor());
+				context.getContext().setStaticMethod(true);
 			}
 			else {
 				context.getContext().setMethodVisitor(context.getContext().getDefaultConstructor());
 				context.getContext().getMethodVisitor().visitVarInsn(Opcodes.ALOAD, 0);
+				context.getContext().setStaticMethod(false);
 			}
 
 			value.visit(context);
