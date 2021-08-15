@@ -5,11 +5,9 @@ import org.objectweb.asm.MethodVisitor;
 import org.objectweb.asm.Opcodes;
 import org.objectweb.asm.Type;
 import water.compiler.FileContext;
-import water.compiler.compiler.Context;
-import water.compiler.compiler.SemanticException;
-import water.compiler.compiler.Variable;
-import water.compiler.compiler.VariableType;
+import water.compiler.compiler.*;
 import water.compiler.lexer.Token;
+import water.compiler.lexer.TokenType;
 import water.compiler.parser.Node;
 import water.compiler.util.Pair;
 import water.compiler.util.Unthrow;
@@ -43,6 +41,13 @@ public class ConstructorDeclarationNode implements Node {
 			context.setMethodVisitor(constructor);
 		}
 
+		ContextType prev = context.getType();
+		context.setType(ContextType.FUNCTION);
+
+		Scope outer = context.getScope();
+
+		context.setScope(outer.nextDepth());
+
 		context.getScope().setLocalIndex(1 + parameters.size());
 		context.getScope().addVariable(new Variable(VariableType.LOCAL, "this", 0, Type.getObjectType(context.getCurrentClass()), true));
 
@@ -53,6 +58,10 @@ public class ConstructorDeclarationNode implements Node {
 		}
 
 		body.visit(fc);
+
+		context.setScope(outer);
+
+		context.setType(prev);
 
 		constructor.visitInsn(Opcodes.RETURN);
 		constructor.visitMaxs(0, 0);
@@ -70,7 +79,7 @@ public class ConstructorDeclarationNode implements Node {
 	private MethodVisitor createConstructor(Context context) {
 		ClassWriter writer = context.getCurrentClassWriter();
 		String args = parameters.stream().map(Pair::getSecond).map(n -> Unthrow.wrap(() -> n.getReturnType(context).getDescriptor())).collect(Collectors.joining());
-		MethodVisitor constructor = writer.visitMethod(Opcodes.ACC_PUBLIC, "<init>", "(" + args + ")V", null, null);
+		MethodVisitor constructor = writer.visitMethod(getAccess(), "<init>", "(" + args + ")V", null, null);
 		constructor.visitCode();
 
 		constructor.visitVarInsn(Opcodes.ALOAD, 0);
@@ -79,7 +88,20 @@ public class ConstructorDeclarationNode implements Node {
 		return constructor;
 	}
 
+	private int getAccess() {
+		if(access == null || access.getType() == TokenType.PUBLIC) return Opcodes.ACC_PUBLIC;
+		return Opcodes.ACC_PRIVATE;
+	}
+
 	public void addVariable(Node variable) {
 		variablesInit.add(variable);
+	}
+
+	@Override
+	public String toString() {
+		return "constructor(%s) %s".formatted(
+				parameters.stream().map(p -> p.getFirst().getValue() + ": " + p.getSecond()).collect(Collectors.joining(", ")),
+				body
+		);
 	}
 }

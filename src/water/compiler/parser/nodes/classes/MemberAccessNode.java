@@ -76,7 +76,12 @@ public class MemberAccessNode implements Node {
 		}
 
 		try {
-			Field f = klass.getField(name.getValue());
+			Field f = klass.getDeclaredField(name.getValue());
+
+			//TODO Protected
+			if(!Modifier.isPublic(f.getModifiers()) && !leftType.equals(Type.getObjectType(context.getCurrentClass()))) {
+				throw new NoSuchFieldException();
+			}
 
 			if(!isStaticAccess && Modifier.isStatic(f.getModifiers())) {
 				throw new SemanticException(name, "Cannot access static member from non-static object.");

@@ -138,6 +138,7 @@ public class Main {
 			try {
 				fc.getAst().visit(fc);
 			} catch (SemanticException e) {
+				e.printStackTrace();
 				error(-2, e.getErrorMessage(fc.getPath().toString()));
 			}
 

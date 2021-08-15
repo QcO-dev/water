@@ -15,12 +15,15 @@ import water.compiler.util.TypeUtil;
 
 import java.lang.reflect.Field;
 import java.lang.reflect.Method;
+import java.lang.reflect.Modifier;
 
 public class AssignmentNode implements Node {
 
 	private final Token op;
 	private final Node left;
 	private final Node right;
+	// For property assignment static checking
+	private boolean isStaticAccess;
 
 	private boolean isExpressionStatementBody = false;
 
@@ -100,7 +103,7 @@ public class AssignmentNode implements Node {
 
 		right.visit(context);
 
-		Type objType = obj.getReturnType(context.getContext());
+		Type objType = getObjectType(obj, context.getContext());
 
 		if(objType.getSort() != Type.OBJECT) {
 			throw new SemanticException(name, "Cannot access member on type '%s'".formatted(TypeUtil.stringify(objType)));
@@ -117,7 +120,7 @@ public class AssignmentNode implements Node {
 		if(!isExpressionStatementBody) context.getContext().getMethodVisitor().visitInsn(TypeUtil.getDupX1Opcode(returnType));
 
 		try {
-			Field f = klass.getField(name.getValue());
+			Field f = klass.getDeclaredField(name.getValue());
 
 			try {
 				if(!TypeUtil.isAssignableFrom(Type.getType(f.getType()), returnType, context.getContext(), true)) {
@@ -129,6 +132,15 @@ public class AssignmentNode implements Node {
 				throw new SemanticException(op, "Could not resolve class '%s'".formatted(e.getMessage()));
 			}
 
+			//TODO Protected
+			if(!Modifier.isPublic(f.getModifiers()) && !objType.equals(Type.getObjectType(context.getContext().getCurrentClass()))) {
+				throw new NoSuchFieldException();
+			}
+
+			if(!isStaticAccess && Modifier.isStatic(f.getModifiers())) {
+				throw new SemanticException(name, "Cannot access static member from non-static object.");
+			}
+
 			context.getContext().getMethodVisitor().visitFieldInsn(TypeUtil.getMemberPutOpcode(f),
 					objType.getInternalName(), name.getValue(), Type.getType(f.getType()).getDescriptor());
 
@@ -138,6 +150,10 @@ public class AssignmentNode implements Node {
 
 			try {
 				Method m = klass.getMethod(setName, TypeUtil.typeToClass(returnType, context.getContext()));
+
+				if(!isStaticAccess && Modifier.isStatic(m.getModifiers())) {
+					throw new SemanticException(name, "Cannot access static member from non-static object.");
+				}
 
 				String descriptor = "(%s)V".formatted(Type.getType(m.getParameterTypes()[0]).getDescriptor());
 
@@ -190,6 +206,17 @@ public class AssignmentNode implements Node {
 		if(!isExpressionStatementBody) methodVisitor.visitInsn(TypeUtil.getDupX2Opcode(returnType));
 
 		methodVisitor.visitInsn(arrayType.getElementType().getOpcode(Opcodes.IASTORE));
+	}
+
+	private Type getObjectType(Node obj, Context context) throws SemanticException {
+		if(obj instanceof VariableAccessNode) {
+			VariableAccessNode van = (VariableAccessNode) obj;
+			van.setMemberAccess(true);
+			Type leftType = obj.getReturnType(context);
+			isStaticAccess = van.isStaticClassAccess();
+			return  leftType;
+		}
+		return obj.getReturnType(context);
 	}
 
 	@Override
