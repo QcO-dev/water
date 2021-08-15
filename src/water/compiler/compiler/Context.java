@@ -4,8 +4,10 @@ import org.objectweb.asm.ClassWriter;
 import org.objectweb.asm.Label;
 import org.objectweb.asm.MethodVisitor;
 import water.compiler.WaterClassLoader;
+import water.compiler.parser.nodes.classes.ConstructorDeclarationNode;
 
 import java.util.HashMap;
+import java.util.List;
 import java.util.Map;
 
 /**
@@ -19,6 +21,7 @@ public class Context {
 	private String source;
 	private String packageName;
 	private String currentClass;
+	private List<ConstructorDeclarationNode> constructors;
 	private MethodVisitor methodVisitor;
 	private MethodVisitor staticMethodVisitor;
 	private MethodVisitor defaultConstructor;
@@ -63,6 +66,14 @@ public class Context {
 
 	public void setCurrentClass(String currentClass) {
 		this.currentClass = currentClass;
+	}
+
+	public List<ConstructorDeclarationNode> getConstructors() {
+		return constructors;
+	}
+
+	public void setConstructors(List<ConstructorDeclarationNode> constructors) {
+		this.constructors = constructors;
 	}
 
 	public Map<String, ClassWriter> getClassWriterMap() {

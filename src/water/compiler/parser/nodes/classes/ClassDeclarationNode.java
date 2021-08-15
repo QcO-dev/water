@@ -8,9 +8,9 @@ import water.compiler.compiler.*;
 import water.compiler.lexer.Token;
 import water.compiler.lexer.TokenType;
 import water.compiler.parser.Node;
-import water.compiler.parser.nodes.variable.VariableAccessNode;
 import water.compiler.parser.nodes.variable.VariableDeclarationNode;
 
+import java.util.ArrayList;
 import java.util.List;
 import java.util.stream.Collectors;
 
@@ -18,12 +18,14 @@ public class ClassDeclarationNode implements Node {
 
 	private final Token name;
 	private final List<Node> declarations;
+	private final List<ConstructorDeclarationNode> constructors;
 	private final Token access;
 	private boolean staticVariableInit;
 
 	public ClassDeclarationNode(Token name, List<Node> declarations, Token access) {
 		this.name = name;
 		this.declarations = declarations;
+		this.constructors = new ArrayList<>();
 		this.access = access;
 		this.staticVariableInit = false;
 	}
@@ -36,9 +38,12 @@ public class ClassDeclarationNode implements Node {
 
 		ClassWriter writer = initClass(context);
 
-		MethodVisitor defaultConstructor = createDefaultConstructor(writer);
+		MethodVisitor defaultConstructor = null;
+		if(constructors.size() == 0) {
+			defaultConstructor = createDefaultConstructor(writer);
 
-		context.setDefaultConstructor(defaultConstructor);
+			context.setDefaultConstructor(defaultConstructor);
+		}
 
 		MethodVisitor staticMethod = null;
 		if(staticVariableInit) {
@@ -56,9 +61,16 @@ public class ClassDeclarationNode implements Node {
 			declaration.visit(fc);
 		}
 
-		defaultConstructor.visitInsn(Opcodes.RETURN);
-		defaultConstructor.visitMaxs(0, 0);
-		defaultConstructor.visitEnd();
+		context.setConstructors(new ArrayList<>());
+		for(ConstructorDeclarationNode constructor : constructors) {
+			constructor.visit(fc);
+		}
+
+		if(defaultConstructor != null) {
+			defaultConstructor.visitInsn(Opcodes.RETURN);
+			defaultConstructor.visitMaxs(0, 0);
+			defaultConstructor.visitEnd();
+		}
 
 		if(staticVariableInit) {
 			staticMethod.visitInsn(Opcodes.RETURN);
@@ -80,22 +92,38 @@ public class ClassDeclarationNode implements Node {
 
 		ClassWriter writer = initClass(context);
 
-		MethodVisitor defaultConstructor = createDefaultConstructor(writer);
-
-		context.setDefaultConstructor(defaultConstructor);
+		MethodVisitor defaultConstructor = null;
 
 		Scope outer = context.getScope();
 		context.setScope(outer.nextDepth());
 
-		for(Node declaration : declarations) {
+		for(int i = 0; i < declarations.size(); i++) {
+			Node declaration = declarations.get(i);
+			if(declaration instanceof ConstructorDeclarationNode) {
+				constructors.add((ConstructorDeclarationNode) declaration);
+				declarations.remove(i);
+				declaration.preprocess(context);
+			}
+		}
+
+		if(constructors.size() == 0) {
+			defaultConstructor = createDefaultConstructor(writer);
+
+			context.setDefaultConstructor(defaultConstructor);
+		}
+		context.setConstructors(constructors);
+
+		for (Node declaration : declarations) {
 			declaration.preprocess(context);
-			if(declaration instanceof VariableDeclarationNode && ((VariableDeclarationNode) declaration).isStatic(context))
+			if (declaration instanceof VariableDeclarationNode && ((VariableDeclarationNode) declaration).isStatic(context))
 				staticVariableInit = true;
 		}
 
-		defaultConstructor.visitInsn(Opcodes.RETURN);
-		defaultConstructor.visitMaxs(0, 0);
-		defaultConstructor.visitEnd();
+		if(defaultConstructor != null) {
+			defaultConstructor.visitInsn(Opcodes.RETURN);
+			defaultConstructor.visitMaxs(0, 0);
+			defaultConstructor.visitEnd();
+		}
 
 		if(staticVariableInit) {
 			MethodVisitor staticMethod = writer.visitMethod(Opcodes.ACC_STATIC, "<clinit>", "()V", null, null);

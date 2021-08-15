@@ -5,10 +5,7 @@ import water.compiler.lexer.Token;
 import water.compiler.lexer.TokenType;
 import water.compiler.parser.nodes.block.BlockNode;
 import water.compiler.parser.nodes.block.ProgramNode;
-import water.compiler.parser.nodes.classes.ClassDeclarationNode;
-import water.compiler.parser.nodes.classes.MemberAccessNode;
-import water.compiler.parser.nodes.classes.MethodCallNode;
-import water.compiler.parser.nodes.classes.ObjectConstructorNode;
+import water.compiler.parser.nodes.classes.*;
 import water.compiler.parser.nodes.function.FunctionCallNode;
 import water.compiler.parser.nodes.function.FunctionDeclarationNode;
 import water.compiler.parser.nodes.operation.*;
@@ -22,6 +19,7 @@ import water.compiler.parser.nodes.variable.VariableDeclarationNode;
 import water.compiler.util.Pair;
 
 import java.util.ArrayList;
+import java.util.LinkedList;
 import java.util.List;
 
 /**
@@ -124,6 +122,7 @@ public class Parser {
 		return switch(tok.getType()) {
 			case FUNCTION -> functionDeclaration(accessModifier, staticModifier);
 			case CLASS -> classDeclaration(accessModifier, staticModifier);
+			case CONSTRUCTOR -> constructorDeclaration(accessModifier, staticModifier);
 			case VAR, CONST -> variableDeclaration(accessModifier, staticModifier);
 			default -> throw new UnexpectedTokenException(tok, "Expected declaration");
 		};
@@ -159,6 +158,20 @@ public class Parser {
 		return new FunctionDeclarationNode(type, name, body, parameters, returnType, access, staticModifier);
 	}
 
+	/** Forms grammar: 'constructor' typedParameters blockStatement */
+	private Node constructorDeclaration(Token access, Token staticModifier) throws UnexpectedTokenException {
+		if(!isParsingClass) throw new UnexpectedTokenException(tokens.get(index - 1), "Cannot declare constructor outside of class");
+		if(staticModifier != null) throw new UnexpectedTokenException(staticModifier, "Cannot declare constructor as static");
+
+		List<Pair<Token, Node>> parameters = typedParameters("constructor parameter list");
+
+		consume(TokenType.LBRACE, "Expected '{' before constructor body");
+
+		Node body = blockStatement();
+
+		return new ConstructorDeclarationNode(access, parameters, body);
+	}
+
 	/** Forms grammar: 'class' IDENTIFIER '{' declaration* '}' */
 	private Node classDeclaration(Token access, Token staticModifier) throws UnexpectedTokenException {
 		if(staticModifier != null) throw new UnexpectedTokenException(staticModifier, "Cannot mark a class as static");
@@ -166,7 +179,7 @@ public class Parser {
 
 		consume(TokenType.LBRACE, "Expected '{' before class body");
 
-		ArrayList<Node> declarations = new ArrayList<>();
+		LinkedList<Node> declarations = new LinkedList<>();
 
 		boolean wasParsingClass = isParsingClass;
 		isParsingClass = true;

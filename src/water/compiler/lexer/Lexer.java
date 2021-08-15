@@ -135,6 +135,7 @@ public class Lexer {
 			case "var" -> TokenType.VAR;
 			case "const" -> TokenType.CONST;
 			case "class" -> TokenType.CLASS;
+			case "constructor" -> TokenType.CONSTRUCTOR;
 			case "as" -> TokenType.AS;
 			case "return" -> TokenType.RETURN;
 			case "while" -> TokenType.WHILE;
