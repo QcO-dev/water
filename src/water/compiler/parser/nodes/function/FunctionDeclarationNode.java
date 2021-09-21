@@ -57,7 +57,7 @@ public class FunctionDeclarationNode implements Node {
 
 	private void preprocessGlobal(Context context) throws SemanticException {
 		try {
-			if (context.getScope().lookupFunction(name.getValue(), parameters.stream().map(n -> Unthrow.wrap(() -> n.getSecond().getReturnType(context))).toArray(Type[]::new)) != null) throw new SemanticException(name,
+			if (context.getScope().exactLookupFunction(name.getValue(), parameters.stream().map(n -> Unthrow.wrap(() -> n.getSecond().getReturnType(context))).toArray(Type[]::new)) != null) throw new SemanticException(name,
 					"Redefinition of function '%s' in global scope.".formatted(name.getValue()));
 
 			computeReturnType(context, true);
