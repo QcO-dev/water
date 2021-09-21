@@ -50,7 +50,8 @@ public class FunctionCallNode implements Node {
 				context.getContext().getMethodVisitor().visitVarInsn(Opcodes.ALOAD, 0);
 			}
 
-			for(Node n : args) n.visit(context);
+			// Build args with lookupFunction
+			context.getContext().getScope().lookupFunction(name.getValue(), argTypes, args.toArray(Node[]::new), true, context);
 
 			context.getContext().getMethodVisitor().visitMethodInsn(function.getAccess(), function.getOwner(), function.getName(), function.getType().getDescriptor(), false);
 

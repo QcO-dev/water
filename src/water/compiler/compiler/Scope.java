@@ -2,12 +2,16 @@ package water.compiler.compiler;
 
 import org.objectweb.asm.Type;
 import water.compiler.FileContext;
+import water.compiler.parser.Node;
+import water.compiler.util.Pair;
 import water.compiler.util.TypeUtil;
 
 import java.lang.reflect.Field;
 import java.lang.reflect.Method;
 import java.lang.reflect.Modifier;
 import java.util.ArrayList;
+import java.util.Collections;
+import java.util.Comparator;
 import java.util.HashMap;
 
 /**
@@ -80,7 +84,56 @@ public class Scope {
 		return functionMap.get(name);
 	}
 
-	public Function lookupFunction(String name, Type... args) throws ClassNotFoundException {
+	public Function lookupFunction(String name, Type[] argsTypes, Node[] args, boolean visit, FileContext fc) throws ClassNotFoundException, SemanticException {
+		ArrayList<Function> funcs = functionMap.get(name);
+		if(funcs == null) return null;
+
+		ArrayList<Pair<Integer, Function>> possible = new ArrayList<>();
+
+		out : for(Function f : funcs) {
+			Type[] expectArgs = f.getType().getArgumentTypes();
+
+			if (expectArgs.length != argsTypes.length) continue;
+
+			int changes = 0;
+
+			for (int i = 0; i < expectArgs.length; i++) {
+				Type expectArg = expectArgs[i];
+				Type arg = argsTypes[i];
+
+				if (arg.getSort() == Type.VOID)
+					continue out;
+
+				if (TypeUtil.isAssignableFrom(expectArg, arg, context, false)) {
+					if (!expectArg.equals(arg)) changes++;
+				} else {
+					continue out;
+				}
+			}
+			possible.add(new Pair<>(changes, f));
+		}
+		if(possible.size() == 0) return null;
+
+		possible.sort(Comparator.comparingInt(Pair::getFirst));
+
+		Function resolved = possible.get(0).getSecond();
+
+		Type[] resolvedArgs = resolved.getType().getArgumentTypes();
+
+		if(visit) {
+			for (int i = 0; i < resolvedArgs.length; i++) {
+				Type resolvedArg = resolvedArgs[i];
+				Node arg = args[i];
+
+				arg.visit(fc);
+				TypeUtil.isAssignableFrom(resolvedArg, argsTypes[i], context, true);
+			}
+		}
+
+		return resolved;
+	}
+
+	public Function exactLookupFunction(String name, Type... args) throws ClassNotFoundException {
 		ArrayList<Function> funcs = functionMap.get(name);
 		if(funcs == null) return null;
 
@@ -100,6 +153,15 @@ public class Scope {
 					continue out;
 			}
 			return f;
+		}
+		return null;
+	}
+
+	public Function lookupFunction(String name, Type... args) throws ClassNotFoundException {
+		try {
+			return lookupFunction(name, args, null, false, null);
+		} catch (SemanticException e) {
+			assert false; // Unreachable
 		}
 		return null;
 	}

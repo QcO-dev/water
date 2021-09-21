@@ -8,12 +8,15 @@ import water.compiler.compiler.SemanticException;
 import water.compiler.lexer.Token;
 import water.compiler.parser.Node;
 import water.compiler.parser.nodes.variable.VariableAccessNode;
+import water.compiler.util.Pair;
 import water.compiler.util.TypeUtil;
 import water.compiler.util.Unthrow;
 
 import java.lang.reflect.Method;
 import java.lang.reflect.Modifier;
+import java.util.ArrayList;
 import java.util.Arrays;
+import java.util.Comparator;
 import java.util.List;
 import java.util.stream.Collectors;
 import java.util.stream.Stream;
@@ -50,9 +53,21 @@ public class MethodCallNode implements Node {
 
 		Method toCall = resolve(leftType, context.getContext());
 
-		for(Node n : args) n.visit(context);
+		Type[] resolvedTypes = Type.getType(toCall).getArgumentTypes();
 
-		Stream<Type> paramTypes = Arrays.stream(toCall.getParameterTypes()).map(Type::getType);
+		for(int i = 0; i < args.size(); i++) {
+			Node arg = args.get(i);
+			Type resolvedType = resolvedTypes[i];
+
+			arg.visit(context);
+			try {
+				TypeUtil.isAssignableFrom(resolvedType, arg.getReturnType(context.getContext()), context.getContext(), true);
+			} catch (ClassNotFoundException e) {
+				throw new SemanticException(name, "Could not resolve class '%s'".formatted(e.getMessage()));
+			}
+		}
+
+		Stream<Type> paramTypes = Arrays.stream(resolvedTypes);
 
 		String descriptor = "(%s)%s"
 				.formatted(paramTypes.map(Type::getDescriptor).collect(Collectors.joining()), Type.getType(toCall.getReturnType()).getDescriptor());
@@ -93,7 +108,7 @@ public class MethodCallNode implements Node {
 			throw new SemanticException(name, "Could not resolve class '%s'".formatted(e.getMessage()));
 		}
 
-		Method toCall = null;
+		ArrayList<Pair<Integer, Method>> possible = new ArrayList<>();
 
 		try {
 			out:
@@ -103,6 +118,8 @@ public class MethodCallNode implements Node {
 
 				if (expectArgs.length != argTypes.length) continue;
 
+				int changes = 0;
+
 				for (int i = 0; i < expectArgs.length; i++) {
 					Type expectArg = expectArgs[i];
 					Type arg = argTypes[i];
@@ -110,29 +127,38 @@ public class MethodCallNode implements Node {
 					if (arg.getSort() == Type.VOID)
 						continue out;
 
-					if (!TypeUtil.typeToClass(expectArg, context)
-							.isAssignableFrom(TypeUtil.typeToClass(arg, context)))
+					if (TypeUtil.isAssignableFrom(expectArg, arg, context, false)) {
+						if (!expectArg.equals(arg)) changes++;
+					} else {
 						continue out;
+					}
 				}
-				toCall = method;
+				possible.add(new Pair<>(changes, method));
 			}
 		}
 		catch(ClassNotFoundException e) {
 			throw new SemanticException(name, "Could not resolve class '%s'".formatted(e.getMessage()));
 		}
 
-		if(toCall == null) {
+		if(possible.size() == 0) {
 			throw new SemanticException(name,
 					"Could not resolve method '%s' with arguments: %s".formatted(name.getValue(),
 							argTypes.length == 0 ? "(none)" :
 									List.of(argTypes).stream().map(TypeUtil::stringify).collect(Collectors.joining(", "))));
 		}
 
-		if(!isStaticAccess && Modifier.isStatic(toCall.getModifiers())) {
-			throw new SemanticException(name, "Cannot access static member from non-static object.");
+		List<Pair<Integer, Method>> appliedPossible = possible.stream()
+				.filter(p -> Modifier.isStatic(p.getSecond().getModifiers()) == isStaticAccess)
+				.sorted(Comparator.comparingInt(Pair::getFirst)).toList();
+
+		if(appliedPossible.size() == 0) {
+			if(isStaticAccess)
+				throw new SemanticException(name, "Cannot invoke non-static method from static class.");
+			else
+				throw new SemanticException(name, "Cannot invoke static method from non-static object.");
 		}
 
-		return toCall;
+		return possible.get(0).getSecond();
 	}
 
 	@Override

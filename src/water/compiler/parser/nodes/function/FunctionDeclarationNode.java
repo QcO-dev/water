@@ -57,7 +57,7 @@ public class FunctionDeclarationNode implements Node {
 
 	private void preprocessGlobal(Context context) throws SemanticException {
 		try {
-			if (context.getScope().lookupFunction(name.getValue(), parameters.stream().map(n -> Unthrow.wrap(() -> n.getSecond().getReturnType(context))).toArray(Type[]::new)) != null) throw new SemanticException(name,
+			if (context.getScope().exactLookupFunction(name.getValue(), parameters.stream().map(n -> Unthrow.wrap(() -> n.getSecond().getReturnType(context))).toArray(Type[]::new)) != null) throw new SemanticException(name,
 					"Redefinition of function '%s' in global scope.".formatted(name.getValue()));
 
 			computeReturnType(context, true);
@@ -120,6 +120,8 @@ public class FunctionDeclarationNode implements Node {
 
 		ContextType prev = context.getContext().getType();
 
+		boolean isStatic = isStatic(context.getContext());
+
 		context.getContext().setType(ContextType.FUNCTION);
 
 		Scope outer = context.getContext().getScope();
@@ -128,9 +130,10 @@ public class FunctionDeclarationNode implements Node {
 
 		context.getContext().getScope().setReturnType(returnType);
 
-		context.getContext().setStaticMethod(isStatic(context.getContext()));
 
-		addParameters(context.getContext(), isStatic(context.getContext()));
+		context.getContext().setStaticMethod(isStatic);
+
+		addParameters(context.getContext(), isStatic);
 
 		body.visit(context);
 		if(type == DeclarationType.EXPRESSION) mv.visitInsn(returnType.getOpcode(Opcodes.IRETURN));
