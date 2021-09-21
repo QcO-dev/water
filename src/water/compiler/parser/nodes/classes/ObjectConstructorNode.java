@@ -8,12 +8,15 @@ import water.compiler.compiler.Context;
 import water.compiler.compiler.SemanticException;
 import water.compiler.lexer.Token;
 import water.compiler.parser.Node;
+import water.compiler.util.Pair;
 import water.compiler.util.TypeUtil;
 import water.compiler.util.Unthrow;
 
 import java.lang.reflect.Constructor;
 import java.lang.reflect.Modifier;
+import java.util.ArrayList;
 import java.util.Arrays;
+import java.util.Comparator;
 import java.util.List;
 import java.util.stream.Collectors;
 
@@ -57,8 +60,6 @@ public class ObjectConstructorNode implements Node {
 		methodVisitor.visitTypeInsn(Opcodes.NEW, objType.getInternalName());
 		methodVisitor.visitInsn(Opcodes.DUP);
 
-		for(Node n : arguments) n.visit(context);
-
 		String descriptor;
 
 		if(toCall == null) {
@@ -73,10 +74,23 @@ public class ObjectConstructorNode implements Node {
 
 			descriptor = "(%s)V".formatted(
 					Arrays.stream(declaredConstructor.getParameterTypes()).map(Type::getType).map(Type::getDescriptor).collect(Collectors.joining()));
+			toCall = declaredConstructor;
 		}
 		else {
 			descriptor = "(%s)V".formatted(
 					Arrays.stream(toCall.getParameterTypes()).map(Type::getType).map(Type::getDescriptor).collect(Collectors.joining()));
+		}
+		Type[] resolvedTypes = Type.getType(toCall).getArgumentTypes();
+		for(int i = 0; i < arguments.size(); i++) {
+			Node arg = arguments.get(i);
+			Type resolvedType = resolvedTypes[i];
+
+			arg.visit(context);
+			try {
+				TypeUtil.isAssignableFrom(resolvedType, arg.getReturnType(context.getContext()), context.getContext(), true);
+			} catch (ClassNotFoundException e) {
+				throw new SemanticException(newToken, "Could not resolve class '%s'".formatted(e.getMessage()));
+			}
 		}
 
 		methodVisitor.visitMethodInsn(Opcodes.INVOKESPECIAL,
@@ -84,7 +98,8 @@ public class ObjectConstructorNode implements Node {
 	}
 
 	private Constructor<?> getConstructor(Constructor<?>[] constructors, Type[] argTypes, FileContext context) throws SemanticException {
-		Constructor<?> toCall = null;
+
+		ArrayList<Pair<Integer, Constructor<?>>> possible = new ArrayList<>();
 
 		try {
 			out:
@@ -93,6 +108,8 @@ public class ObjectConstructorNode implements Node {
 
 				if (expectArgs.length != argTypes.length) continue;
 
+				int changes = 0;
+
 				for (int i = 0; i < expectArgs.length; i++) {
 					Type expectArg = expectArgs[i];
 					Type arg = argTypes[i];
@@ -100,17 +117,24 @@ public class ObjectConstructorNode implements Node {
 					if (arg.getSort() == Type.VOID)
 						continue out;
 
-					if (!TypeUtil.typeToClass(expectArg, context.getContext())
-							.isAssignableFrom(TypeUtil.typeToClass(arg, context.getContext())))
+					if (TypeUtil.isAssignableFrom(expectArg, arg, context.getContext(), false)) {
+						if (!expectArg.equals(arg)) changes++;
+					} else {
 						continue out;
+					}
 				}
-				toCall = c;
+				possible.add(new Pair<>(changes, c));
 			}
 		}
 		catch(ClassNotFoundException e) {
 			throw new SemanticException(newToken, "Could not resolve class '%s'".formatted(e.getMessage()));
 		}
-		return toCall;
+
+		if(possible.size() == 0) return null;
+
+		possible.sort(Comparator.comparingInt(Pair::getFirst));
+
+		return possible.get(0).getSecond();
 	}
 
 	@Override
