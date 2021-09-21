@@ -120,6 +120,8 @@ public class FunctionDeclarationNode implements Node {
 
 		ContextType prev = context.getContext().getType();
 
+		boolean isStatic = isStatic(context.getContext());
+
 		context.getContext().setType(ContextType.FUNCTION);
 
 		Scope outer = context.getContext().getScope();
@@ -128,9 +130,10 @@ public class FunctionDeclarationNode implements Node {
 
 		context.getContext().getScope().setReturnType(returnType);
 
-		context.getContext().setStaticMethod(isStatic(context.getContext()));
 
-		addParameters(context.getContext(), isStatic(context.getContext()));
+		context.getContext().setStaticMethod(isStatic);
+
+		addParameters(context.getContext(), isStatic);
 
 		body.visit(context);
 		if(type == DeclarationType.EXPRESSION) mv.visitInsn(returnType.getOpcode(Opcodes.IRETURN));
