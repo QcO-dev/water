@@ -47,6 +47,7 @@ public enum TokenType {
 	BOOLEAN,
 	CHAR,
 	FLOAT,
+	LONG,
 	PUBLIC,
 	PRIVATE,
 	STATIC,

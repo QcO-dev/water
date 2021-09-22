@@ -52,6 +52,7 @@ public class TypeNode implements Node {
 			case FLOAT -> Type.FLOAT_TYPE;
 			case BOOLEAN -> Type.BOOLEAN_TYPE;
 			case CHAR -> Type.CHAR_TYPE;
+			case LONG -> Type.LONG_TYPE;
 			default -> null;
 		};
 

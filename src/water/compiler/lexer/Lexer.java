@@ -11,7 +11,7 @@ public class Lexer {
 
 	//TODO Other primitives
 	/** TokenTypes which represent keywords for primitives, e.g. 'int' */
-	public static List<TokenType> PRIMITIVE_TYPES = List.of(TokenType.INT, TokenType.DOUBLE, TokenType.FLOAT, TokenType.BOOLEAN, TokenType.CHAR);
+	public static List<TokenType> PRIMITIVE_TYPES = List.of(TokenType.INT, TokenType.DOUBLE, TokenType.FLOAT, TokenType.BOOLEAN, TokenType.CHAR, TokenType.LONG);
 
 	private int index;
 	private int line;
@@ -168,6 +168,7 @@ public class Lexer {
 			case "float" -> TokenType.FLOAT;
 			case "boolean" -> TokenType.BOOLEAN;
 			case "char" -> TokenType.CHAR;
+			case "long" -> TokenType.LONG;
 			case "public" -> TokenType.PUBLIC;
 			case "private" -> TokenType.PRIVATE;
 			case "static" -> TokenType.STATIC;
@@ -184,6 +185,10 @@ public class Lexer {
 			advance();
 		}
 		if(!isAtEnd()) index--;
+		if(current == 'l' || current == 'L') {
+			advance();
+			return makeToken(TokenType.NUMBER);
+		}
 		if(match('.')) {
 			advance();
 			while (!isAtEnd() && isNumeric(current)) {

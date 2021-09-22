@@ -331,6 +331,19 @@ public class TypeUtil {
 	}
 
 	/**
+	 * Creates the optimal opcode for the given long.
+	 * @param val The float to generate bytecode for.
+	 * @param context The context of the method.
+	 */
+	public static void generateCorrectLong(long val, Context context) {
+		MethodVisitor method = context.getMethodVisitor();
+
+		if (val == 0) method.visitInsn(Opcodes.LCONST_0);
+		else if (val == 1) method.visitInsn(Opcodes.LCONST_1);
+		else method.visitLdcInsn(val);
+	}
+
+	/**
 	 * Given an object, creates the optimal opcode to load it in bytecode (where possible).
 	 * @param object The object to add to bytecode.
 	 * @param context The context of the method.
@@ -354,6 +367,9 @@ public class TypeUtil {
 		}
 		else if(object instanceof Character) {
 			generateCorrectInt((Character) object, context);
+		}
+		else if(object instanceof Long) {
+			generateCorrectLong((Long) object, context);
 		}
 		else {
 			context.getMethodVisitor().visitLdcInsn(object);
