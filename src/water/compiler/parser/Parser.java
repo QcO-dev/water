@@ -460,12 +460,13 @@ public class Parser {
 		return left;
 	}
 
-	/** Forms grammar: NUMBER | STRING | 'true' | 'false' | 'null' | newObject | grouping | variable */
+	/** Forms grammar: NUMBER | STRING | CHAR_LITERAL | 'true' | 'false' | 'null' | newObject | grouping | variable */
 	private Node atom() throws UnexpectedTokenException {
 		Token tok = advance();
 		return switch(tok.getType()) {
 			case NUMBER -> new NumberNode(tok);
 			case STRING -> new StringNode(tok);
+			case CHAR_LITERAL -> new CharNode(tok);
 			case TRUE, FALSE -> new BooleanNode(tok);
 			case NULL -> new NullNode();
 			case NEW -> newObject();

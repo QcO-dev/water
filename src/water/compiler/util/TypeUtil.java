@@ -335,6 +335,9 @@ public class TypeUtil {
 		else if(object instanceof Boolean) {
 			context.getMethodVisitor().visitInsn(((Boolean) object).booleanValue() ? Opcodes.ICONST_1 : Opcodes.ICONST_0);
 		}
+		else if(object instanceof Character) {
+			generateCorrectInt(((Character) object).charValue(), context);
+		}
 		else {
 			context.getMethodVisitor().visitLdcInsn(object);
 		}
