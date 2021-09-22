@@ -49,6 +49,7 @@ public enum TokenType {
 	FLOAT,
 	LONG,
 	BYTE,
+	SHORT,
 	PUBLIC,
 	PRIVATE,
 	STATIC,

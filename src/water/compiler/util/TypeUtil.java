@@ -367,7 +367,6 @@ public class TypeUtil {
 	 * @param context The context of the method.
 	 */
 	public static void correctLdc(Object object, Context context) {
-		//TODO Other primitive constants
 		if(object == null) {
 			context.getMethodVisitor().visitInsn(Opcodes.ACONST_NULL);
 		}
@@ -391,6 +390,9 @@ public class TypeUtil {
 		}
 		else if(object instanceof Byte) {
 			generateCorrectInt((Byte) object, context);
+		}
+		else if(object instanceof Short) {
+			generateCorrectInt((Short) object, context);
 		}
 		else {
 			context.getMethodVisitor().visitLdcInsn(object);

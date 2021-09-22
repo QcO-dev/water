@@ -9,10 +9,9 @@ import java.util.List;
  */
 public class Lexer {
 
-	//TODO Other primitives
 	/** TokenTypes which represent keywords for primitives, e.g. 'int' */
 	public static List<TokenType> PRIMITIVE_TYPES = List.of(TokenType.INT, TokenType.DOUBLE,
-			TokenType.FLOAT, TokenType.BOOLEAN, TokenType.CHAR, TokenType.LONG, TokenType.BYTE);
+			TokenType.FLOAT, TokenType.BOOLEAN, TokenType.CHAR, TokenType.LONG, TokenType.BYTE, TokenType.SHORT);
 
 	private int index;
 	private int line;
@@ -171,6 +170,7 @@ public class Lexer {
 			case "char" -> TokenType.CHAR;
 			case "long" -> TokenType.LONG;
 			case "byte" -> TokenType.BYTE;
+			case "short" -> TokenType.SHORT;
 			case "public" -> TokenType.PUBLIC;
 			case "private" -> TokenType.PRIVATE;
 			case "static" -> TokenType.STATIC;
