@@ -91,6 +91,20 @@ public class TypeUtil {
 					type.getSort() == Type.BOOLEAN
 				);
 	}
+	/**
+	 * If the type represents an integer type - excluding long.
+	 * @param type The type to check
+	 * @return If the type is an integer type
+	 */
+	public static boolean isRepresentedAsInteger(Type type) {
+		return isPrimitive(type) && (
+				type.getSort() == Type.INT ||
+				type.getSort() == Type.BYTE ||
+				type.getSort() == Type.CHAR ||
+				type.getSort() == Type.SHORT ||
+				type.getSort() == Type.BOOLEAN
+		);
+	}
 
 	/**
 	 *
@@ -240,6 +254,10 @@ public class TypeUtil {
 				if(convert) cast(context.getMethodVisitor(), from, to);
 				return true;
 			}
+			if(isRepresentedAsInteger(to) && isRepresentedAsInteger(from)) {
+				if(convert) cast(context.getMethodVisitor(), from, to);
+				return true;
+			}
 			return false;
 		}
 
@@ -370,6 +388,9 @@ public class TypeUtil {
 		}
 		else if(object instanceof Long) {
 			generateCorrectLong((Long) object, context);
+		}
+		else if(object instanceof Byte) {
+			generateCorrectInt((Byte) object, context);
 		}
 		else {
 			context.getMethodVisitor().visitLdcInsn(object);

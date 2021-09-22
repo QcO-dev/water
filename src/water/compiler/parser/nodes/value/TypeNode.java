@@ -53,6 +53,7 @@ public class TypeNode implements Node {
 			case BOOLEAN -> Type.BOOLEAN_TYPE;
 			case CHAR -> Type.CHAR_TYPE;
 			case LONG -> Type.LONG_TYPE;
+			case BYTE -> Type.BYTE_TYPE;
 			default -> null;
 		};
 
