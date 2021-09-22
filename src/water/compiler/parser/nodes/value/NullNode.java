@@ -6,6 +6,7 @@ import water.compiler.FileContext;
 import water.compiler.compiler.Context;
 import water.compiler.compiler.SemanticException;
 import water.compiler.parser.Node;
+import water.compiler.util.TypeUtil;
 
 public class NullNode implements Node {
 	@Override
@@ -15,7 +16,7 @@ public class NullNode implements Node {
 
 	@Override
 	public Type getReturnType(Context context) throws SemanticException {
-		return Type.getObjectType("java/lang/Object");
+		return TypeUtil.OBJECT_TYPE;
 	}
 
 	@Override

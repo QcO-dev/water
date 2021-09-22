@@ -12,6 +12,8 @@ import water.compiler.lexer.TokenType;
 import water.compiler.parser.Node;
 import water.compiler.util.TypeUtil;
 
+import java.util.List;
+
 public class ArithmeticOperationNode implements Node {
 
 	private final Node left;
@@ -192,7 +194,12 @@ public class ArithmeticOperationNode implements Node {
 
 	@Override
 	public boolean isConstant(Context context) throws SemanticException {
-		if((left.getReturnType(context).equals(TypeUtil.STRING_TYPE) || right.getReturnType(context).equals(TypeUtil.STRING_TYPE)) && op.getType() == TokenType.STAR) return false;
+		List<Class<?>> shouldBeConstant = List.of(String.class, Integer.class, Double.class);
+		Object leftReturnType = left.getReturnType(context);
+		Type rightReturnType = right.getReturnType(context);
+
+		if(!shouldBeConstant.contains(leftReturnType.getClass()) || !shouldBeConstant.contains(rightReturnType.getClass())) return false;
+		if((leftReturnType.equals(TypeUtil.STRING_TYPE) || rightReturnType.equals(TypeUtil.STRING_TYPE)) && op.getType() == TokenType.STAR) return false;
 		return left.isConstant(context) && right.isConstant(context);
 	}
 

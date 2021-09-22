@@ -87,7 +87,8 @@ public class TypeUtil {
 					type.getSort() == Type.BYTE ||
 					type.getSort() == Type.CHAR ||
 					type.getSort() == Type.SHORT ||
-					type.getSort() == Type.LONG
+					type.getSort() == Type.LONG ||
+					type.getSort() == Type.BOOLEAN
 				);
 	}
 

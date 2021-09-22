@@ -6,6 +6,7 @@ import water.compiler.compiler.Context;
 import water.compiler.compiler.SemanticException;
 import water.compiler.lexer.Token;
 import water.compiler.parser.Node;
+import water.compiler.util.TypeUtil;
 
 public class StringNode implements Node {
 	private final Token value;
@@ -25,7 +26,7 @@ public class StringNode implements Node {
 
 	@Override
 	public Type getReturnType(Context context) throws SemanticException {
-		return Type.getObjectType("java/lang/String");
+		return TypeUtil.STRING_TYPE;
 	}
 
 	@Override
