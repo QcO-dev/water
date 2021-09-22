@@ -70,6 +70,13 @@ public class AssignmentNode implements Node {
 			throw new SemanticException(name, "Reassignment of constant '%s'.".formatted(name.getValue()));
 		}
 
+		if(variable.getVariableType() == VariableType.CLASS) {
+			if(context.getContext().isStaticMethod())  throw new SemanticException(name, "Cannot access instance member '%s' in a static context".formatted(name.getValue()));
+			context.getContext().getMethodVisitor().visitVarInsn(Opcodes.ALOAD, 0);
+		}
+
+		right.visit(context);
+
 		try {
 			if(!TypeUtil.isAssignableFrom(variable.getType(), returnType, context.getContext(), true)) {
 				throw new SemanticException(op,
@@ -84,17 +91,12 @@ public class AssignmentNode implements Node {
 		if(!isExpressionStatementBody) methodVisitor.visitInsn(TypeUtil.getDupOpcode(returnType));
 
 		if(variable.getVariableType() == VariableType.STATIC) {
-			right.visit(context);
 			methodVisitor.visitFieldInsn(Opcodes.PUTSTATIC, variable.getOwner(), variable.getName(), variable.getType().getDescriptor());
 		}
 		if(variable.getVariableType() == VariableType.CLASS) {
-			if(context.getContext().isStaticMethod())  throw new SemanticException(name, "Cannot access instance member '%s' in a static context".formatted(name.getValue()));
-			context.getContext().getMethodVisitor().visitVarInsn(Opcodes.ALOAD, 0);
-			right.visit(context);
 			methodVisitor.visitFieldInsn(Opcodes.PUTFIELD, variable.getOwner(), variable.getName(), variable.getType().getDescriptor());
 		}
 		else {
-			right.visit(context);
 			methodVisitor.visitVarInsn(variable.getType().getOpcode(Opcodes.ISTORE), variable.getIndex());
 		}
 	}

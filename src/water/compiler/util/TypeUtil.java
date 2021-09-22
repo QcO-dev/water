@@ -271,6 +271,36 @@ public class TypeUtil {
 	}
 
 	/**
+	 * Returns how many changes / how simple the conversion between types is. Assumes the types can be cast.
+	 * @param to The type to attempt to cast to
+	 * @param from The type to attempt to cast from
+	 * @return The complexity of the change
+	 */
+	public static int assignChanges(Type to, Type from) {
+		if(to.getSort() == Type.OBJECT && from.getSort() == Type.OBJECT) {
+			return 1;
+		}
+
+		else if(isPrimitive(to) && isPrimitive(from)) {
+			if(TYPE_SIZE.indexOf(to.getSort()) <= TYPE_SIZE.indexOf(from.getSort())) {
+				return 1;
+			}
+			if(isRepresentedAsInteger(to) && isRepresentedAsInteger(from)) {
+				return 2;
+			}
+		}
+
+		if(to.getSort() == Type.ARRAY && from.getSort() == Type.ARRAY) {
+			return 0;
+		}
+
+		//TODO Auto-boxing
+
+		assert false;
+		return -1;
+	}
+
+	/**
 	 * Gets the appropriate compare opcode for types double, float, and long.
 	 * Adds this opcode to the method visitor.
 	 * @param mv The method visitor to use.

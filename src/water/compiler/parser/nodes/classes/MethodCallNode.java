@@ -158,7 +158,7 @@ public class MethodCallNode implements Node {
 				throw new SemanticException(name, "Cannot invoke static method from non-static object.");
 		}
 
-		return possible.get(0).getSecond();
+		return appliedPossible.get(0).getSecond();
 	}
 
 	@Override
