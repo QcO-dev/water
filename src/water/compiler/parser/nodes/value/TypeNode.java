@@ -49,6 +49,7 @@ public class TypeNode implements Node {
 			case VOID -> Type.VOID_TYPE;
 			case INT -> Type.INT_TYPE;
 			case DOUBLE -> Type.DOUBLE_TYPE;
+			case FLOAT -> Type.FLOAT_TYPE;
 			case BOOLEAN -> Type.BOOLEAN_TYPE;
 			case CHAR -> Type.CHAR_TYPE;
 			default -> null;

@@ -317,6 +317,20 @@ public class TypeUtil {
 	}
 
 	/**
+	 * Creates the optimal opcode for the given float.
+	 * @param val The float to generate bytecode for.
+	 * @param context The context of the method.
+	 */
+	public static void generateCorrectFloat(float val, Context context) {
+		MethodVisitor method = context.getMethodVisitor();
+
+		if (val == 0) method.visitInsn(Opcodes.FCONST_0);
+		else if (val == 1) method.visitInsn(Opcodes.FCONST_1);
+		else if (val == 2) method.visitInsn(Opcodes.FCONST_2);
+		else method.visitLdcInsn(val);
+	}
+
+	/**
 	 * Given an object, creates the optimal opcode to load it in bytecode (where possible).
 	 * @param object The object to add to bytecode.
 	 * @param context The context of the method.
@@ -327,16 +341,19 @@ public class TypeUtil {
 			context.getMethodVisitor().visitInsn(Opcodes.ACONST_NULL);
 		}
 		else if(object instanceof Integer) {
-			generateCorrectInt(((Integer) object).intValue(), context);
+			generateCorrectInt((Integer) object, context);
 		}
 		else if(object instanceof Double) {
-			generateCorrectDouble(((Double) object).doubleValue(), context);
+			generateCorrectDouble((Double) object, context);
+		}
+		else if(object instanceof Float) {
+			generateCorrectFloat((Float) object, context);
 		}
 		else if(object instanceof Boolean) {
-			context.getMethodVisitor().visitInsn(((Boolean) object).booleanValue() ? Opcodes.ICONST_1 : Opcodes.ICONST_0);
+			context.getMethodVisitor().visitInsn((Boolean) object ? Opcodes.ICONST_1 : Opcodes.ICONST_0);
 		}
 		else if(object instanceof Character) {
-			generateCorrectInt(((Character) object).charValue(), context);
+			generateCorrectInt((Character) object, context);
 		}
 		else {
 			context.getMethodVisitor().visitLdcInsn(object);

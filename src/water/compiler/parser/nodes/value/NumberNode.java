@@ -32,6 +32,9 @@ public class NumberNode implements Node {
 		else if(type.getSort() == Type.DOUBLE) {
 			TypeUtil.generateCorrectDouble(Double.parseDouble(value.getValue()), context.getContext());
 		}
+		else if(type.getSort() == Type.FLOAT) {
+			TypeUtil.generateCorrectFloat(Float.parseFloat(value.getValue()), context.getContext());
+		}
 	}
 
 	@Override
@@ -43,6 +46,7 @@ public class NumberNode implements Node {
 	public Object getConstantValue(Context context) {
 		if(type.getSort() == Type.INT) return Integer.parseInt(value.getValue());
 		else if(type.getSort() == Type.DOUBLE) return Double.parseDouble(value.getValue());
+		else if(type.getSort() == Type.FLOAT) return Float.parseFloat(value.getValue());
 
 		return null; // Unreachable
 	}
@@ -55,6 +59,7 @@ public class NumberNode implements Node {
 	private Type computeCorrectType() {
 		String rep = value.getValue();
 
+		if(rep.endsWith("f") || rep.endsWith("F")) return Type.FLOAT_TYPE;
 		if(rep.contains(".")) return Type.DOUBLE_TYPE;
 		return Type.INT_TYPE;
 	}
