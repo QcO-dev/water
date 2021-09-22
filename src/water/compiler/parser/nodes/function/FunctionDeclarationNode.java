@@ -86,7 +86,7 @@ public class FunctionDeclarationNode implements Node {
 	private void preprocessClass(Context context) throws SemanticException {
 		try {
 			// Verify this function is unique
-			Function function = context.getScope().lookupFunction(name.getValue(), parameters.stream().map(n -> Unthrow.wrap(() -> n.getSecond().getReturnType(context))).toArray(Type[]::new));
+			Function function = context.getScope().exactLookupFunction(name.getValue(), parameters.stream().map(n -> Unthrow.wrap(() -> n.getSecond().getReturnType(context))).toArray(Type[]::new));
 
 			if(function != null && function.getFunctionType() == FunctionType.CLASS) {
 				throw new SemanticException(name, "Redefinition of function '%s' in current class.".formatted(name.getValue()));

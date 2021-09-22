@@ -48,7 +48,7 @@ public class VariableDeclarationNode implements Node {
 	public void visit(FileContext context) throws SemanticException {
 		Type returnType = value.getReturnType(context.getContext());
 
-		boolean buildConstructor = context.getContext().getConstructors().size() != 0;
+		boolean buildConstructor = context.getContext().getConstructors() != null && context.getContext().getConstructors().size() != 0;
 
 		if(context.getContext().getType() == ContextType.GLOBAL) {
 			defineGetAndSet(true, true, context.getContext());

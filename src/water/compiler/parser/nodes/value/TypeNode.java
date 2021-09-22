@@ -44,12 +44,16 @@ public class TypeNode implements Node {
 
 		if(dimensions != 0) return Type.getType("[".repeat(dimensions) + element.getReturnType(context).getDescriptor());
 
-		//TODO other primitive types
 		if(isPrimitive) return switch (root.getType()) {
 			case VOID -> Type.VOID_TYPE;
 			case INT -> Type.INT_TYPE;
 			case DOUBLE -> Type.DOUBLE_TYPE;
+			case FLOAT -> Type.FLOAT_TYPE;
 			case BOOLEAN -> Type.BOOLEAN_TYPE;
+			case CHAR -> Type.CHAR_TYPE;
+			case LONG -> Type.LONG_TYPE;
+			case BYTE -> Type.BYTE_TYPE;
+			case SHORT -> Type.SHORT_TYPE;
 			default -> null;
 		};
 

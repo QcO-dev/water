@@ -87,8 +87,23 @@ public class TypeUtil {
 					type.getSort() == Type.BYTE ||
 					type.getSort() == Type.CHAR ||
 					type.getSort() == Type.SHORT ||
-					type.getSort() == Type.LONG
+					type.getSort() == Type.LONG ||
+					type.getSort() == Type.BOOLEAN
 				);
+	}
+	/**
+	 * If the type represents an integer type - excluding long.
+	 * @param type The type to check
+	 * @return If the type is an integer type
+	 */
+	public static boolean isRepresentedAsInteger(Type type) {
+		return isPrimitive(type) && (
+				type.getSort() == Type.INT ||
+				type.getSort() == Type.BYTE ||
+				type.getSort() == Type.CHAR ||
+				type.getSort() == Type.SHORT ||
+				type.getSort() == Type.BOOLEAN
+		);
 	}
 
 	/**
@@ -239,6 +254,10 @@ public class TypeUtil {
 				if(convert) cast(context.getMethodVisitor(), from, to);
 				return true;
 			}
+			if(isRepresentedAsInteger(to) && isRepresentedAsInteger(from)) {
+				if(convert) cast(context.getMethodVisitor(), from, to);
+				return true;
+			}
 			return false;
 		}
 
@@ -249,6 +268,36 @@ public class TypeUtil {
 		//TODO Auto-boxing
 
 		return false;
+	}
+
+	/**
+	 * Returns how many changes / how simple the conversion between types is. Assumes the types can be cast.
+	 * @param to The type to attempt to cast to
+	 * @param from The type to attempt to cast from
+	 * @return The complexity of the change
+	 */
+	public static int assignChanges(Type to, Type from) {
+		if(to.getSort() == Type.OBJECT && from.getSort() == Type.OBJECT) {
+			return 1;
+		}
+
+		else if(isPrimitive(to) && isPrimitive(from)) {
+			if(TYPE_SIZE.indexOf(to.getSort()) <= TYPE_SIZE.indexOf(from.getSort())) {
+				return 1;
+			}
+			if(isRepresentedAsInteger(to) && isRepresentedAsInteger(from)) {
+				return 2;
+			}
+		}
+
+		if(to.getSort() == Type.ARRAY && from.getSort() == Type.ARRAY) {
+			return 0;
+		}
+
+		//TODO Auto-boxing
+
+		assert false;
+		return -1;
 	}
 
 	/**
@@ -316,23 +365,64 @@ public class TypeUtil {
 	}
 
 	/**
+	 * Creates the optimal opcode for the given float.
+	 * @param val The float to generate bytecode for.
+	 * @param context The context of the method.
+	 */
+	public static void generateCorrectFloat(float val, Context context) {
+		MethodVisitor method = context.getMethodVisitor();
+
+		if (val == 0) method.visitInsn(Opcodes.FCONST_0);
+		else if (val == 1) method.visitInsn(Opcodes.FCONST_1);
+		else if (val == 2) method.visitInsn(Opcodes.FCONST_2);
+		else method.visitLdcInsn(val);
+	}
+
+	/**
+	 * Creates the optimal opcode for the given long.
+	 * @param val The float to generate bytecode for.
+	 * @param context The context of the method.
+	 */
+	public static void generateCorrectLong(long val, Context context) {
+		MethodVisitor method = context.getMethodVisitor();
+
+		if (val == 0) method.visitInsn(Opcodes.LCONST_0);
+		else if (val == 1) method.visitInsn(Opcodes.LCONST_1);
+		else method.visitLdcInsn(val);
+	}
+
+	/**
 	 * Given an object, creates the optimal opcode to load it in bytecode (where possible).
 	 * @param object The object to add to bytecode.
 	 * @param context The context of the method.
 	 */
 	public static void correctLdc(Object object, Context context) {
-		//TODO Other primitive constants
 		if(object == null) {
 			context.getMethodVisitor().visitInsn(Opcodes.ACONST_NULL);
 		}
 		else if(object instanceof Integer) {
-			generateCorrectInt(((Integer) object).intValue(), context);
+			generateCorrectInt((Integer) object, context);
 		}
 		else if(object instanceof Double) {
-			generateCorrectDouble(((Double) object).doubleValue(), context);
+			generateCorrectDouble((Double) object, context);
+		}
+		else if(object instanceof Float) {
+			generateCorrectFloat((Float) object, context);
 		}
 		else if(object instanceof Boolean) {
-			context.getMethodVisitor().visitInsn(((Boolean) object).booleanValue() ? Opcodes.ICONST_1 : Opcodes.ICONST_0);
+			context.getMethodVisitor().visitInsn((Boolean) object ? Opcodes.ICONST_1 : Opcodes.ICONST_0);
+		}
+		else if(object instanceof Character) {
+			generateCorrectInt((Character) object, context);
+		}
+		else if(object instanceof Long) {
+			generateCorrectLong((Long) object, context);
+		}
+		else if(object instanceof Byte) {
+			generateCorrectInt((Byte) object, context);
+		}
+		else if(object instanceof Short) {
+			generateCorrectInt((Short) object, context);
 		}
 		else {
 			context.getMethodVisitor().visitLdcInsn(object);

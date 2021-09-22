@@ -45,6 +45,11 @@ public enum TokenType {
 	INT,
 	DOUBLE,
 	BOOLEAN,
+	CHAR,
+	FLOAT,
+	LONG,
+	BYTE,
+	SHORT,
 	PUBLIC,
 	PRIVATE,
 	STATIC,
@@ -52,6 +57,7 @@ public enum TokenType {
 	// Literals
 	NUMBER,
 	STRING,
+	CHAR_LITERAL,
 
 	// Special
 	ERROR,

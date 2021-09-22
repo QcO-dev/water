@@ -9,9 +9,9 @@ import java.util.List;
  */
 public class Lexer {
 
-	//TODO Other primitives
 	/** TokenTypes which represent keywords for primitives, e.g. 'int' */
-	public static List<TokenType> PRIMITIVE_TYPES = List.of(TokenType.INT, TokenType.DOUBLE, TokenType.BOOLEAN);
+	public static List<TokenType> PRIMITIVE_TYPES = List.of(TokenType.INT, TokenType.DOUBLE,
+			TokenType.FLOAT, TokenType.BOOLEAN, TokenType.CHAR, TokenType.LONG, TokenType.BYTE, TokenType.SHORT);
 
 	private int index;
 	private int line;
@@ -68,6 +68,9 @@ public class Lexer {
 			else if(current == '"') {
 				token = string();
 			}
+			else if(current == '\'') {
+				token = character();
+			}
 			else {
 				TokenType type = switch (current) {
 					case '{' -> TokenType.LBRACE;
@@ -116,6 +119,19 @@ public class Lexer {
 	}
 
 	/**
+	 * Consumes a character literal
+	 * @return The character token, or error
+	 */
+	private Token character() {
+		advance();
+
+		// The character
+		advance();
+		TokenType type = current == '\'' ? TokenType.CHAR_LITERAL : TokenType.ERROR;
+		return makeToken(TokenType.CHAR_LITERAL);
+	}
+
+	/**
 	 * Consumes a single identifier, returning a token with a type of either IDENTIFIER or the corresponding keyword.
 	 * A identifier is valid if it starts with {@link #isValidIdentifierStart(char)}
 	 * and all following chars are correct, as defined by {@link #isValidIdentifierPart(char)}
@@ -149,7 +165,12 @@ public class Lexer {
 			case "void" -> TokenType.VOID;
 			case "int" -> TokenType.INT;
 			case "double" -> TokenType.DOUBLE;
+			case "float" -> TokenType.FLOAT;
 			case "boolean" -> TokenType.BOOLEAN;
+			case "char" -> TokenType.CHAR;
+			case "long" -> TokenType.LONG;
+			case "byte" -> TokenType.BYTE;
+			case "short" -> TokenType.SHORT;
 			case "public" -> TokenType.PUBLIC;
 			case "private" -> TokenType.PRIVATE;
 			case "static" -> TokenType.STATIC;
@@ -158,7 +179,7 @@ public class Lexer {
 	}
 
 	/**
-	 * Consumes a number, in form (regex): [0-9]+(\.[0-9]+)?
+	 * Consumes a number, in form (regex): [0-9]+(\.[0-9]+)?f?
 	 * @return The consumed token
 	 */
 	private Token number() {
@@ -166,6 +187,10 @@ public class Lexer {
 			advance();
 		}
 		if(!isAtEnd()) index--;
+		if(current == 'l' || current == 'L') {
+			advance();
+			return makeToken(TokenType.NUMBER);
+		}
 		if(match('.')) {
 			advance();
 			while (!isAtEnd() && isNumeric(current)) {
@@ -173,6 +198,7 @@ public class Lexer {
 			}
 			if(!isAtEnd()) index--;
 		}
+		if(current == 'f' || current == 'F') advance();
 		return makeToken(TokenType.NUMBER);
 	}
 

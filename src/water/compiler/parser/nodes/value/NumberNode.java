@@ -32,6 +32,12 @@ public class NumberNode implements Node {
 		else if(type.getSort() == Type.DOUBLE) {
 			TypeUtil.generateCorrectDouble(Double.parseDouble(value.getValue()), context.getContext());
 		}
+		else if(type.getSort() == Type.FLOAT) {
+			TypeUtil.generateCorrectFloat(Float.parseFloat(value.getValue()), context.getContext());
+		}
+		else if(type.getSort() == Type.LONG) {
+			TypeUtil.generateCorrectLong(Long.parseLong(value.getValue().substring(0, value.getValue().length() - 1)), context.getContext());
+		}
 	}
 
 	@Override
@@ -43,6 +49,8 @@ public class NumberNode implements Node {
 	public Object getConstantValue(Context context) {
 		if(type.getSort() == Type.INT) return Integer.parseInt(value.getValue());
 		else if(type.getSort() == Type.DOUBLE) return Double.parseDouble(value.getValue());
+		else if(type.getSort() == Type.FLOAT) return Float.parseFloat(value.getValue());
+		else if(type.getSort() == Type.LONG) return Long.parseLong(value.getValue().substring(0, value.getValue().length() - 1));
 
 		return null; // Unreachable
 	}
@@ -55,6 +63,8 @@ public class NumberNode implements Node {
 	private Type computeCorrectType() {
 		String rep = value.getValue();
 
+		if(rep.endsWith("l") || rep.endsWith("L")) return Type.LONG_TYPE;
+		if(rep.endsWith("f") || rep.endsWith("F")) return Type.FLOAT_TYPE;
 		if(rep.contains(".")) return Type.DOUBLE_TYPE;
 		return Type.INT_TYPE;
 	}

@@ -8,34 +8,36 @@ import water.compiler.lexer.Token;
 import water.compiler.parser.Node;
 import water.compiler.util.TypeUtil;
 
-public class StringNode implements Node {
+public class CharNode implements Node {
+
 	private final Token value;
 
-	public StringNode(Token value) {
+	public CharNode(Token value) {
 		this.value = value;
 	}
 
 	@Override
 	public void visit(FileContext context) throws SemanticException {
 		context.getContext().updateLine(value.getLine());
-		// Remove double quotes
-		String val = value.getValue().substring(1, value.getValue().length() - 1);
 
-		context.getContext().getMethodVisitor().visitLdcInsn(val);
+		// Remove double quotes
+		char val = value.getValue().charAt(1);
+
+		TypeUtil.generateCorrectInt(val, context.getContext());
 	}
 
 	@Override
 	public Type getReturnType(Context context) throws SemanticException {
-		return TypeUtil.STRING_TYPE;
+		return Type.CHAR_TYPE;
 	}
 
 	@Override
 	public Object getConstantValue(Context context) {
-		return value.getValue().substring(1, value.getValue().length() - 1);
+		return value.getValue().charAt(1);
 	}
 
 	@Override
-	public boolean isConstant(Context context) {
+	public boolean isConstant(Context context) throws SemanticException {
 		return true;
 	}
 
