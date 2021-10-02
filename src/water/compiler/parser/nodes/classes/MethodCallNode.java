@@ -128,7 +128,7 @@ public class MethodCallNode implements Node {
 						continue out;
 
 					if (TypeUtil.isAssignableFrom(expectArg, arg, context, false)) {
-						if (!expectArg.equals(arg)) changes++;
+						if (!expectArg.equals(arg)) changes += TypeUtil.assignChanges(expectArg, arg);
 					} else {
 						continue out;
 					}
