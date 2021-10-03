@@ -322,7 +322,7 @@ public class Parser {
 
 	/*
 	Precedence:
-	assignExpr =
+	assignExpr = += (etc)
 	equalityExpr == != === !==
 	relativeExpr < <= > >=
 	arithExpr + -
@@ -335,11 +335,11 @@ public class Parser {
 		return assignExpr();
 	}
 
-	/** Forms grammar: equalityExpr ('=' equalityExpr)* */
+	/** Forms grammar: equalityExpr (('=' | INPLACE_OPERATOR) equalityExpr)* */
 	private Node assignExpr() throws UnexpectedTokenException {
 		Node left = equalityExpr();
 
-		while(match(TokenType.EQUALS)) {
+		while(matchAssignment()) {
 			Token op = tokens.get(index - 1);
 
 			Node right = equalityExpr();
@@ -597,6 +597,16 @@ public class Parser {
 	}
 
 	//============================ Helpers =============================
+
+	private boolean matchAssignment() {
+		switch (tokens.get(index).getType()) {
+			case EQUALS, IN_PLUS, IN_MINUS, IN_MUL, IN_DIV, IN_MOD -> {
+				advance();
+				return true;
+			}
+		}
+		return false;
+	}
 
 	private boolean match(TokenType type) {
 		if(tokens.get(index).getType() != type) return false;

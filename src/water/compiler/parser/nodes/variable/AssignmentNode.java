@@ -9,8 +9,10 @@ import water.compiler.compiler.SemanticException;
 import water.compiler.compiler.Variable;
 import water.compiler.compiler.VariableType;
 import water.compiler.lexer.Token;
+import water.compiler.lexer.TokenType;
 import water.compiler.parser.LValue;
 import water.compiler.parser.Node;
+import water.compiler.parser.nodes.operation.ArithmeticOperationNode;
 import water.compiler.util.TypeUtil;
 
 import java.lang.reflect.Field;
@@ -75,7 +77,7 @@ public class AssignmentNode implements Node {
 			context.getContext().getMethodVisitor().visitVarInsn(Opcodes.ALOAD, 0);
 		}
 
-		right.visit(context);
+		generateSyntheticOperation().visit(context);
 
 		try {
 			if(!TypeUtil.isAssignableFrom(variable.getType(), returnType, context.getContext(), true)) {
@@ -109,7 +111,7 @@ public class AssignmentNode implements Node {
 
 		obj.visit(context);
 
-		right.visit(context);
+		generateSyntheticOperation().visit(context);
 
 		Type objType = getObjectType(obj, context.getContext());
 
@@ -207,13 +209,32 @@ public class AssignmentNode implements Node {
 		} catch (ClassNotFoundException e) {
 			throw new SemanticException(op, "Could not resolve class '%s'".formatted(e.getMessage()));
 		}
-		right.visit(context);
+		generateSyntheticOperation().visit(context);
 
 		MethodVisitor methodVisitor = context.getContext().getMethodVisitor();
 
 		if(!isExpressionStatementBody) methodVisitor.visitInsn(TypeUtil.getDupX2Opcode(returnType));
 
 		methodVisitor.visitInsn(arrayType.getElementType().getOpcode(Opcodes.IASTORE));
+	}
+
+	private Token makeSyntheticToken() {
+		return new Token(switch(op.getType()) {
+			case IN_PLUS -> TokenType.PLUS;
+			case IN_MINUS -> TokenType.MINUS;
+			case IN_MUL -> TokenType.STAR;
+			case IN_DIV -> TokenType.SLASH;
+			case IN_MOD -> TokenType.PERCENT;
+			default -> null;
+		}, op.getValue(), op.getLine(), op.getColumn());
+	}
+
+	private Node generateSyntheticOperation() {
+		if(op.getType() == TokenType.EQUALS) return right;
+
+		Token syntheticOp = makeSyntheticToken();
+		
+		return new ArithmeticOperationNode(left, syntheticOp, right);
 	}
 
 	private Type getObjectType(Node obj, Context context) throws SemanticException {

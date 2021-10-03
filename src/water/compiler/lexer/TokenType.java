@@ -22,6 +22,13 @@ public enum TokenType {
 	EXEQ, TRI_EXEQ,
 	LESS_EQ, GREATER_EQ,
 
+	// Inplace
+	IN_PLUS,
+	IN_MINUS,
+	IN_MUL,
+	IN_DIV,
+	IN_MOD,
+
 	// Identifiers / Keywords
 	IDENTIFIER,
 	IMPORT,
