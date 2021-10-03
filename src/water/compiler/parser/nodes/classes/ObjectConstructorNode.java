@@ -118,7 +118,7 @@ public class ObjectConstructorNode implements Node {
 						continue out;
 
 					if (TypeUtil.isAssignableFrom(expectArg, arg, context.getContext(), false)) {
-						if (!expectArg.equals(arg)) changes++;
+						if (!expectArg.equals(arg)) changes += TypeUtil.assignChanges(expectArg, arg);
 					} else {
 						continue out;
 					}
