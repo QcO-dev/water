@@ -18,12 +18,8 @@ public class ImportNode implements Node {
 	}
 
 	@Override
-	public void visit(FileContext context) throws SemanticException {
-		// Do nothing
-	}
-
-	@Override
-	public void preprocess(Context context) throws SemanticException {
+	public void visit(FileContext fc) throws SemanticException {
+		Context context = fc.getContext();
 		Type importType = type.getReturnType(context);
 
 		if(TypeUtil.isPrimitive(importType)) {
@@ -38,6 +34,19 @@ public class ImportNode implements Node {
 		}
 
 		context.getImports().put(klass.getSimpleName(), importType.getClassName());
+	}
+
+	@Override
+	public void preprocess(Context context) throws SemanticException {
+		Type importType = Type.getObjectType(type.toString());
+
+		if(TypeUtil.isPrimitive(importType)) {
+			throw new SemanticException(importTok, "Cannot import primitive type");
+		}
+
+		String className = importType.getClassName();
+		String simpleName = className.contains(".") ? className.substring(className.lastIndexOf('.')) : className;
+		context.getImports().put(simpleName, className);
 	}
 
 	@Override

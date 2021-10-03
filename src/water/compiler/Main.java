@@ -101,7 +101,10 @@ public class Main {
 
 				Parser parser = new Parser();
 				Node program = parser.parse(lexResult);
-				if(prettyPrint) System.out.println(ASTPrettyPrinter.prettyPrint(program));
+				if(prettyPrint) {
+					System.out.println("==== %s ====".formatted(path));
+					System.out.println(ASTPrettyPrinter.prettyPrint(program));
+				}
 
 				Context context = new Context();
 				context.setSource(path.getFileName().toString());

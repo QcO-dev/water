@@ -121,6 +121,8 @@ public class ProgramNode implements Node {
 
 	@Override
 	public String toString() {
-		return (packageName == null ? "" : packageName.toString()) + declarations.stream().map(Node::toString).collect(Collectors.joining());
+		return (packageName == null ? "" : packageName.toString())
+				+ imports.stream().map(Node::toString).collect(Collectors.joining())
+				+ declarations.stream().map(Node::toString).collect(Collectors.joining());
 	}
 }
