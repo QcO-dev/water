@@ -177,6 +177,11 @@ public class Parser {
 		if(staticModifier != null) throw new UnexpectedTokenException(staticModifier, "Cannot mark a class as static");
 		Token name = consume(TokenType.IDENTIFIER, "Expected class name");
 
+		Node superclass = null;
+		if(match(TokenType.COLON)) {
+			superclass = basicType();
+		}
+
 		consume(TokenType.LBRACE, "Expected '{' before class body");
 
 		LinkedList<Node> declarations = new LinkedList<>();
@@ -190,7 +195,7 @@ public class Parser {
 
 		consume(TokenType.RBRACE, "Expected '}' after class body");
 
-		return new ClassDeclarationNode(name, declarations, access);
+		return new ClassDeclarationNode(name, superclass, declarations, access);
 	}
 
 	/** Forms grammar: 'var' IDENTIFIER '=' expression ';' */
