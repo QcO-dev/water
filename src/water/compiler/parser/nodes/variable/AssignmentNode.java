@@ -151,6 +151,10 @@ public class AssignmentNode implements Node {
 				throw new SemanticException(name, "Cannot access static member from non-static object.");
 			}
 
+			if(Modifier.isFinal(f.getModifiers())) {
+				throw new SemanticException(name, "Cannot assign final member '%s'".formatted(name.getValue()));
+			}
+
 			context.getContext().getMethodVisitor().visitFieldInsn(TypeUtil.getMemberPutOpcode(f),
 					objType.getInternalName(), name.getValue(), Type.getType(f.getType()).getDescriptor());
 
