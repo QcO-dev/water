@@ -13,6 +13,7 @@ import water.compiler.lexer.TokenType;
 import water.compiler.parser.LValue;
 import water.compiler.parser.Node;
 import water.compiler.parser.nodes.operation.ArithmeticOperationNode;
+import water.compiler.parser.nodes.value.ThisNode;
 import water.compiler.util.TypeUtil;
 
 import java.lang.reflect.Field;
@@ -152,7 +153,8 @@ public class AssignmentNode implements Node {
 			}
 
 			if(Modifier.isFinal(f.getModifiers())) {
-				throw new SemanticException(name, "Cannot assign final member '%s'".formatted(name.getValue()));
+				if (!(obj instanceof ThisNode) || !context.getContext().isConstructor())
+					throw new SemanticException(name, "Cannot assign final member '%s'".formatted(name.getValue()));
 			}
 
 			context.getContext().getMethodVisitor().visitFieldInsn(TypeUtil.getMemberPutOpcode(f),

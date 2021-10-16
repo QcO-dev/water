@@ -110,6 +110,7 @@ public class FunctionDeclarationNode implements Node {
 
 	@Override
 	public void visit(FileContext context) throws SemanticException {
+		context.getContext().setConstructor(false);
 		MethodVisitor mv;
 		if(context.getContext().getType() == ContextType.GLOBAL) mv = makeGlobalFunction(context.getContext());
 		else mv = makeClassFunction(context.getContext());

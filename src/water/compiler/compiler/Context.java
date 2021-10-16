@@ -28,6 +28,7 @@ public class Context {
 	private WaterClassLoader loader;
 	private Scope scope;
 	private boolean isStaticMethod;
+	private boolean isConstructor;
 	private int currentLine;
 
 	public Context() {
@@ -126,6 +127,14 @@ public class Context {
 
 	public void setStaticMethod(boolean staticMethod) {
 		isStaticMethod = staticMethod;
+	}
+
+	public boolean isConstructor() {
+		return isConstructor;
+	}
+
+	public void setConstructor(boolean constructor) {
+		isConstructor = constructor;
 	}
 
 	public HashMap<String, String> getImports() {

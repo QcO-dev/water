@@ -35,6 +35,7 @@ public class ConstructorDeclarationNode implements Node {
 		MethodVisitor constructor = createConstructor(context);
 		context.setDefaultConstructor(constructor);
 		context.setMethodVisitor(constructor);
+		context.setConstructor(true);
 
 		for(Node variable : variablesInit) {
 			variable.visit(fc);
