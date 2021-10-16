@@ -16,7 +16,7 @@ import java.util.Properties;
 public class FileContext {
 	private final Node ast;
 	private final Context context;
-	private final Map<String, Class<?>> classMap;
+	private Map<String, Class<?>> classMap;
 	private final Path path;
 	private final Properties optimizations;
 
@@ -38,6 +38,10 @@ public class FileContext {
 
 	public Map<String, Class<?>> getClassMap() {
 		return classMap;
+	}
+
+	public void setClassMap(Map<String, Class<?>> classMap) {
+		this.classMap = classMap;
 	}
 
 	public Path getPath() {

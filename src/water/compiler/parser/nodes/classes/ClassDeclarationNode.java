@@ -31,6 +31,19 @@ public class ClassDeclarationNode implements Node {
 	}
 
 	@Override
+	public void buildClasses(Context context) {
+		ContextType prevType = context.getType();
+		String prevClass = context.getCurrentClass();
+
+		ClassWriter writer = initClass(context);
+
+		writer.visitEnd();
+
+		context.setType(prevType);
+		context.setCurrentClass(prevClass);
+	}
+
+	@Override
 	public void visit(FileContext fc) throws SemanticException {
 		Context context = fc.getContext();
 		ContextType prevType = context.getType();

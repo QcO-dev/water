@@ -87,11 +87,11 @@ public class Main {
 
 		WaterClassLoader classPathLoader = WaterClassLoader.loadClasspath(classpath);
 
-		WaterClassLoader loader = new WaterClassLoader(classPathLoader);
+		WaterClassLoader buildClassLoader = new WaterClassLoader(classPathLoader);
 
 		ArrayList<FileContext> fileContexts = new ArrayList<>();
 
-		// Lex, parse, and preprocess (build classes) for all files
+		// Lex, parse, and build classes for all files
 		for(Path path : paths) {
 			try {
 				String source = Files.readString(path);
@@ -102,23 +102,23 @@ public class Main {
 				Parser parser = new Parser();
 				Node program = parser.parse(lexResult);
 				if(prettyPrint) {
-					System.out.println("==== %s ====".formatted(path));
+					System.out.printf("==== %s ====%n", path);
 					System.out.println(ASTPrettyPrinter.prettyPrint(program));
 				}
 
 				Context context = new Context();
 				context.setSource(path.getFileName().toString());
-				context.setLoader(loader);
+				context.setLoader(buildClassLoader);
 				Scope redefinitionResolver = new Scope(context);
 				context.setScope(redefinitionResolver);
 
-				program.preprocess(context);
+				program.buildClasses(context);
 
 				Map<String, Class<?>> classMap = new HashMap<>();
 
 				for(Map.Entry<String, ClassWriter> classes : context.getClassWriterMap().entrySet()) {
 					byte[] klassRep = classes.getValue().toByteArray();
-					Class<?> klass = loader.define(classes.getKey().replace('/', '.'), klassRep);
+					Class<?> klass = buildClassLoader.define(classes.getKey().replace('/', '.'), klassRep);
 
 					classMap.put(classes.getKey(), klass);
 				}
@@ -130,6 +130,27 @@ public class Main {
 				error(-1, e.getErrorMessage(path.toString()));
 			} catch (SemanticException e) {
 				error(-2, e.getErrorMessage(path.toString()));
+			}
+		}
+
+		// preprocess all files
+		WaterClassLoader preprocessLoader = new WaterClassLoader(classPathLoader);
+		for(FileContext fc : fileContexts) {
+			try {
+				fc.getAst().preprocess(fc.getContext());
+
+				Map<String, Class<?>> classMap = new HashMap<>();
+
+				for(Map.Entry<String, ClassWriter> classes : fc.getContext().getClassWriterMap().entrySet()) {
+					byte[] klassRep = classes.getValue().toByteArray();
+					Class<?> klass = preprocessLoader.define(classes.getKey().replace('/', '.'), klassRep);
+
+					classMap.put(classes.getKey(), klass);
+				}
+				fc.setClassMap(classMap);
+				fc.getContext().setLoader(preprocessLoader);
+			} catch (SemanticException e) {
+				error(-2, e.getErrorMessage(fc.getPath().toString()));
 			}
 		}
 
