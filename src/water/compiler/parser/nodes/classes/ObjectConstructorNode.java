@@ -8,15 +8,12 @@ import water.compiler.compiler.Context;
 import water.compiler.compiler.SemanticException;
 import water.compiler.lexer.Token;
 import water.compiler.parser.Node;
-import water.compiler.util.Pair;
 import water.compiler.util.TypeUtil;
 import water.compiler.util.Unthrow;
 
 import java.lang.reflect.Constructor;
 import java.lang.reflect.Modifier;
-import java.util.ArrayList;
 import java.util.Arrays;
-import java.util.Comparator;
 import java.util.List;
 import java.util.stream.Collectors;
 
@@ -65,7 +62,8 @@ public class ObjectConstructorNode implements Node {
 		if(toCall == null) {
 			Constructor<?> declaredConstructor = TypeUtil.getConstructor(newToken, klass.getDeclaredConstructors(), argTypes, context.getContext());
 			if(declaredConstructor == null) throw new SemanticException(newToken, "Class '%s' cannot be instantiated with arguments: %s"
-					.formatted(TypeUtil.stringify(objType), Arrays.stream(argTypes).map(TypeUtil::stringify).collect(Collectors.joining(", "))));
+					.formatted(TypeUtil.stringify(objType),
+							argTypes.length == 0 ? "(none)" : Arrays.stream(argTypes).map(TypeUtil::stringify).collect(Collectors.joining(", "))));
 
 			int modifiers = declaredConstructor.getModifiers();
 			if(Modifier.isPrivate(modifiers) || Modifier.isProtected(modifiers)) {

@@ -53,19 +53,11 @@ public class ConstructorDeclarationNode implements Node {
 
 		constructor.visitVarInsn(Opcodes.ALOAD, 0);
 
-		createSuperCall(constructor, fc);
-
-		for(Node variable : variablesInit) {
-			variable.visit(fc);
-			context.setMethodVisitor(constructor);
-		}
-
-		ContextType prev = context.getType();
-		context.setType(ContextType.FUNCTION);
-
 		Scope outer = context.getScope();
 
-		context.setScope(outer.nextDepth());
+		Scope inner = outer.nextDepth();
+
+		context.setScope(inner);
 
 		context.getScope().setLocalIndex(1 + parameters.size());
 
@@ -74,6 +66,21 @@ public class ConstructorDeclarationNode implements Node {
 
 			context.getScope().addVariable(new Variable(VariableType.LOCAL, parameter.getFirst().getValue(), i + 1, parameter.getSecond().getReturnType(context), false));
 		}
+
+		createSuperCall(constructor, fc);
+
+		// Variables should not be in current constructor scope.
+		context.setScope(outer);
+
+		for(Node variable : variablesInit) {
+			variable.visit(fc);
+			context.setMethodVisitor(constructor);
+		}
+
+		ContextType prev = context.getType();
+		context.setType(ContextType.FUNCTION);
+		// Back into the constructor scope.
+		context.setScope(inner);
 
 		body.visit(fc);
 
