@@ -35,6 +35,7 @@ public class ConstructorDeclarationNode implements Node {
 		MethodVisitor constructor = createConstructor(context);
 		context.setDefaultConstructor(constructor);
 		context.setMethodVisitor(constructor);
+		context.setConstructor(true);
 
 		for(Node variable : variablesInit) {
 			variable.visit(fc);
@@ -49,7 +50,6 @@ public class ConstructorDeclarationNode implements Node {
 		context.setScope(outer.nextDepth());
 
 		context.getScope().setLocalIndex(1 + parameters.size());
-		context.getScope().addVariable(new Variable(VariableType.LOCAL, "this", 0, Type.getObjectType(context.getCurrentClass()), true));
 
 		for (int i = 0; i < parameters.size(); i++) {
 			Pair<Token, Node> parameter = parameters.get(i);

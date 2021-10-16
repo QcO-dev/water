@@ -198,13 +198,23 @@ public class Parser {
 		boolean isConst = tokens.get(index - 1).getType() == TokenType.CONST;
 		Token name = consume(TokenType.IDENTIFIER, "Expected variable name");
 
-		consume(TokenType.EQUALS, "Expected '=' after variable name");
+		Node type = null;
+		Node value = null;
+		if(match(TokenType.COLON)) {
+			type = type();
+			if(match(TokenType.EQUALS)) {
+				value = expression();
+			}
+		}
+		else {
+			consume(TokenType.EQUALS, "Expected '=' after variable name");
 
-		Node value = expression();
+			value = expression();
+		}
 
 		consume(TokenType.SEMI, "Expected ';' after variable assignment");
 
-		return new VariableDeclarationNode(name, value, isConst, access, staticModifier);
+		return new VariableDeclarationNode(name, type, value, isConst, access, staticModifier);
 	}
 
 	//============================ Statements =============================
@@ -460,7 +470,7 @@ public class Parser {
 		return left;
 	}
 
-	/** Forms grammar: NUMBER | STRING | CHAR_LITERAL | 'true' | 'false' | 'null' | newObject | grouping | variable */
+	/** Forms grammar: NUMBER | STRING | CHAR_LITERAL | 'true' | 'false' | 'null' | 'this' | newObject | grouping | variable */
 	private Node atom() throws UnexpectedTokenException {
 		Token tok = advance();
 		return switch(tok.getType()) {
@@ -469,6 +479,7 @@ public class Parser {
 			case CHAR_LITERAL -> new CharNode(tok);
 			case TRUE, FALSE -> new BooleanNode(tok);
 			case NULL -> new NullNode();
+			case THIS -> new ThisNode(tok);
 			case NEW -> newObject();
 			case LPAREN -> grouping();
 			case IDENTIFIER -> variable();

@@ -48,6 +48,7 @@ public enum TokenType {
 	TRUE,
 	FALSE,
 	NULL,
+	THIS,
 	VOID,
 	INT,
 	DOUBLE,

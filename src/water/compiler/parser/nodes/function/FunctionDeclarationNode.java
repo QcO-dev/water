@@ -110,6 +110,7 @@ public class FunctionDeclarationNode implements Node {
 
 	@Override
 	public void visit(FileContext context) throws SemanticException {
+		context.getContext().setConstructor(false);
 		MethodVisitor mv;
 		if(context.getContext().getType() == ContextType.GLOBAL) mv = makeGlobalFunction(context.getContext());
 		else mv = makeClassFunction(context.getContext());
@@ -214,7 +215,6 @@ public class FunctionDeclarationNode implements Node {
 		}
 		else {
 			context.getScope().setLocalIndex(1 + parameters.size());
-			context.getScope().addVariable(new Variable(VariableType.LOCAL, "this", 0, Type.getObjectType(context.getCurrentClass()), true));
 
 			for (int i = 0; i < parameters.size(); i++) {
 				Pair<Token, Node> parameter = parameters.get(i);

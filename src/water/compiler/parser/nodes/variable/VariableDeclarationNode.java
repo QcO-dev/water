@@ -7,17 +7,20 @@ import water.compiler.FileContext;
 import water.compiler.compiler.*;
 import water.compiler.lexer.Token;
 import water.compiler.parser.Node;
+import water.compiler.util.TypeUtil;
 
 public class VariableDeclarationNode implements Node {
 
 	private final Token name;
+	private final Node expectedType;
 	private final Node value;
 	private final boolean isConst;
 	private final Token access;
 	private final Token staticModifier;
 
-	public VariableDeclarationNode(Token name, Node value, boolean isConst, Token access, Token staticModifier) {
+	public VariableDeclarationNode(Token name, Node expectedType, Node value, boolean isConst, Token access, Token staticModifier) {
 		this.name = name;
+		this.expectedType = expectedType;
 		this.value = value;
 		this.isConst = isConst;
 		this.access = access;
@@ -30,7 +33,7 @@ public class VariableDeclarationNode implements Node {
 			if(context.getScope().lookupVariable(name.getValue()) != null) throw new SemanticException(name, "Redefinition of variable '%s' in global scope.".formatted(name.getValue()));
 			defineGetAndSet(true, true, context);
 
-			context.getScope().addVariable(new Variable(VariableType.STATIC, name.getValue(), "", value.getReturnType(context), isConst));
+			context.getScope().addVariable(new Variable(VariableType.STATIC, name.getValue(), "", computeExpectedType(context), isConst));
 		}
 		else if(context.getType() == ContextType.CLASS) {
 			Variable variable = context.getScope().lookupVariable(name.getValue());
@@ -40,13 +43,13 @@ public class VariableDeclarationNode implements Node {
 
 			defineGetAndSet(false, isStatic, context);
 
-			context.getScope().addVariable(new Variable(isStatic ? VariableType.STATIC : VariableType.CLASS, name.getValue(), context.getCurrentClass(), value.getReturnType(context), isConst));
+			context.getScope().addVariable(new Variable(isStatic ? VariableType.STATIC : VariableType.CLASS, name.getValue(), context.getCurrentClass(), computeExpectedType(context), isConst));
 		}
 	}
 
 	@Override
 	public void visit(FileContext context) throws SemanticException {
-		Type returnType = value.getReturnType(context.getContext());
+		Type returnType = computeExpectedType(context.getContext());
 
 		boolean buildConstructor = context.getContext().getConstructors() != null && context.getContext().getConstructors().size() != 0;
 
@@ -56,7 +59,7 @@ public class VariableDeclarationNode implements Node {
 			context.getContext().setMethodVisitor(context.getContext().getStaticMethodVisitor());
 			context.getContext().setStaticMethod(true);
 			context.getContext().updateLine(name.getLine());
-			value.visit(context);
+			generateValue(context);
 
 			context.getContext().getMethodVisitor().visitFieldInsn(Opcodes.PUTSTATIC, Type.getInternalName(context.getCurrentClass()), name.getValue(), returnType.getDescriptor());
 		}
@@ -70,7 +73,7 @@ public class VariableDeclarationNode implements Node {
 				throw new SemanticException(name, "Redefinition of variable '%s' in same scope.".formatted(name.getValue()));
 			}
 			context.getContext().updateLine(name.getLine());
-			value.visit(context);
+			generateValue(context);
 
 
 			Variable var = new Variable(VariableType.LOCAL, name.getValue(), scope.nextLocal(), returnType, isConst);
@@ -99,7 +102,7 @@ public class VariableDeclarationNode implements Node {
 			}
 			context.getContext().updateLine(name.getLine());
 
-			value.visit(context);
+			generateValue(context);
 
 			int setOpcode = isStatic(context.getContext()) ? Opcodes.PUTSTATIC : Opcodes.PUTFIELD;
 
@@ -116,11 +119,11 @@ public class VariableDeclarationNode implements Node {
 		int getOpcode = isStatic ? Opcodes.GETSTATIC : Opcodes.GETFIELD;
 		int setOpcode = isStatic ? Opcodes.PUTSTATIC : Opcodes.PUTFIELD;
 
-		context.getCurrentClassWriter().visitField(Opcodes.ACC_PRIVATE | staticMod | finalMod, name.getValue(), value.getReturnType(context).getDescriptor(), null, null);
+		context.getCurrentClassWriter().visitField(Opcodes.ACC_PRIVATE | staticMod | finalMod, name.getValue(), computeExpectedType(context).getDescriptor(), null, null);
 
 		String beanName = name.getValue().substring(0, 1).toUpperCase() + name.getValue().substring(1);
 
-		Type fieldType = value.getReturnType(context);
+		Type fieldType = computeExpectedType(context);
 		String descriptor = fieldType.getDescriptor();
 
 		// Getter
@@ -158,12 +161,53 @@ public class VariableDeclarationNode implements Node {
 		};
 	}
 
+	private Type computeExpectedType(Context context) throws SemanticException {
+		if(expectedType == null) {
+			return value.getReturnType(context);
+		}
+		else if(value == null) {
+			return expectedType.getReturnType(context);
+		}
+
+		Type expected = expectedType.getReturnType(context);
+		Type valueType = value.getReturnType(context);
+
+		try {
+			if(!TypeUtil.isAssignableFrom(expected, valueType, context, false)) {
+				throw new SemanticException(name, "Cannot assign type of '%s' to annotated type of '%s'.".formatted(
+						TypeUtil.stringify(valueType),
+						TypeUtil.stringify(expected)
+				));
+			}
+		} catch (ClassNotFoundException e) {
+			throw new SemanticException(name, "Could not resolve class '%s'".formatted(e.getMessage()));
+		}
+		return expected;
+	}
+
+	private void generateValue(FileContext context) throws SemanticException {
+		if(value == null) {
+			context.getContext().getMethodVisitor().visitInsn(TypeUtil.dummyConstant(expectedType.getReturnType(context.getContext())));
+		}
+		else {
+			value.visit(context);
+		}
+	}
+
 	public boolean isStatic(Context context) {
 		return staticModifier != null || context.getType() == ContextType.GLOBAL;
 	}
 
 	@Override
 	public String toString() {
-		return (isConst ? "const" : "var") + " %s = %s;".formatted(name.getValue(), value);
+		StringBuilder builder = new StringBuilder((isConst ? "const " : "var ") + name.getValue());
+		if(expectedType != null) {
+			builder.append(": ").append(expectedType.toString());
+		}
+		if(value != null) {
+			builder.append(" = ").append(value.toString());
+		}
+		builder.append(";");
+		return builder.toString();
 	}
 }
