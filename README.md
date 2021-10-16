@@ -14,3 +14,30 @@ Water is currently being developed by a single member team (me, myself, and I) s
 ## Dependencies
  - JCommander
  - ASM 9.0
+
+## Examples
+
+### Simple Hello World
+```typescript
+function main() {
+    println("Hello, World!");
+}
+```
+
+### Object Orientated Greeter
+```typescript
+class Greeter {
+    var name = "";
+
+    constructor(name: String) {
+        this.name = name;
+    }
+
+    function greet() = "Hello, " + name;
+}
+
+function main(args: String[]) {
+    println(new Greeter(args[0]).greet());
+}
+
+```
