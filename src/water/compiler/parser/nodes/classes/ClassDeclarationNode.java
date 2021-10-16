@@ -12,6 +12,8 @@ import water.compiler.parser.Node;
 import water.compiler.parser.nodes.variable.VariableDeclarationNode;
 import water.compiler.util.TypeUtil;
 
+import java.lang.reflect.Constructor;
+import java.lang.reflect.Modifier;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.stream.Collectors;
@@ -57,7 +59,7 @@ public class ClassDeclarationNode implements Node {
 
 		MethodVisitor defaultConstructor = null;
 		if(constructors.size() == 0) {
-			defaultConstructor = createDefaultConstructor(writer, context);
+			defaultConstructor = createDefaultConstructor(writer, context, true);
 
 			context.setDefaultConstructor(defaultConstructor);
 		}
@@ -131,7 +133,7 @@ public class ClassDeclarationNode implements Node {
 		}
 
 		if(constructors.size() == 0) {
-			defaultConstructor = createDefaultConstructor(writer, context);
+			defaultConstructor = createDefaultConstructor(writer, context, false);
 
 			context.setDefaultConstructor(defaultConstructor);
 		}
@@ -164,7 +166,7 @@ public class ClassDeclarationNode implements Node {
 		context.setCurrentClass(prevClass);
 	}
 
-	private ClassWriter initClass(String superclassName, Context context) throws SemanticException {
+	private ClassWriter initClass(String superclassName, Context context) {
 		context.setType(ContextType.CLASS);
 		int accessLevel = getAccessLevel();
 
@@ -195,12 +197,36 @@ public class ClassDeclarationNode implements Node {
 		return writer;
 	}
 
-	private MethodVisitor createDefaultConstructor(ClassWriter writer, Context context) throws SemanticException {
+	private MethodVisitor createDefaultConstructor(ClassWriter writer, Context context, boolean check) throws SemanticException {
 		MethodVisitor constructor = writer.visitMethod(Opcodes.ACC_PUBLIC, "<init>", "()V", null, null);
 		constructor.visitCode();
 
 		constructor.visitVarInsn(Opcodes.ALOAD, 0);
 		constructor.visitMethodInsn(Opcodes.INVOKESPECIAL, getSuperclassType(context).getInternalName(), "<init>", "()V", false);
+
+		if(check) {
+			boolean hasDefaultConstructor = false;
+			try {
+				Class<?> klass = Class.forName(getSuperclassType(context).getClassName(), false, context.getLoader());
+
+				for(Constructor<?> superConstructor : klass.getConstructors()) {
+					if(Modifier.isPrivate(superConstructor.getModifiers())) {
+						continue;
+					}
+					if(superConstructor.getParameterTypes().length != 0) {
+						continue;
+					}
+					hasDefaultConstructor = true;
+				}
+			} catch (ClassNotFoundException e) {
+				throw new SemanticException(name, "Could not resolve class '%s'".formatted(e.getMessage()));
+			}
+			if(!hasDefaultConstructor) {
+				throw new SemanticException(name, "Cannot create default constructor: superclass '%s' has no default.".formatted(
+						TypeUtil.stringify(getSuperclassType(context))
+				));
+			}
+		}
 
 		return constructor;
 	}
