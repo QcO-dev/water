@@ -37,7 +37,7 @@ public class ClassDeclarationNode implements Node {
 	}
 
 	@Override
-	public void buildClasses(Context context) throws SemanticException {
+	public void buildClasses(Context context) {
 		ContextType prevType = context.getType();
 		String prevClass = context.getCurrentClass();
 
@@ -54,6 +54,8 @@ public class ClassDeclarationNode implements Node {
 		Context context = fc.getContext();
 		ContextType prevType = context.getType();
 		String prevClass = context.getCurrentClass();
+		Type prevSuperClass = context.getCurrentSuperClass();
+		context.setCurrentSuperClass(getSuperclassType(context));
 
 		ClassWriter writer = initClass(getSuperclassType(context).getInternalName(), context);
 
@@ -76,11 +78,11 @@ public class ClassDeclarationNode implements Node {
 		context.setScope(outer.nextDepth());
 		context.getScope().updateCurrentClassMethods(fc);
 
+		context.setMethodVisitor(null);
 		for(Node declaration : declarations) {
 			declaration.visit(fc);
 		}
 
-		context.setConstructors(new ArrayList<>());
 		for(ConstructorDeclarationNode constructor : constructors) {
 			constructor.visit(fc);
 		}
@@ -102,6 +104,7 @@ public class ClassDeclarationNode implements Node {
 		context.setScope(outer);
 		context.setType(prevType);
 		context.setCurrentClass(prevClass);
+		context.setCurrentSuperClass(prevSuperClass);
 	}
 
 	@Override
@@ -115,6 +118,8 @@ public class ClassDeclarationNode implements Node {
 
 		ContextType prevType = context.getType();
 		String prevClass = context.getCurrentClass();
+		Type prevSuperClass = context.getCurrentSuperClass();
+		context.setCurrentSuperClass(getSuperclassType(context));
 
 		ClassWriter writer = initClass(getSuperclassType(context).getInternalName(), context);
 
@@ -137,13 +142,16 @@ public class ClassDeclarationNode implements Node {
 
 			context.setDefaultConstructor(defaultConstructor);
 		}
-		context.setConstructors(constructors);
 
+
+		context.setClassVariables(new ArrayList<>());
 		for (Node declaration : declarations) {
 			declaration.preprocess(context);
 			if (declaration instanceof VariableDeclarationNode && ((VariableDeclarationNode) declaration).isStatic(context))
 				staticVariableInit = true;
 		}
+		constructors.forEach(c -> c.setVariablesInit(context.getClassVariables()));
+		context.setClassVariables(null);
 
 		if(defaultConstructor != null) {
 			defaultConstructor.visitInsn(Opcodes.RETURN);
@@ -164,6 +172,7 @@ public class ClassDeclarationNode implements Node {
 		context.setScope(outer);
 		context.setType(prevType);
 		context.setCurrentClass(prevClass);
+		context.setCurrentSuperClass(prevSuperClass);
 	}
 
 	private ClassWriter initClass(String superclassName, Context context) {

@@ -163,13 +163,20 @@ public class Parser {
 		if(!isParsingClass) throw new UnexpectedTokenException(tokens.get(index - 1), "Cannot declare constructor outside of class");
 		if(staticModifier != null) throw new UnexpectedTokenException(staticModifier, "Cannot declare constructor as static");
 
+		Token constructor = tokens.get(index - 1);
+
 		List<Pair<Token, Node>> parameters = typedParameters("constructor parameter list");
+
+		List<Node> superArgs = null;
+		if(match(TokenType.COLON)) {
+			superArgs = arguments("super arguments");
+		}
 
 		consume(TokenType.LBRACE, "Expected '{' before constructor body");
 
 		Node body = blockStatement();
 
-		return new ConstructorDeclarationNode(access, parameters, body);
+		return new ConstructorDeclarationNode(access, constructor, superArgs, parameters, body);
 	}
 
 	/** Forms grammar: 'class' IDENTIFIER '{' declaration* '}' */
