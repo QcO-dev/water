@@ -31,6 +31,31 @@ public class ProgramNode implements Node {
 	}
 
 	@Override
+	public void buildClasses(Context context) throws SemanticException {
+		String packageN = packageName == null ? "" : packageName.getReturnType(context).getInternalName();
+		context.setPackageName(packageN);
+
+		String source = context.getSource();
+		String name = source.substring(0, source.indexOf(".")) + "Wtr";
+
+		standaloneClass = declarations.stream().filter(n -> !n.isNewClass()).toArray().length != 0;
+
+		ClassWriter writer = null;
+
+		if(standaloneClass) {
+			writer = initClass(name, context);
+		}
+
+		for(Node n : declarations) {
+			n.buildClasses(context);
+		}
+
+		if(standaloneClass) {
+			writer.visitEnd();
+		}
+	}
+
+	@Override
 	public void preprocess(Context context) throws SemanticException {
 		String packageN = packageName == null ? "" : packageName.getReturnType(context).getInternalName();
 		context.setPackageName(packageN);
@@ -99,7 +124,7 @@ public class ProgramNode implements Node {
 		}
 	}
 
-	private ClassWriter initClass(String name, Context context) throws SemanticException {
+	private ClassWriter initClass(String name, Context context) {
 		context.setType(ContextType.GLOBAL);
 
 		String source = context.getSource();
@@ -121,6 +146,8 @@ public class ProgramNode implements Node {
 
 	@Override
 	public String toString() {
-		return (packageName == null ? "" : packageName.toString()) + declarations.stream().map(Node::toString).collect(Collectors.joining());
+		return (packageName == null ? "" : packageName.toString())
+				+ imports.stream().map(Node::toString).collect(Collectors.joining())
+				+ declarations.stream().map(Node::toString).collect(Collectors.joining());
 	}
 }

@@ -25,4 +25,6 @@ public interface Node {
 	default Object[] getLValueData() { return new Object[0]; }
 	/** If the Node produces a new class file */
 	default boolean isNewClass() { return false; }
+	/** Create classes definitions */
+	default void buildClasses(Context context) throws SemanticException {}
 }

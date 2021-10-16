@@ -148,5 +148,6 @@ public class Context {
 
 	private void initImports() {
 		imports.put("String", "java.lang.String");
+		imports.put("Object", "java.lang.Object");
 	}
 }
