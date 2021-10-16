@@ -470,7 +470,7 @@ public class Parser {
 		return left;
 	}
 
-	/** Forms grammar: NUMBER | STRING | CHAR_LITERAL | 'true' | 'false' | 'null' | newObject | grouping | variable */
+	/** Forms grammar: NUMBER | STRING | CHAR_LITERAL | 'true' | 'false' | 'null' | 'this' | newObject | grouping | variable */
 	private Node atom() throws UnexpectedTokenException {
 		Token tok = advance();
 		return switch(tok.getType()) {
@@ -479,6 +479,7 @@ public class Parser {
 			case CHAR_LITERAL -> new CharNode(tok);
 			case TRUE, FALSE -> new BooleanNode(tok);
 			case NULL -> new NullNode();
+			case THIS -> new ThisNode(tok);
 			case NEW -> newObject();
 			case LPAREN -> grouping();
 			case IDENTIFIER -> variable();
