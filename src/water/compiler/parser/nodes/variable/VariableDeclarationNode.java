@@ -43,6 +43,8 @@ public class VariableDeclarationNode implements Node {
 
 			defineGetAndSet(false, isStatic, context);
 
+			context.getClassVariables().add(this);
+
 			context.getScope().addVariable(new Variable(isStatic ? VariableType.STATIC : VariableType.CLASS, name.getValue(), context.getCurrentClass(), computeExpectedType(context), isConst));
 		}
 	}
@@ -50,8 +52,6 @@ public class VariableDeclarationNode implements Node {
 	@Override
 	public void visit(FileContext context) throws SemanticException {
 		Type returnType = computeExpectedType(context.getContext());
-
-		boolean buildConstructor = context.getContext().getConstructors() != null && context.getContext().getConstructors().size() != 0;
 
 		if(context.getContext().getType() == ContextType.GLOBAL) {
 			defineGetAndSet(true, true, context.getContext());
@@ -84,22 +84,19 @@ public class VariableDeclarationNode implements Node {
 			if(returnType.getSize() == 2) scope.nextLocal();
 		}
 		else if(context.getContext().getType() == ContextType.CLASS) {
-			if(!buildConstructor) defineGetAndSet(false, isStatic(context.getContext()), context.getContext());
-
-			if(buildConstructor) {
-				context.getContext().getConstructors().forEach(c -> c.addVariable(this));
-				return;
-			}
+			if(!context.getContext().isConstructor()) defineGetAndSet(false, isStatic(context.getContext()), context.getContext());
 
 			if(isStatic(context.getContext())) {
 				context.getContext().setMethodVisitor(context.getContext().getStaticMethodVisitor());
 				context.getContext().setStaticMethod(true);
+				return;
 			}
-			else {
-				context.getContext().setMethodVisitor(context.getContext().getDefaultConstructor());
-				context.getContext().getMethodVisitor().visitVarInsn(Opcodes.ALOAD, 0);
-				context.getContext().setStaticMethod(false);
-			}
+
+			if(context.getContext().getMethodVisitor() == null) return;
+
+			context.getContext().setMethodVisitor(context.getContext().getDefaultConstructor());
+			context.getContext().getMethodVisitor().visitVarInsn(Opcodes.ALOAD, 0);
+			context.getContext().setStaticMethod(false);
 			context.getContext().updateLine(name.getLine());
 
 			generateValue(context);

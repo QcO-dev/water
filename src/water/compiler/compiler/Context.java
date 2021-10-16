@@ -3,8 +3,10 @@ package water.compiler.compiler;
 import org.objectweb.asm.ClassWriter;
 import org.objectweb.asm.Label;
 import org.objectweb.asm.MethodVisitor;
+import org.objectweb.asm.Type;
 import water.compiler.WaterClassLoader;
 import water.compiler.parser.nodes.classes.ConstructorDeclarationNode;
+import water.compiler.parser.nodes.variable.VariableDeclarationNode;
 
 import java.util.HashMap;
 import java.util.List;
@@ -21,15 +23,16 @@ public class Context {
 	private String source;
 	private String packageName;
 	private String currentClass;
-	private List<ConstructorDeclarationNode> constructors;
 	private MethodVisitor methodVisitor;
 	private MethodVisitor staticMethodVisitor;
 	private MethodVisitor defaultConstructor;
 	private WaterClassLoader loader;
 	private Scope scope;
+	private Type currentSuperClass;
 	private boolean isStaticMethod;
 	private boolean isConstructor;
 	private int currentLine;
+	private List<VariableDeclarationNode> classVariables;
 
 	public Context() {
 		this.imports = new HashMap<>();
@@ -67,14 +70,6 @@ public class Context {
 
 	public void setCurrentClass(String currentClass) {
 		this.currentClass = currentClass;
-	}
-
-	public List<ConstructorDeclarationNode> getConstructors() {
-		return constructors;
-	}
-
-	public void setConstructors(List<ConstructorDeclarationNode> constructors) {
-		this.constructors = constructors;
 	}
 
 	public Map<String, ClassWriter> getClassWriterMap() {
@@ -121,6 +116,14 @@ public class Context {
 		this.scope = scope;
 	}
 
+	public Type getCurrentSuperClass() {
+		return currentSuperClass;
+	}
+
+	public void setCurrentSuperClass(Type currentSuperClass) {
+		this.currentSuperClass = currentSuperClass;
+	}
+
 	public boolean isStaticMethod() {
 		return isStaticMethod;
 	}
@@ -135,6 +138,14 @@ public class Context {
 
 	public void setConstructor(boolean constructor) {
 		isConstructor = constructor;
+	}
+
+	public List<VariableDeclarationNode> getClassVariables() {
+		return classVariables;
+	}
+
+	public void setClassVariables(List<VariableDeclarationNode> classVariables) {
+		this.classVariables = classVariables;
 	}
 
 	public HashMap<String, String> getImports() {

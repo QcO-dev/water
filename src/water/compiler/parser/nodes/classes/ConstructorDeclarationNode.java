@@ -9,21 +9,30 @@ import water.compiler.compiler.*;
 import water.compiler.lexer.Token;
 import water.compiler.lexer.TokenType;
 import water.compiler.parser.Node;
+import water.compiler.parser.nodes.variable.VariableDeclarationNode;
 import water.compiler.util.Pair;
+import water.compiler.util.TypeUtil;
 import water.compiler.util.Unthrow;
 
+import java.lang.reflect.Constructor;
+import java.lang.reflect.Modifier;
 import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.List;
 import java.util.stream.Collectors;
 
 public class ConstructorDeclarationNode implements Node {
 	private final Token access;
+	private final Token constructorToken;
+	private final List<Node> superArgs;
 	private final List<Pair<Token, Node>> parameters;
 	private final Node body;
-	private final List<Node> variablesInit;
+	private List<VariableDeclarationNode> variablesInit;
 
-	public ConstructorDeclarationNode(Token access, List<Pair<Token, Node>> parameters, Node body) {
+	public ConstructorDeclarationNode(Token access, Token constructor, List<Node> superArgs, List<Pair<Token, Node>> parameters, Node body) {
 		this.access = access;
+		this.constructorToken = constructor;
+		this.superArgs = superArgs;
 		this.parameters = parameters;
 		this.body = body;
 		this.variablesInit = new ArrayList<>();
@@ -32,22 +41,23 @@ public class ConstructorDeclarationNode implements Node {
 	@Override
 	public void visit(FileContext fc) throws SemanticException {
 		Context context = fc.getContext();
-		MethodVisitor constructor = createConstructor(context);
+
+		ClassWriter writer = context.getCurrentClassWriter();
+		String args = parameters.stream().map(Pair::getSecond).map(n -> Unthrow.wrap(() -> n.getReturnType(context).getDescriptor())).collect(Collectors.joining());
+		MethodVisitor constructor = writer.visitMethod(getAccess(), "<init>", "(" + args + ")V", null, null);
+		constructor.visitCode();
+
 		context.setDefaultConstructor(constructor);
 		context.setMethodVisitor(constructor);
 		context.setConstructor(true);
 
-		for(Node variable : variablesInit) {
-			variable.visit(fc);
-			context.setMethodVisitor(constructor);
-		}
-
-		ContextType prev = context.getType();
-		context.setType(ContextType.FUNCTION);
+		constructor.visitVarInsn(Opcodes.ALOAD, 0);
 
 		Scope outer = context.getScope();
 
-		context.setScope(outer.nextDepth());
+		Scope inner = outer.nextDepth();
+
+		context.setScope(inner);
 
 		context.getScope().setLocalIndex(1 + parameters.size());
 
@@ -56,6 +66,21 @@ public class ConstructorDeclarationNode implements Node {
 
 			context.getScope().addVariable(new Variable(VariableType.LOCAL, parameter.getFirst().getValue(), i + 1, parameter.getSecond().getReturnType(context), false));
 		}
+
+		createSuperCall(constructor, fc);
+
+		// Variables should not be in current constructor scope.
+		context.setScope(outer);
+
+		for(Node variable : variablesInit) {
+			variable.visit(fc);
+			context.setMethodVisitor(constructor);
+		}
+
+		ContextType prev = context.getType();
+		context.setType(ContextType.FUNCTION);
+		// Back into the constructor scope.
+		context.setScope(inner);
 
 		body.visit(fc);
 
@@ -70,22 +95,69 @@ public class ConstructorDeclarationNode implements Node {
 
 	@Override
 	public void preprocess(Context context) throws SemanticException {
-		MethodVisitor constructor = createConstructor(context);
+		MethodVisitor constructor = createDefaultConstructor(context);
 		constructor.visitInsn(Opcodes.RETURN);
 		constructor.visitMaxs(0, 0);
 		constructor.visitEnd();
 	}
 
-	private MethodVisitor createConstructor(Context context) {
+	private MethodVisitor createDefaultConstructor(Context context) {
 		ClassWriter writer = context.getCurrentClassWriter();
 		String args = parameters.stream().map(Pair::getSecond).map(n -> Unthrow.wrap(() -> n.getReturnType(context).getDescriptor())).collect(Collectors.joining());
 		MethodVisitor constructor = writer.visitMethod(getAccess(), "<init>", "(" + args + ")V", null, null);
 		constructor.visitCode();
 
 		constructor.visitVarInsn(Opcodes.ALOAD, 0);
-		constructor.visitMethodInsn(Opcodes.INVOKESPECIAL, "java/lang/Object", "<init>", "()V", false);
+		constructor.visitMethodInsn(Opcodes.INVOKESPECIAL, context.getCurrentSuperClass().getInternalName(), "<init>", "()V", false);
 
 		return constructor;
+	}
+
+	private void createSuperCall(MethodVisitor methodVisitor, FileContext fc) throws SemanticException {
+		Context context = fc.getContext();
+		Type[] argTypes;
+		if(superArgs == null) {
+			argTypes = new Type[] {};
+		}
+		else {
+			argTypes = superArgs.stream().map(n -> Unthrow.wrap(() -> n.getReturnType(context))).toArray(Type[]::new);
+		}
+
+		Class<?> klass;
+
+		try {
+			klass = Class.forName(context.getCurrentSuperClass().getClassName(), false, context.getLoader());
+		} catch (ClassNotFoundException e) {
+			throw new SemanticException(constructorToken, "Could not resolve class '%s'".formatted(e.getMessage()));
+		}
+
+		Constructor<?>[] constructors = Arrays.stream(klass.getDeclaredConstructors()).filter(c -> !Modifier.isPrivate(c.getModifiers())).toArray(Constructor[]::new);
+
+		Constructor<?> superConstructor = TypeUtil.getConstructor(constructorToken, constructors, argTypes, context);
+
+		if(superConstructor == null) throw new SemanticException(constructorToken, "SuperClass '%s' cannot be instantiated with arguments: %s"
+				.formatted(TypeUtil.stringify(context.getCurrentSuperClass()),
+						Arrays.stream(argTypes).map(TypeUtil::stringify).collect(Collectors.joining(", "))));
+
+		Type[] resolvedTypes = Type.getType(superConstructor).getArgumentTypes();
+		if(superArgs != null) {
+			for (int i = 0; i < superArgs.size(); i++) {
+				Node arg = superArgs.get(i);
+				Type resolvedType = resolvedTypes[i];
+
+				arg.visit(fc);
+				try {
+					TypeUtil.isAssignableFrom(resolvedType, arg.getReturnType(context), context, true);
+				} catch (ClassNotFoundException e) {
+					throw new SemanticException(constructorToken, "Could not resolve class '%s'".formatted(e.getMessage()));
+				}
+			}
+		}
+
+		String descriptor = "(%s)V".formatted(Arrays.stream(
+				superConstructor.getParameterTypes()).map(Type::getType).map(Type::getDescriptor).collect(Collectors.joining()));
+
+		methodVisitor.visitMethodInsn(Opcodes.INVOKESPECIAL, context.getCurrentSuperClass().getInternalName(), "<init>", descriptor, false);
 	}
 
 	private int getAccess() {
@@ -93,8 +165,8 @@ public class ConstructorDeclarationNode implements Node {
 		return Opcodes.ACC_PRIVATE;
 	}
 
-	public void addVariable(Node variable) {
-		variablesInit.add(variable);
+	public void setVariablesInit(List<VariableDeclarationNode> variablesInit) {
+		this.variablesInit = variablesInit;
 	}
 
 	@Override

@@ -8,15 +8,12 @@ import water.compiler.compiler.Context;
 import water.compiler.compiler.SemanticException;
 import water.compiler.lexer.Token;
 import water.compiler.parser.Node;
-import water.compiler.util.Pair;
 import water.compiler.util.TypeUtil;
 import water.compiler.util.Unthrow;
 
 import java.lang.reflect.Constructor;
 import java.lang.reflect.Modifier;
-import java.util.ArrayList;
 import java.util.Arrays;
-import java.util.Comparator;
 import java.util.List;
 import java.util.stream.Collectors;
 
@@ -54,7 +51,7 @@ public class ObjectConstructorNode implements Node {
 			throw new SemanticException(newToken, "Could not resolve class '%s'".formatted(e.getMessage()));
 		}
 
-		Constructor<?> toCall = getConstructor(klass.getConstructors(), argTypes, context);
+		Constructor<?> toCall = TypeUtil.getConstructor(newToken, klass.getConstructors(), argTypes, context.getContext());
 
 		MethodVisitor methodVisitor = context.getContext().getMethodVisitor();
 		methodVisitor.visitTypeInsn(Opcodes.NEW, objType.getInternalName());
@@ -63,9 +60,10 @@ public class ObjectConstructorNode implements Node {
 		String descriptor;
 
 		if(toCall == null) {
-			Constructor<?> declaredConstructor = getConstructor(klass.getDeclaredConstructors(), argTypes, context);
+			Constructor<?> declaredConstructor = TypeUtil.getConstructor(newToken, klass.getDeclaredConstructors(), argTypes, context.getContext());
 			if(declaredConstructor == null) throw new SemanticException(newToken, "Class '%s' cannot be instantiated with arguments: %s"
-					.formatted(TypeUtil.stringify(objType), Arrays.stream(argTypes).map(TypeUtil::stringify).collect(Collectors.joining(", "))));
+					.formatted(TypeUtil.stringify(objType),
+							argTypes.length == 0 ? "(none)" : Arrays.stream(argTypes).map(TypeUtil::stringify).collect(Collectors.joining(", "))));
 
 			int modifiers = declaredConstructor.getModifiers();
 			if(Modifier.isPrivate(modifiers) || Modifier.isProtected(modifiers)) {
@@ -95,46 +93,6 @@ public class ObjectConstructorNode implements Node {
 
 		methodVisitor.visitMethodInsn(Opcodes.INVOKESPECIAL,
 				objType.getInternalName(), "<init>", descriptor, false);
-	}
-
-	private Constructor<?> getConstructor(Constructor<?>[] constructors, Type[] argTypes, FileContext context) throws SemanticException {
-
-		ArrayList<Pair<Integer, Constructor<?>>> possible = new ArrayList<>();
-
-		try {
-			out:
-			for (Constructor<?> c : constructors) {
-				Type[] expectArgs = Type.getType(c).getArgumentTypes();
-
-				if (expectArgs.length != argTypes.length) continue;
-
-				int changes = 0;
-
-				for (int i = 0; i < expectArgs.length; i++) {
-					Type expectArg = expectArgs[i];
-					Type arg = argTypes[i];
-
-					if (arg.getSort() == Type.VOID)
-						continue out;
-
-					if (TypeUtil.isAssignableFrom(expectArg, arg, context.getContext(), false)) {
-						if (!expectArg.equals(arg)) changes += TypeUtil.assignChanges(expectArg, arg);
-					} else {
-						continue out;
-					}
-				}
-				possible.add(new Pair<>(changes, c));
-			}
-		}
-		catch(ClassNotFoundException e) {
-			throw new SemanticException(newToken, "Could not resolve class '%s'".formatted(e.getMessage()));
-		}
-
-		if(possible.size() == 0) return null;
-
-		possible.sort(Comparator.comparingInt(Pair::getFirst));
-
-		return possible.get(0).getSecond();
 	}
 
 	@Override

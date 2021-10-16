@@ -163,6 +163,7 @@ public class Lexer {
 			case "false" -> TokenType.FALSE;
 			case "null" -> TokenType.NULL;
 			case "this" -> TokenType.THIS;
+			case "super" -> TokenType.SUPER;
 			case "void" -> TokenType.VOID;
 			case "int" -> TokenType.INT;
 			case "double" -> TokenType.DOUBLE;

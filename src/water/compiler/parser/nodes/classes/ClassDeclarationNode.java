@@ -3,13 +3,17 @@ package water.compiler.parser.nodes.classes;
 import org.objectweb.asm.ClassWriter;
 import org.objectweb.asm.MethodVisitor;
 import org.objectweb.asm.Opcodes;
+import org.objectweb.asm.Type;
 import water.compiler.FileContext;
 import water.compiler.compiler.*;
 import water.compiler.lexer.Token;
 import water.compiler.lexer.TokenType;
 import water.compiler.parser.Node;
 import water.compiler.parser.nodes.variable.VariableDeclarationNode;
+import water.compiler.util.TypeUtil;
 
+import java.lang.reflect.Constructor;
+import java.lang.reflect.Modifier;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.stream.Collectors;
@@ -17,13 +21,15 @@ import java.util.stream.Collectors;
 public class ClassDeclarationNode implements Node {
 
 	private final Token name;
+	private final Node superclass;
 	private final List<Node> declarations;
 	private final List<ConstructorDeclarationNode> constructors;
 	private final Token access;
 	private boolean staticVariableInit;
 
-	public ClassDeclarationNode(Token name, List<Node> declarations, Token access) {
+	public ClassDeclarationNode(Token name, Node superclass, List<Node> declarations, Token access) {
 		this.name = name;
+		this.superclass = superclass;
 		this.declarations = declarations;
 		this.constructors = new ArrayList<>();
 		this.access = access;
@@ -35,7 +41,7 @@ public class ClassDeclarationNode implements Node {
 		ContextType prevType = context.getType();
 		String prevClass = context.getCurrentClass();
 
-		ClassWriter writer = initClass(context);
+		ClassWriter writer = initClass("java/lang/Object", context);
 
 		writer.visitEnd();
 
@@ -48,12 +54,14 @@ public class ClassDeclarationNode implements Node {
 		Context context = fc.getContext();
 		ContextType prevType = context.getType();
 		String prevClass = context.getCurrentClass();
+		Type prevSuperClass = context.getCurrentSuperClass();
+		context.setCurrentSuperClass(getSuperclassType(context));
 
-		ClassWriter writer = initClass(context);
+		ClassWriter writer = initClass(getSuperclassType(context).getInternalName(), context);
 
 		MethodVisitor defaultConstructor = null;
 		if(constructors.size() == 0) {
-			defaultConstructor = createDefaultConstructor(writer);
+			defaultConstructor = createDefaultConstructor(writer, context, true);
 
 			context.setDefaultConstructor(defaultConstructor);
 		}
@@ -70,11 +78,11 @@ public class ClassDeclarationNode implements Node {
 		context.setScope(outer.nextDepth());
 		context.getScope().updateCurrentClassMethods(fc);
 
+		context.setMethodVisitor(null);
 		for(Node declaration : declarations) {
 			declaration.visit(fc);
 		}
 
-		context.setConstructors(new ArrayList<>());
 		for(ConstructorDeclarationNode constructor : constructors) {
 			constructor.visit(fc);
 		}
@@ -96,14 +104,24 @@ public class ClassDeclarationNode implements Node {
 		context.setScope(outer);
 		context.setType(prevType);
 		context.setCurrentClass(prevClass);
+		context.setCurrentSuperClass(prevSuperClass);
 	}
 
 	@Override
 	public void preprocess(Context context) throws SemanticException {
+		if(superclass != null) {
+			Type superclassType = superclass.getReturnType(context);
+			if(TypeUtil.isPrimitive(superclassType)) {
+				throw new SemanticException(name, "Superclass must not be a primitive (got '%s').".formatted(TypeUtil.stringify(superclassType)));
+			}
+		}
+
 		ContextType prevType = context.getType();
 		String prevClass = context.getCurrentClass();
+		Type prevSuperClass = context.getCurrentSuperClass();
+		context.setCurrentSuperClass(getSuperclassType(context));
 
-		ClassWriter writer = initClass(context);
+		ClassWriter writer = initClass(getSuperclassType(context).getInternalName(), context);
 
 		MethodVisitor defaultConstructor = null;
 
@@ -120,17 +138,20 @@ public class ClassDeclarationNode implements Node {
 		}
 
 		if(constructors.size() == 0) {
-			defaultConstructor = createDefaultConstructor(writer);
+			defaultConstructor = createDefaultConstructor(writer, context, false);
 
 			context.setDefaultConstructor(defaultConstructor);
 		}
-		context.setConstructors(constructors);
 
+
+		context.setClassVariables(new ArrayList<>());
 		for (Node declaration : declarations) {
 			declaration.preprocess(context);
 			if (declaration instanceof VariableDeclarationNode && ((VariableDeclarationNode) declaration).isStatic(context))
 				staticVariableInit = true;
 		}
+		constructors.forEach(c -> c.setVariablesInit(context.getClassVariables()));
+		context.setClassVariables(null);
 
 		if(defaultConstructor != null) {
 			defaultConstructor.visitInsn(Opcodes.RETURN);
@@ -151,9 +172,10 @@ public class ClassDeclarationNode implements Node {
 		context.setScope(outer);
 		context.setType(prevType);
 		context.setCurrentClass(prevClass);
+		context.setCurrentSuperClass(prevSuperClass);
 	}
 
-	private ClassWriter initClass(Context context) {
+	private ClassWriter initClass(String superclassName, Context context) {
 		context.setType(ContextType.CLASS);
 		int accessLevel = getAccessLevel();
 
@@ -175,7 +197,7 @@ public class ClassDeclarationNode implements Node {
 
 		ClassWriter writer = new ClassWriter(ClassWriter.COMPUTE_MAXS | ClassWriter.COMPUTE_FRAMES);
 
-		writer.visit(Opcodes.V9, accessLevel | Opcodes.ACC_SUPER, className, null, "java/lang/Object", null);
+		writer.visit(Opcodes.V9, accessLevel | Opcodes.ACC_SUPER, className, null, superclassName, null);
 
 		writer.visitSource(context.getSource(), null);
 
@@ -184,14 +206,43 @@ public class ClassDeclarationNode implements Node {
 		return writer;
 	}
 
-	private MethodVisitor createDefaultConstructor(ClassWriter writer) {
+	private MethodVisitor createDefaultConstructor(ClassWriter writer, Context context, boolean check) throws SemanticException {
 		MethodVisitor constructor = writer.visitMethod(Opcodes.ACC_PUBLIC, "<init>", "()V", null, null);
 		constructor.visitCode();
 
 		constructor.visitVarInsn(Opcodes.ALOAD, 0);
-		constructor.visitMethodInsn(Opcodes.INVOKESPECIAL, "java/lang/Object", "<init>", "()V", false);
+		constructor.visitMethodInsn(Opcodes.INVOKESPECIAL, getSuperclassType(context).getInternalName(), "<init>", "()V", false);
+
+		if(check) {
+			boolean hasDefaultConstructor = false;
+			try {
+				Class<?> klass = Class.forName(getSuperclassType(context).getClassName(), false, context.getLoader());
+
+				for(Constructor<?> superConstructor : klass.getConstructors()) {
+					if(Modifier.isPrivate(superConstructor.getModifiers())) {
+						continue;
+					}
+					if(superConstructor.getParameterTypes().length != 0) {
+						continue;
+					}
+					hasDefaultConstructor = true;
+				}
+			} catch (ClassNotFoundException e) {
+				throw new SemanticException(name, "Could not resolve class '%s'".formatted(e.getMessage()));
+			}
+			if(!hasDefaultConstructor) {
+				throw new SemanticException(name, "Cannot create default constructor: superclass '%s' has no default.".formatted(
+						TypeUtil.stringify(getSuperclassType(context))
+				));
+			}
+		}
 
 		return constructor;
+	}
+
+	private Type getSuperclassType(Context context) throws SemanticException {
+		if(superclass == null) return TypeUtil.OBJECT_TYPE;
+		return superclass.getReturnType(context);
 	}
 
 	private int getAccessLevel() {

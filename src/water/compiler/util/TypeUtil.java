@@ -3,11 +3,17 @@ package water.compiler.util;
 import org.objectweb.asm.MethodVisitor;
 import org.objectweb.asm.Opcodes;
 import org.objectweb.asm.Type;
+import water.compiler.FileContext;
 import water.compiler.compiler.Context;
+import water.compiler.compiler.SemanticException;
+import water.compiler.lexer.Token;
 
+import java.lang.reflect.Constructor;
 import java.lang.reflect.Field;
 import java.lang.reflect.Method;
 import java.lang.reflect.Modifier;
+import java.util.ArrayList;
+import java.util.Comparator;
 import java.util.List;
 
 /**
@@ -558,6 +564,57 @@ public class TypeUtil {
 		if(context.getImports().get(name) != null) className = context.getImports().get(name);
 
 		return Class.forName(className, false, context.getLoader());
+	}
+
+	/**
+	 *
+	 * Resolves the most suitable constructor, given a list of types.
+	 *
+	 * @param location The location of the token which leads to the calling of this constructor.
+	 * @param constructors All the possible constructors.
+	 * @param argTypes The argument types.
+	 * @param context The current context
+	 * @return The most suitable constructor
+	 * @throws SemanticException If a class cannot be resolved
+	 */
+	public static Constructor<?> getConstructor(Token location, Constructor<?>[] constructors, Type[] argTypes, Context context) throws SemanticException {
+
+		ArrayList<Pair<Integer, Constructor<?>>> possible = new ArrayList<>();
+
+		try {
+			out:
+			for (Constructor<?> c : constructors) {
+				Type[] expectArgs = Type.getType(c).getArgumentTypes();
+
+				if (expectArgs.length != argTypes.length) continue;
+
+				int changes = 0;
+
+				for (int i = 0; i < expectArgs.length; i++) {
+					Type expectArg = expectArgs[i];
+					Type arg = argTypes[i];
+
+					if (arg.getSort() == Type.VOID)
+						continue out;
+
+					if (TypeUtil.isAssignableFrom(expectArg, arg, context, false)) {
+						if (!expectArg.equals(arg)) changes += TypeUtil.assignChanges(expectArg, arg);
+					} else {
+						continue out;
+					}
+				}
+				possible.add(new Pair<>(changes, c));
+			}
+		}
+		catch(ClassNotFoundException e) {
+			throw new SemanticException(location, "Could not resolve class '%s'".formatted(e.getMessage()));
+		}
+
+		if(possible.size() == 0) return null;
+
+		possible.sort(Comparator.comparingInt(Pair::getFirst));
+
+		return possible.get(0).getSecond();
 	}
 
 	/*

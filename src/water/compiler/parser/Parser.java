@@ -163,19 +163,31 @@ public class Parser {
 		if(!isParsingClass) throw new UnexpectedTokenException(tokens.get(index - 1), "Cannot declare constructor outside of class");
 		if(staticModifier != null) throw new UnexpectedTokenException(staticModifier, "Cannot declare constructor as static");
 
+		Token constructor = tokens.get(index - 1);
+
 		List<Pair<Token, Node>> parameters = typedParameters("constructor parameter list");
+
+		List<Node> superArgs = null;
+		if(match(TokenType.COLON)) {
+			superArgs = arguments("super arguments");
+		}
 
 		consume(TokenType.LBRACE, "Expected '{' before constructor body");
 
 		Node body = blockStatement();
 
-		return new ConstructorDeclarationNode(access, parameters, body);
+		return new ConstructorDeclarationNode(access, constructor, superArgs, parameters, body);
 	}
 
 	/** Forms grammar: 'class' IDENTIFIER '{' declaration* '}' */
 	private Node classDeclaration(Token access, Token staticModifier) throws UnexpectedTokenException {
 		if(staticModifier != null) throw new UnexpectedTokenException(staticModifier, "Cannot mark a class as static");
 		Token name = consume(TokenType.IDENTIFIER, "Expected class name");
+
+		Node superclass = null;
+		if(match(TokenType.COLON)) {
+			superclass = basicType();
+		}
 
 		consume(TokenType.LBRACE, "Expected '{' before class body");
 
@@ -190,7 +202,7 @@ public class Parser {
 
 		consume(TokenType.RBRACE, "Expected '}' after class body");
 
-		return new ClassDeclarationNode(name, declarations, access);
+		return new ClassDeclarationNode(name, superclass, declarations, access);
 	}
 
 	/** Forms grammar: 'var' IDENTIFIER '=' expression ';' */
@@ -460,7 +472,7 @@ public class Parser {
 			if(tokens.get(index).getType() == TokenType.LPAREN) {
 				List<Node> args = arguments("method arguments");
 
-				left = new MethodCallNode(left, name, args);
+				left = new MethodCallNode(left, name, args, false);
 			}
 			else {
 				left = new MemberAccessNode(left, name);
@@ -480,6 +492,7 @@ public class Parser {
 			case TRUE, FALSE -> new BooleanNode(tok);
 			case NULL -> new NullNode();
 			case THIS -> new ThisNode(tok);
+			case SUPER -> superCall();
 			case NEW -> newObject();
 			case LPAREN -> grouping();
 			case IDENTIFIER -> variable();
@@ -530,6 +543,18 @@ public class Parser {
 			return new FunctionCallNode(name, args);
 		}
 		return new VariableAccessNode(name);
+	}
+
+	/** Forms grammar: 'super' '.' IDENTIFIER arguments */
+	private Node superCall() throws UnexpectedTokenException {
+		Token superTok = tokens.get(index - 1);
+		consume(TokenType.DOT, "Expected '.' after super.");
+
+		Token name = consume(TokenType.IDENTIFIER, "Expected super method name");
+
+		List<Node> args = arguments("super arguments");
+
+		return new MethodCallNode(new SuperNode(superTok), name, args, true);
 	}
 
 	//============================ Utility ============================
