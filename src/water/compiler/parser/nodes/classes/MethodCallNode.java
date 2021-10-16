@@ -27,12 +27,14 @@ public class MethodCallNode implements Node {
 	private final Token name;
 	private final List<Node> args;
 	private boolean isStaticAccess;
+	private boolean isSuper;
 
-	public MethodCallNode(Node left, Token name, List<Node> args) {
+	public MethodCallNode(Node left, Token name, List<Node> args, boolean isSuper) {
 		this.left = left;
 		this.name = name;
 		this.args = args;
 		this.isStaticAccess = false;
+		this.isSuper = isSuper;
 	}
 
 	@Override
@@ -72,7 +74,7 @@ public class MethodCallNode implements Node {
 		String descriptor = "(%s)%s"
 				.formatted(paramTypes.map(Type::getDescriptor).collect(Collectors.joining()), Type.getType(toCall.getReturnType()).getDescriptor());
 
-		context.getContext().getMethodVisitor().visitMethodInsn(TypeUtil.getInvokeOpcode(toCall), leftType.getInternalName(), name.getValue(), descriptor, false);
+		context.getContext().getMethodVisitor().visitMethodInsn(isSuper ? Opcodes.INVOKESPECIAL : TypeUtil.getInvokeOpcode(toCall), leftType.getInternalName(), name.getValue(), descriptor, false);
 
 	}
 

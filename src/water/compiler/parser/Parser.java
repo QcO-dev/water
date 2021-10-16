@@ -472,7 +472,7 @@ public class Parser {
 			if(tokens.get(index).getType() == TokenType.LPAREN) {
 				List<Node> args = arguments("method arguments");
 
-				left = new MethodCallNode(left, name, args);
+				left = new MethodCallNode(left, name, args, false);
 			}
 			else {
 				left = new MemberAccessNode(left, name);
@@ -492,6 +492,7 @@ public class Parser {
 			case TRUE, FALSE -> new BooleanNode(tok);
 			case NULL -> new NullNode();
 			case THIS -> new ThisNode(tok);
+			case SUPER -> superCall();
 			case NEW -> newObject();
 			case LPAREN -> grouping();
 			case IDENTIFIER -> variable();
@@ -542,6 +543,18 @@ public class Parser {
 			return new FunctionCallNode(name, args);
 		}
 		return new VariableAccessNode(name);
+	}
+
+	/** Forms grammar: 'super' '.' IDENTIFIER arguments */
+	private Node superCall() throws UnexpectedTokenException {
+		Token superTok = tokens.get(index - 1);
+		consume(TokenType.DOT, "Expected '.' after super.");
+
+		Token name = consume(TokenType.IDENTIFIER, "Expected super method name");
+
+		List<Node> args = arguments("super arguments");
+
+		return new MethodCallNode(new SuperNode(superTok), name, args, true);
 	}
 
 	//============================ Utility ============================
