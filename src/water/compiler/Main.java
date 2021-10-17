@@ -85,7 +85,15 @@ public class Main {
 
 		List<Path> paths = files.stream().map(Path::of).collect(Collectors.toList());
 
-		WaterClassLoader classPathLoader = WaterClassLoader.loadClasspath(classpath);
+		WaterClassLoader classPathLoader = null;
+		try {
+			classPathLoader = WaterClassLoader.loadClasspath(classpath);
+		} catch (IOException e) {
+			error(2, "Failed whilst reading classpath: %s\n%s".formatted(
+					classpath.stream().map(Path::toString).collect(Collectors.joining(File.pathSeparator)),
+					e.getLocalizedMessage()
+			));
+		}
 
 		WaterClassLoader buildClassLoader = new WaterClassLoader(classPathLoader);
 

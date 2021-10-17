@@ -1,19 +1,32 @@
 package water.compiler;
 
+import water.compiler.util.Unthrow;
+
+import java.io.ByteArrayOutputStream;
 import java.io.IOException;
+import java.io.InputStream;
+import java.io.OutputStream;
+import java.net.URL;
+import java.net.URLClassLoader;
 import java.nio.file.Files;
 import java.nio.file.Path;
-import java.util.List;
+import java.util.*;
+import java.util.jar.JarEntry;
+import java.util.jar.JarFile;
 import java.util.stream.Collectors;
 import java.util.stream.Stream;
 
 /**
  * The class loader used by the compiler to resolve classes, including those which are defined in the compiling classes
  */
-public class WaterClassLoader extends ClassLoader {
+public class WaterClassLoader extends URLClassLoader {
+
+	public WaterClassLoader(List<Path> classpath, ClassLoader parent) {
+		super(classpath.stream().filter(p -> !Files.isDirectory(p)).map(p -> Unthrow.wrap(() -> p.toFile().toURI().toURL())).toArray(URL[]::new), parent);
+	}
 
 	public WaterClassLoader(ClassLoader parent) {
-		super(parent);
+		super(new URL[0], parent);
 	}
 
 	/**
@@ -26,8 +39,8 @@ public class WaterClassLoader extends ClassLoader {
 		return defineClass(name, b, 0, b.length);
 	}
 
-	public static WaterClassLoader loadClasspath(List<Path> classpath) {
-		WaterClassLoader loader = new WaterClassLoader(ClassLoader.getSystemClassLoader());
+	public static WaterClassLoader loadClasspath(List<Path> classpath) throws IOException {
+		WaterClassLoader loader = new WaterClassLoader(classpath, ClassLoader.getSystemClassLoader());
 
 		if(classpath == null) return loader;
 
@@ -55,13 +68,7 @@ public class WaterClassLoader extends ClassLoader {
 
 						loader.define(className.toString(), classData);
 					}
-				} catch (IOException e) {
-					e.printStackTrace();
 				}
-			}
-			else {
-				//TODO JARS
-				throw new UnsupportedOperationException("Expected directory");
 			}
 		}
 		return loader;
