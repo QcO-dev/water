@@ -59,6 +59,17 @@ public class Lexer {
 				line++;
 				continue;
 			}
+			else if(current == '/' && (!isAtEnd() && text.charAt(index) == '*')) {
+				while(true) {
+					if(current == '*' && (!isAtEnd() && text.charAt(index) == '/')) {
+						advance();
+						break;
+					}
+					advance();
+					if(current == '\n') line++;
+				}
+				continue;
+			}
 			else if(isValidIdentifierStart(current)) {
 				token = identifier();
 			}
