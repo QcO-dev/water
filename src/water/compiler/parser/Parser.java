@@ -143,6 +143,14 @@ public class Parser {
 			else returnType = type();
 		}
 
+		List<Node> throwsList = null;
+		if(match(TokenType.THROWS)) {
+			throwsList = new ArrayList<>();
+			do {
+				throwsList.add(basicType());
+			} while(match(TokenType.COMMA));
+		}
+
 		Node body;
 		FunctionDeclarationNode.DeclarationType type = FunctionDeclarationNode.DeclarationType.STANDARD;
 
@@ -157,7 +165,7 @@ public class Parser {
 			body = blockStatement();
 		}
 
-		return new FunctionDeclarationNode(type, name, body, parameters, returnType, access, staticModifier);
+		return new FunctionDeclarationNode(type, name, body, parameters, returnType, throwsList, access, staticModifier);
 	}
 
 	/** Forms grammar: 'constructor' typedParameters blockStatement */
@@ -350,7 +358,7 @@ public class Parser {
 		return new ForStatementNode(forTok, init, condition, iterate, body);
 	}
 
-	/** */
+	/** Forms grammar: 'throw' expression ';' */
 	private Node throwStatement() throws UnexpectedTokenException {
 		Token throwTok = consume(TokenType.THROW, "Expected 'throw'");
 

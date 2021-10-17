@@ -27,18 +27,20 @@ public class FunctionDeclarationNode implements Node {
 	private final Node body;
 	private final List<Pair<Token, Node>> parameters;
 	private final Node returnTypeNode;
+	private final List<Node> throwsList;
 	private final Token access;
 	private final Token staticModifier;
 	private Type returnType;
 	private String descriptor;
 
-	public FunctionDeclarationNode(DeclarationType type, Token name, Node body, List<Pair<Token, Node>> parameters, Node returnType, Token access,
-								   Token staticModifier) {
+	public FunctionDeclarationNode(DeclarationType type, Token name, Node body, List<Pair<Token, Node>> parameters, Node returnType, List<Node> throwsList,
+								   Token access, Token staticModifier) {
 		this.type = type;
 		this.name = name;
 		this.body = body;
 		this.parameters = parameters;
 		this.returnTypeNode = returnType;
+		this.throwsList = throwsList;
 		this.access = access;
 		this.staticModifier = staticModifier;
 	}
@@ -94,8 +96,15 @@ public class FunctionDeclarationNode implements Node {
 
 			computeReturnType(context, false);
 
-			//TODO different return types
-
+			ArrayList<Function> functions = context.getScope().lookupFunctions(name.getValue());
+			if(functions != null) {
+				Type expectedReturnType = functions.get(0).getType().getReturnType();
+				if (!expectedReturnType.equals(returnType)) {
+					throw new SemanticException(name,
+							"Function overloads may only differ in parameters, not return type. (%s =/= %s)"
+									.formatted(TypeUtil.stringify(returnType), TypeUtil.stringify(expectedReturnType)));
+				}
+			}
 
 			makeDescriptor(context);
 		} catch (ClassNotFoundException e) {
@@ -156,13 +165,15 @@ public class FunctionDeclarationNode implements Node {
 
 	private MethodVisitor makeGlobalFunction(Context context) throws SemanticException {
 		int access = verifyAccess();
-		return context.getCurrentClassWriter().visitMethod(access | Opcodes.ACC_STATIC | Opcodes.ACC_FINAL, name.getValue(), descriptor, null, null);
+		String[] exceptions = computeExceptions(context);
+		return context.getCurrentClassWriter().visitMethod(access | Opcodes.ACC_STATIC | Opcodes.ACC_FINAL, name.getValue(), descriptor, null, exceptions);
 	}
 
 	private MethodVisitor makeClassFunction(Context context) throws SemanticException {
 		int access = verifyAccess();
 		int staticAccess = isStatic(context) ? Opcodes.ACC_STATIC : 0;
-		return context.getCurrentClassWriter().visitMethod(access | staticAccess, name.getValue(), descriptor, null, null);
+		String[] exceptions = computeExceptions(context);
+		return context.getCurrentClassWriter().visitMethod(access | staticAccess, name.getValue(), descriptor, null, exceptions);
 	}
 
 	private void finalizeMethod(MethodVisitor mv) {
@@ -232,7 +243,8 @@ public class FunctionDeclarationNode implements Node {
 				|| returnType.getSort() != Type.VOID) // return void
 			return;
 
-		MethodVisitor mainMethodWithArgs = context.getCurrentClassWriter().visitMethod(Opcodes.ACC_PUBLIC | Opcodes.ACC_STATIC | Opcodes.ACC_SYNTHETIC, "main", "([Ljava/lang/String;)V", null, null);
+		String[] exceptions = computeExceptions(context);
+		MethodVisitor mainMethodWithArgs = context.getCurrentClassWriter().visitMethod(Opcodes.ACC_PUBLIC | Opcodes.ACC_STATIC | Opcodes.ACC_SYNTHETIC, "main", "([Ljava/lang/String;)V", null, exceptions);
 
 		mainMethodWithArgs.visitCode();
 		mainMethodWithArgs.visitMethodInsn(Opcodes.INVOKESTATIC, context.getCurrentClass(), "main", "()V", false);
@@ -248,6 +260,29 @@ public class FunctionDeclarationNode implements Node {
 			case PRIVATE -> Opcodes.ACC_PRIVATE;
 			default -> throw new SemanticException(access, "Invalid access modifier for function '%s'".formatted(access.getValue()));
 		};
+	}
+
+	private String[] computeExceptions(Context context) throws SemanticException {
+		if(throwsList == null) return null;
+
+		ArrayList<String> exceptions = new ArrayList<>();
+		for(Node exception : throwsList) {
+			Type exceptionType = exception.getReturnType(context);
+
+			if(TypeUtil.isPrimitive(exceptionType)) {
+				throw new SemanticException(name, "Cannot throw primitive type (got '%s').".formatted(TypeUtil.stringify(exceptionType)));
+			}
+
+			try {
+				if(!TypeUtil.isAssignableFrom(Type.getObjectType("java/lang/Throwable"), exceptionType, context, false)) {
+					throw new SemanticException(name, "throw target must be an extension of java.lang.Throwable ('%s' cannot be cast).".formatted(TypeUtil.stringify(exceptionType)));
+				}
+			} catch (ClassNotFoundException e) {
+				throw new SemanticException(name, "Could not resolve class '%s'".formatted(e.getMessage()));
+			}
+			exceptions.add(exceptionType.getInternalName());
+		}
+		return exceptions.toArray(String[]::new);
 	}
 
 	private boolean isStatic(Context context) {
