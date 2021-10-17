@@ -179,6 +179,8 @@ public class Lexer {
 			case "static" -> TokenType.STATIC;
 			case "throw" -> TokenType.THROW;
 			case "throws" -> TokenType.THROWS;
+			case "try" -> TokenType.TRY;
+			case "catch" -> TokenType.CATCH;
 			default -> TokenType.IDENTIFIER;
 		});
 	}

@@ -1,12 +1,15 @@
 package water.compiler.parser;
 
+import water.compiler.compiler.SemanticException;
 import water.compiler.lexer.Lexer;
 import water.compiler.lexer.Token;
 import water.compiler.lexer.TokenType;
 import water.compiler.parser.nodes.block.BlockNode;
 import water.compiler.parser.nodes.block.ProgramNode;
 import water.compiler.parser.nodes.classes.*;
+import water.compiler.parser.nodes.exception.CatchNode;
 import water.compiler.parser.nodes.exception.ThrowNode;
+import water.compiler.parser.nodes.exception.TryNode;
 import water.compiler.parser.nodes.function.FunctionCallNode;
 import water.compiler.parser.nodes.function.FunctionDeclarationNode;
 import water.compiler.parser.nodes.operation.*;
@@ -130,7 +133,8 @@ public class Parser {
 		};
 	}
 
-	/** Forms grammar: 'function' IDENTIFIER typedParameters (('->' type)? blockStatement) | ('=' expression ';') */
+	/** Forms grammar: 'function' IDENTIFIER typedParameters (('->' type)? throws blockStatement) | (throws '=' expression ';')
+	 *  WHERE throws: ('throws' basicType (',' basicType*))? */
 	private Node functionDeclaration(Token access, Token staticModifier) throws UnexpectedTokenException {
 		Token name = consume(TokenType.IDENTIFIER, "Expected function name");
 
@@ -369,7 +373,41 @@ public class Parser {
 		return new ThrowNode(throwTok, throwee);
 	}
 
-	/** Forms grammar: blockStatement | ifStatement | whileStatement | forStatement | returnStatement | throwStatement | expressionStatement */
+	/** Forms grammar: 'try' blockStatement ('catch' '(' IDENTIFIER ':' basicType ')' blockStatement )+ */
+	private Node tryStatement() throws UnexpectedTokenException {
+		Token tryTok = consume(TokenType.TRY, "Expected 'try'");
+
+		consume(TokenType.LBRACE, "Expected '{' after try");
+
+		Node tryBody = blockStatement();
+
+		ArrayList<CatchNode> catchBlocks = new ArrayList<>();
+		while(match(TokenType.CATCH)) {
+			consume(TokenType.LPAREN, "Expected '(' after catch");
+
+			Token bindingName = consume(TokenType.IDENTIFIER, "Expected catch exception binding name");
+
+			consume(TokenType.COLON, "Expected ':' between name and type");
+
+			Node exceptionType = basicType();
+
+			consume(TokenType.RPAREN, "Expected ')' after catch clause");
+
+			consume(TokenType.LBRACE, "Expected '{' after catch clause");
+
+			Node catchBody = blockStatement();
+
+			catchBlocks.add(new CatchNode(bindingName, exceptionType, catchBody));
+		}
+
+		if(catchBlocks.size() == 0) {
+			throw new UnexpectedTokenException(tryTok, "'try' block must have at least one catch block");
+		}
+
+		return new TryNode(tryBody, catchBlocks);
+	}
+
+	/** Forms grammar: blockStatement | ifStatement | whileStatement | forStatement | returnStatement | throwStatement | tryStatement | expressionStatement */
 	private Node statement() throws UnexpectedTokenException {
 		return switch (tokens.get(index).getType()) {
 			case LBRACE -> { advance(); yield blockStatement(); }
@@ -378,6 +416,7 @@ public class Parser {
 			case FOR -> forStatement();
 			case RETURN -> returnStatement();
 			case THROW -> throwStatement();
+			case TRY -> tryStatement();
 			default -> expressionStatement();
 		};
 	}
