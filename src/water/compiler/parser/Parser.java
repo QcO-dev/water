@@ -122,6 +122,7 @@ public class Parser {
 		return switch(tok.getType()) {
 			case FUNCTION -> functionDeclaration(accessModifier, staticModifier);
 			case CLASS -> classDeclaration(accessModifier, staticModifier);
+			case ENUM -> enumDeclaration(accessModifier, staticModifier);
 			case CONSTRUCTOR -> constructorDeclaration(accessModifier, staticModifier);
 			case VAR, CONST -> variableDeclaration(accessModifier, staticModifier);
 			default -> throw new UnexpectedTokenException(tok, "Expected declaration");
@@ -203,6 +204,26 @@ public class Parser {
 		consume(TokenType.RBRACE, "Expected '}' after class body");
 
 		return new ClassDeclarationNode(name, superclass, declarations, access);
+	}
+
+	/** Forms grammar: 'enum' '{' (IDENTIFIER (',' IDENTIFIER)*)? '}' */
+	private Node enumDeclaration(Token access, Token staticModifier) throws UnexpectedTokenException {
+		if(staticModifier != null) throw new UnexpectedTokenException(staticModifier, "Cannot mark an enum as static");
+		Token name = consume(TokenType.IDENTIFIER, "Expected enum name");
+
+		consume(TokenType.LBRACE, "Expected '{' before enum body");
+
+		ArrayList<Token> fields = new ArrayList<>();
+
+		if(tokens.get(index).getType() != TokenType.RBRACE) {
+			do {
+				fields.add(consume(TokenType.IDENTIFIER, "Expected enum field name"));
+			} while (!isAtEnd() && match(TokenType.COMMA));
+		}
+
+		consume(TokenType.RBRACE, "Expected '}' after enum body");
+
+		return new EnumDeclarationNode(name, fields, access);
 	}
 
 	/** Forms grammar: 'var' IDENTIFIER '=' expression ';' */

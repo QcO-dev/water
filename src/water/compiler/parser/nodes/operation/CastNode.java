@@ -43,7 +43,8 @@ public class CastNode implements Node {
 			context.getMethodVisitor().visitTypeInsn(Opcodes.CHECKCAST, to.getInternalName());
 
 			try {
-				if(!TypeUtil.typeToClass(to, context).isAssignableFrom(TypeUtil.typeToClass(from, context)))
+				if(!TypeUtil.typeToClass(to, context).isAssignableFrom(TypeUtil.typeToClass(from, context))
+				&& !TypeUtil.typeToClass(from, context).isAssignableFrom(TypeUtil.typeToClass(to, context)))
 					throw new SemanticException(as, "Cannot cast type '%s' to '%s'".formatted(from.getClassName(), to.getClassName()));
 			} catch (ClassNotFoundException e) {
 				throw new SemanticException(as, "Could not resolve class '%s'".formatted(e.getMessage()));

@@ -37,6 +37,7 @@ public enum TokenType {
 	VAR,
 	CONST,
 	CLASS,
+	ENUM,
 	CONSTRUCTOR,
 	AS,
 	RETURN,
