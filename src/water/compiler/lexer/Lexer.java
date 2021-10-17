@@ -151,6 +151,7 @@ public class Lexer {
 			case "var" -> TokenType.VAR;
 			case "const" -> TokenType.CONST;
 			case "class" -> TokenType.CLASS;
+			case "enum" -> TokenType.ENUM;
 			case "constructor" -> TokenType.CONSTRUCTOR;
 			case "as" -> TokenType.AS;
 			case "return" -> TokenType.RETURN;
