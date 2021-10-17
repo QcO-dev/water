@@ -6,6 +6,7 @@ import water.compiler.lexer.TokenType;
 import water.compiler.parser.nodes.block.BlockNode;
 import water.compiler.parser.nodes.block.ProgramNode;
 import water.compiler.parser.nodes.classes.*;
+import water.compiler.parser.nodes.exception.ThrowNode;
 import water.compiler.parser.nodes.function.FunctionCallNode;
 import water.compiler.parser.nodes.function.FunctionDeclarationNode;
 import water.compiler.parser.nodes.operation.*;
@@ -349,7 +350,18 @@ public class Parser {
 		return new ForStatementNode(forTok, init, condition, iterate, body);
 	}
 
-	/** Forms grammar: blockStatement | ifStatement | whileStatement | forStatement | returnStatement | expressionStatement */
+	/** */
+	private Node throwStatement() throws UnexpectedTokenException {
+		Token throwTok = consume(TokenType.THROW, "Expected 'throw'");
+
+		Node throwee = expression();
+
+		consume(TokenType.SEMI, "Expected ';' after throw target");
+
+		return new ThrowNode(throwTok, throwee);
+	}
+
+	/** Forms grammar: blockStatement | ifStatement | whileStatement | forStatement | returnStatement | throwStatement | expressionStatement */
 	private Node statement() throws UnexpectedTokenException {
 		return switch (tokens.get(index).getType()) {
 			case LBRACE -> { advance(); yield blockStatement(); }
@@ -357,6 +369,7 @@ public class Parser {
 			case WHILE -> whileStatement();
 			case FOR -> forStatement();
 			case RETURN -> returnStatement();
+			case THROW -> throwStatement();
 			default -> expressionStatement();
 		};
 	}
