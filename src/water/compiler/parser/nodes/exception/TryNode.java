@@ -4,6 +4,7 @@ import org.objectweb.asm.Label;
 import org.objectweb.asm.MethodVisitor;
 import org.objectweb.asm.Opcodes;
 import water.compiler.FileContext;
+import water.compiler.compiler.Scope;
 import water.compiler.compiler.SemanticException;
 import water.compiler.parser.Node;
 
@@ -14,10 +15,12 @@ public class TryNode implements Node {
 
 	private final Node body;
 	private final List<CatchNode> catchBlocks;
+	private final Node finallyBlock;
 
-	public TryNode(Node body, List<CatchNode> catchBlocks) {
+	public TryNode(Node body, List<CatchNode> catchBlocks, Node finallyBlock) {
 		this.body = body;
 		this.catchBlocks = catchBlocks;
+		this.finallyBlock = finallyBlock;
 	}
 
 
@@ -26,18 +29,25 @@ public class TryNode implements Node {
 		Label from = new Label();
 		Label to = new Label();
 		Label end = new Label();
+		Label finallyLabel = new Label();
 
 		MethodVisitor visitor = context.getContext().getMethodVisitor();
 
 		for(CatchNode catchNode : catchBlocks) {
-			catchNode.updateMetadata(from, to);
+			catchNode.updateMetadata(from, to, finallyBlock, finallyLabel);
 			catchNode.generateTryCatchBlock(visitor, context.getContext());
 		}
 
+		if(finallyBlock != null) {
+			visitor.visitTryCatchBlock(from, to, finallyLabel, null);
+		}
+
 		visitor.visitLabel(from);
-		visitor.visitInsn(Opcodes.NOP);
 
 		body.visit(context);
+		if(finallyBlock != null) {
+			finallyBlock.visit(context);
+		}
 
 		visitor.visitLabel(to);
 
@@ -46,11 +56,35 @@ public class TryNode implements Node {
 			catchNode.visit(context);
 		}
 
+		if(finallyBlock != null) {
+			Scope outer = context.getContext().getScope();
+
+			context.getContext().setScope(outer.nextDepth());
+
+			int varIndex = context.getContext().getScope().nextLocal();
+
+			context.getContext().getMethodVisitor().visitJumpInsn(Opcodes.GOTO, end);
+
+			context.getContext().getMethodVisitor().visitLabel(finallyLabel);
+
+			context.getContext().getMethodVisitor().visitVarInsn(Opcodes.ASTORE, varIndex);
+
+			finallyBlock.visit(context);
+
+			context.getContext().getMethodVisitor().visitVarInsn(Opcodes.ALOAD, varIndex);
+
+			context.getContext().getMethodVisitor().visitInsn(Opcodes.ATHROW);
+
+			context.getContext().setScope(outer);
+		}
+
 		visitor.visitLabel(end);
 	}
 
 	@Override
 	public String toString() {
-		return "try %s%s".formatted(body, catchBlocks.stream().map(Node::toString).collect(Collectors.joining()));
+		return "try %s%s%s".formatted(body,
+				catchBlocks.stream().map(Node::toString).collect(Collectors.joining()),
+				finallyBlock == null ? "" : "finally " + finallyBlock);
 	}
 }

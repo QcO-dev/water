@@ -373,7 +373,8 @@ public class Parser {
 		return new ThrowNode(throwTok, throwee);
 	}
 
-	/** Forms grammar: 'try' blockStatement ('catch' '(' IDENTIFIER ':' basicType ')' blockStatement )+ */
+	/** Forms grammar: 'try' blockStatement (catch+) | (catch* 'finally' blockStatement)
+	 *  WHERE catch: 'catch' '(' IDENTIFIER ':' basicType ')' blockStatement */
 	private Node tryStatement() throws UnexpectedTokenException {
 		Token tryTok = consume(TokenType.TRY, "Expected 'try'");
 
@@ -400,11 +401,17 @@ public class Parser {
 			catchBlocks.add(new CatchNode(bindingName, exceptionType, catchBody));
 		}
 
-		if(catchBlocks.size() == 0) {
-			throw new UnexpectedTokenException(tryTok, "'try' block must have at least one catch block");
+		Node finallyBlock = null;
+		if(match(TokenType.FINALLY)) {
+			consume(TokenType.LBRACE, "Expected '{' after catch clause");
+			finallyBlock = blockStatement();
 		}
 
-		return new TryNode(tryBody, catchBlocks);
+		if(catchBlocks.size() == 0 && finallyBlock == null) {
+			throw new UnexpectedTokenException(tryTok, "'try' block must have at least one catch/finally block");
+		}
+
+		return new TryNode(tryBody, catchBlocks, finallyBlock);
 	}
 
 	/** Forms grammar: blockStatement | ifStatement | whileStatement | forStatement | returnStatement | throwStatement | tryStatement | expressionStatement */

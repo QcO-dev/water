@@ -19,6 +19,11 @@ public class CatchNode implements Node {
 	private Label to;
 	private Label handler;
 
+	private Node finallyBlock;
+	private Label finallyLabel;
+	private Label start;
+	private Label end;
+
 	public CatchNode(Token bindingName, Node exceptionType, Node body) {
 		this.bindingName = bindingName;
 		this.exceptionType = exceptionType;
@@ -37,21 +42,31 @@ public class CatchNode implements Node {
 		context.getContext().getScope().addVariable(new Variable(VariableType.LOCAL, bindingName.getValue(), varIndex, exception, true));
 
 		context.getContext().getMethodVisitor().visitLabel(handler);
+		context.getContext().getMethodVisitor().visitLabel(start);
 		context.getContext().getMethodVisitor().visitVarInsn(Opcodes.ASTORE, varIndex);
 
 		body.visit(context);
+		context.getContext().getMethodVisitor().visitLabel(end);
+		if(finallyBlock != null) finallyBlock.visit(context);
 
 		context.getContext().setScope(outer);
 	}
 
-	public void updateMetadata(Label from, Label to) {
+	public void updateMetadata(Label from, Label to, Node finallyBlock, Label finallyLabel) {
 		this.from = from;
 		this.to = to;
+		this.finallyBlock = finallyBlock;
+		this.finallyLabel = finallyLabel;
 	}
 
 	public void generateTryCatchBlock(MethodVisitor visitor, Context context) throws SemanticException {
 		handler = new Label();
+		start = new Label();
+		end = new Label();
 		visitor.visitTryCatchBlock(from, to, handler, getExceptionType(context).getInternalName());
+		if(finallyBlock != null) {
+			visitor.visitTryCatchBlock(start, end, finallyLabel, null);
+		}
 	}
 
 	private Type getExceptionType(Context context) throws SemanticException {

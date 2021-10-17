@@ -67,6 +67,7 @@ public enum TokenType {
 	THROWS,
 	TRY,
 	CATCH,
+	FINALLY,
 
 	// Literals
 	NUMBER,
