@@ -70,41 +70,6 @@ public class WaterClassLoader extends URLClassLoader {
 					}
 				}
 			}
-			/*else {
-				Set<String> entryNames = new HashSet<>();
-				try(JarFile jarFile = new JarFile(p.toFile())) {
-					Enumeration<JarEntry> e = jarFile.entries();
-
-					while(e.hasMoreElements()) {
-						JarEntry entry = e.nextElement();
-						if(entry.getName().endsWith(".class")) {
-							String className = entry.getName();
-
-							entryNames.add(className);
-						}
-					}
-
-					for(String entryName : entryNames) {
-						JarEntry entry = jarFile.getJarEntry(entryName);
-
-						String className = entryName.replace(".class", "").replace('/', '.');
-						InputStream input = jarFile.getInputStream(entry);
-
-						int nRead;
-						byte[] data = new byte[4];
-						ByteArrayOutputStream buffer = new ByteArrayOutputStream();
-
-						while ((nRead = input.readNBytes(data, 0, data.length)) != 0) {
-							buffer.write(data, 0, nRead);
-						}
-						buffer.flush();
-
-						byte[] bytes = buffer.toByteArray();
-
-						loader.define(className, bytes);
-					}
-				}
-			}*/
 		}
 		return loader;
 	}
