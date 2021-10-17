@@ -54,6 +54,7 @@ public class EnumDeclarationNode implements Node {
 
 		buildConstructor(writer, context);
 		buildValuesMethod(writer, enumType, context);
+		buildValueOfMethod(writer, enumType, context);
 
 		writer.visitEnd();
 		context.setCurrentClass(prevClass);
@@ -97,6 +98,14 @@ public class EnumDeclarationNode implements Node {
 			values.visitInsn(Opcodes.ARETURN);
 			values.visitMaxs(0, 0);
 			values.visitEnd();
+		}
+		{
+			MethodVisitor valueOf = writer.visitMethod(Opcodes.ACC_PUBLIC | Opcodes.ACC_STATIC, "valueOf", "(Ljava/lang/String;)" + enumType.getDescriptor(), null, null);
+			valueOf.visitCode();
+			valueOf.visitInsn(Opcodes.ACONST_NULL);
+			valueOf.visitInsn(Opcodes.ARETURN);
+			valueOf.visitMaxs(0, 0);
+			valueOf.visitEnd();
 		}
 
 		// Fields
@@ -214,6 +223,23 @@ public class EnumDeclarationNode implements Node {
 		values.visitInsn(Opcodes.ARETURN);
 		values.visitMaxs(0, 0);
 		values.visitEnd();
+	}
+
+	private void buildValueOfMethod(ClassWriter writer, Type enumType, Context context) {
+		MethodVisitor valueOf = writer.visitMethod(Opcodes.ACC_PUBLIC | Opcodes.ACC_STATIC, "valueOf", "(Ljava/lang/String;)" + enumType.getDescriptor(), null, null);
+		valueOf.visitCode();
+
+		context.setMethodVisitor(valueOf);
+		context.updateLine(name.getLine());
+
+		valueOf.visitLdcInsn(enumType);
+		valueOf.visitVarInsn(Opcodes.ALOAD, 0);
+		valueOf.visitMethodInsn(Opcodes.INVOKESTATIC, "java/lang/Enum", "valueOf", "(Ljava/lang/Class;Ljava/lang/String;)Ljava/lang/Enum;", false);
+		valueOf.visitTypeInsn(Opcodes.CHECKCAST, enumType.getInternalName());
+
+		valueOf.visitInsn(Opcodes.ARETURN);
+		valueOf.visitMaxs(0, 0);
+		valueOf.visitEnd();
 	}
 
 	private int getAccessLevel() {
