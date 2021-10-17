@@ -169,5 +169,7 @@ public class Context {
 	private void initImports() {
 		imports.put("String", "java.lang.String");
 		imports.put("Object", "java.lang.Object");
+		imports.put("Exception", "java.lang.Exception");
+		imports.put("Throwable", "java.lang.Throwable");
 	}
 }

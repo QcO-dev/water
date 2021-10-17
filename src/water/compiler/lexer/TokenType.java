@@ -63,6 +63,11 @@ public enum TokenType {
 	PUBLIC,
 	PRIVATE,
 	STATIC,
+	THROW,
+	THROWS,
+	TRY,
+	CATCH,
+	FINALLY,
 
 	// Literals
 	NUMBER,

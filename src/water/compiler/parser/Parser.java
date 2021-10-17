@@ -1,11 +1,15 @@
 package water.compiler.parser;
 
+import water.compiler.compiler.SemanticException;
 import water.compiler.lexer.Lexer;
 import water.compiler.lexer.Token;
 import water.compiler.lexer.TokenType;
 import water.compiler.parser.nodes.block.BlockNode;
 import water.compiler.parser.nodes.block.ProgramNode;
 import water.compiler.parser.nodes.classes.*;
+import water.compiler.parser.nodes.exception.CatchNode;
+import water.compiler.parser.nodes.exception.ThrowNode;
+import water.compiler.parser.nodes.exception.TryNode;
 import water.compiler.parser.nodes.function.FunctionCallNode;
 import water.compiler.parser.nodes.function.FunctionDeclarationNode;
 import water.compiler.parser.nodes.operation.*;
@@ -129,7 +133,8 @@ public class Parser {
 		};
 	}
 
-	/** Forms grammar: 'function' IDENTIFIER typedParameters (('->' type)? blockStatement) | ('=' expression ';') */
+	/** Forms grammar: 'function' IDENTIFIER typedParameters (('->' type)? throws blockStatement) | (throws '=' expression ';')
+	 *  WHERE throws: ('throws' basicType (',' basicType*))? */
 	private Node functionDeclaration(Token access, Token staticModifier) throws UnexpectedTokenException {
 		Token name = consume(TokenType.IDENTIFIER, "Expected function name");
 
@@ -140,6 +145,14 @@ public class Parser {
 		if(match(TokenType.ARROW)) {
 			if(match(TokenType.VOID)) returnType = new TypeNode(tokens.get(index - 1));
 			else returnType = type();
+		}
+
+		List<Node> throwsList = null;
+		if(match(TokenType.THROWS)) {
+			throwsList = new ArrayList<>();
+			do {
+				throwsList.add(basicType());
+			} while(match(TokenType.COMMA));
 		}
 
 		Node body;
@@ -156,7 +169,7 @@ public class Parser {
 			body = blockStatement();
 		}
 
-		return new FunctionDeclarationNode(type, name, body, parameters, returnType, access, staticModifier);
+		return new FunctionDeclarationNode(type, name, body, parameters, returnType, throwsList, access, staticModifier);
 	}
 
 	/** Forms grammar: 'constructor' typedParameters blockStatement */
@@ -349,7 +362,59 @@ public class Parser {
 		return new ForStatementNode(forTok, init, condition, iterate, body);
 	}
 
-	/** Forms grammar: blockStatement | ifStatement | whileStatement | forStatement | returnStatement | expressionStatement */
+	/** Forms grammar: 'throw' expression ';' */
+	private Node throwStatement() throws UnexpectedTokenException {
+		Token throwTok = consume(TokenType.THROW, "Expected 'throw'");
+
+		Node throwee = expression();
+
+		consume(TokenType.SEMI, "Expected ';' after throw target");
+
+		return new ThrowNode(throwTok, throwee);
+	}
+
+	/** Forms grammar: 'try' blockStatement (catch+) | (catch* 'finally' blockStatement)
+	 *  WHERE catch: 'catch' '(' IDENTIFIER ':' basicType ')' blockStatement */
+	private Node tryStatement() throws UnexpectedTokenException {
+		Token tryTok = consume(TokenType.TRY, "Expected 'try'");
+
+		consume(TokenType.LBRACE, "Expected '{' after try");
+
+		Node tryBody = blockStatement();
+
+		ArrayList<CatchNode> catchBlocks = new ArrayList<>();
+		while(match(TokenType.CATCH)) {
+			consume(TokenType.LPAREN, "Expected '(' after catch");
+
+			Token bindingName = consume(TokenType.IDENTIFIER, "Expected catch exception binding name");
+
+			consume(TokenType.COLON, "Expected ':' between name and type");
+
+			Node exceptionType = basicType();
+
+			consume(TokenType.RPAREN, "Expected ')' after catch clause");
+
+			consume(TokenType.LBRACE, "Expected '{' after catch clause");
+
+			Node catchBody = blockStatement();
+
+			catchBlocks.add(new CatchNode(bindingName, exceptionType, catchBody));
+		}
+
+		Node finallyBlock = null;
+		if(match(TokenType.FINALLY)) {
+			consume(TokenType.LBRACE, "Expected '{' after catch clause");
+			finallyBlock = blockStatement();
+		}
+
+		if(catchBlocks.size() == 0 && finallyBlock == null) {
+			throw new UnexpectedTokenException(tryTok, "'try' block must have at least one catch/finally block");
+		}
+
+		return new TryNode(tryBody, catchBlocks, finallyBlock);
+	}
+
+	/** Forms grammar: blockStatement | ifStatement | whileStatement | forStatement | returnStatement | throwStatement | tryStatement | expressionStatement */
 	private Node statement() throws UnexpectedTokenException {
 		return switch (tokens.get(index).getType()) {
 			case LBRACE -> { advance(); yield blockStatement(); }
@@ -357,6 +422,8 @@ public class Parser {
 			case WHILE -> whileStatement();
 			case FOR -> forStatement();
 			case RETURN -> returnStatement();
+			case THROW -> throwStatement();
+			case TRY -> tryStatement();
 			default -> expressionStatement();
 		};
 	}
