@@ -22,7 +22,7 @@ import java.util.stream.Stream;
 public class WaterClassLoader extends URLClassLoader {
 
 	public WaterClassLoader(List<Path> classpath, ClassLoader parent) {
-		super(classpath.stream().filter(p -> !Files.isDirectory(p)).map(p -> Unthrow.wrap(() -> p.toFile().toURI().toURL())).toArray(URL[]::new), parent);
+		super(classpath == null ? new URL[0] : classpath.stream().filter(p -> !Files.isDirectory(p)).map(p -> Unthrow.wrap(() -> p.toFile().toURI().toURL())).toArray(URL[]::new), parent);
 	}
 
 	public WaterClassLoader(ClassLoader parent) {
