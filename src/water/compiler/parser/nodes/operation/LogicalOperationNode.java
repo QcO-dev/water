@@ -29,7 +29,7 @@ public class LogicalOperationNode implements Node {
 		Type leftType = left.getReturnType(context.getContext());
 		Type rightType = right.getReturnType(context.getContext());
 
-		if(leftType.getSort() != Type.BOOLEAN || rightType.getSort() != Type.BOOLEAN) {
+		if(!verifyTypes(leftType, rightType)) {
 			throw new SemanticException(op, "Unsupported operation of '%s' between types '%s' and '%s'".formatted(
 					op.getValue(),
 					TypeUtil.stringify(leftType),
@@ -57,6 +57,36 @@ public class LogicalOperationNode implements Node {
 			visitor.visitInsn(Opcodes.ICONST_0);
 			visitor.visitLabel(end);
 		}
+	}
+
+	public boolean generateConditional(FileContext context, Label falseL) throws SemanticException {
+		Type leftType = left.getReturnType(context.getContext());
+		Type rightType = right.getReturnType(context.getContext());
+
+		if(!verifyTypes(leftType, rightType)) {
+			throw new SemanticException(op, "Unsupported operation of '%s' between types '%s' and '%s'".formatted(
+					op.getValue(),
+					TypeUtil.stringify(leftType),
+					TypeUtil.stringify(rightType)
+			));
+		}
+
+		MethodVisitor visitor = context.getContext().getMethodVisitor();
+
+		if(op.getType() == TokenType.LOGICAL_AND) {
+			left.visit(context);
+
+			visitor.visitJumpInsn(Opcodes.IFEQ, falseL);
+
+			right.visit(context);
+
+			visitor.visitJumpInsn(Opcodes.IFEQ, falseL);
+		}
+		return true;
+	}
+
+	private boolean verifyTypes(Type left, Type right) {
+		return left.getSort() == Type.BOOLEAN && right.getSort() == Type.BOOLEAN;
 	}
 
 	@Override
