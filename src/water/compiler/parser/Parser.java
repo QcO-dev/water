@@ -433,6 +433,8 @@ public class Parser {
 	/*
 	Precedence:
 	assignExpr = += (etc)
+	logicalOrExpr ||
+	logicalAndExpr &&
 	equalityExpr == != === !==
 	relativeExpr < <= > >=
 	arithExpr + -
@@ -445,18 +447,32 @@ public class Parser {
 		return assignExpr();
 	}
 
-	/** Forms grammar: logicalAndExpr (('=' | INPLACE_OPERATOR) logicalAndExpr)* */
+	/** Forms grammar: logicalOrExpr (('=' | INPLACE_OPERATOR) logicalOrExpr)* */
 	private Node assignExpr() throws UnexpectedTokenException {
-		Node left = logicalAndExpr();
+		Node left = logicalOrExpr();
 
 		while(matchAssignment()) {
 			Token op = tokens.get(index - 1);
 
-			Node right = logicalAndExpr();
+			Node right = logicalOrExpr();
 
 			left = new AssignmentNode(left, op, right);
 		}
 
+		return left;
+	}
+
+	/** Forms grammar: logicalAndExpr ('||' logicalAndExpr)* */
+	private Node logicalOrExpr() throws UnexpectedTokenException {
+		Node left = logicalAndExpr();
+
+		while(match(TokenType.LOGICAL_OR)) {
+			Token op = tokens.get(index - 1);
+
+			Node right = logicalAndExpr();
+
+			left = new LogicalOperationNode(left, op, right);
+		}
 		return left;
 	}
 

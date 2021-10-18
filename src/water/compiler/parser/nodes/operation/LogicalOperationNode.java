@@ -57,6 +57,27 @@ public class LogicalOperationNode implements Node {
 			visitor.visitInsn(Opcodes.ICONST_0);
 			visitor.visitLabel(end);
 		}
+		else if(op.getType() == TokenType.LOGICAL_OR) {
+			Label trueL = new Label();
+			Label falseL = new Label();
+			Label end = new Label();
+
+			left.visit(context);
+
+			visitor.visitJumpInsn(Opcodes.IFNE, trueL);
+
+			right.visit(context);
+
+			visitor.visitJumpInsn(Opcodes.IFEQ, falseL);
+
+			visitor.visitLabel(trueL);
+			visitor.visitInsn(Opcodes.ICONST_1);
+			visitor.visitJumpInsn(Opcodes.GOTO, end);
+
+			visitor.visitLabel(falseL);
+			visitor.visitInsn(Opcodes.ICONST_0);
+			visitor.visitLabel(end);
+		}
 	}
 
 	public boolean generateConditional(FileContext context, Label falseL) throws SemanticException {
