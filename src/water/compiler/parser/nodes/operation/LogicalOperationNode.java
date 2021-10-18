@@ -103,6 +103,17 @@ public class LogicalOperationNode implements Node {
 
 			visitor.visitJumpInsn(Opcodes.IFEQ, falseL);
 		}
+		else if(op.getType() == TokenType.LOGICAL_OR) {
+			Label end = new Label();
+			left.visit(context);
+
+			visitor.visitJumpInsn(Opcodes.IFNE, end);
+
+			right.visit(context);
+
+			visitor.visitJumpInsn(Opcodes.IFEQ, falseL);
+			visitor.visitLabel(end);
+		}
 		return true;
 	}
 
