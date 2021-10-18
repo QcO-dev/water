@@ -9,6 +9,7 @@ import water.compiler.compiler.SemanticException;
 import water.compiler.lexer.Token;
 import water.compiler.parser.Node;
 import water.compiler.parser.nodes.operation.EqualityOperationNode;
+import water.compiler.parser.nodes.operation.LogicalOperationNode;
 import water.compiler.parser.nodes.operation.RelativeOperationNode;
 import water.compiler.util.TypeUtil;
 
@@ -48,6 +49,9 @@ public class IfStatementNode implements Node {
 		}
 		else if(condition instanceof RelativeOperationNode) {
 			((RelativeOperationNode) condition).generateConditional(context, falseL);
+		}
+		else if(condition instanceof LogicalOperationNode) {
+			((LogicalOperationNode) condition).generateConditional(context, falseL);
 		}
 		else {
 			condition.visit(context);

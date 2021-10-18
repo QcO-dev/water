@@ -10,6 +10,7 @@ import water.compiler.compiler.SemanticException;
 import water.compiler.lexer.Token;
 import water.compiler.parser.Node;
 import water.compiler.parser.nodes.operation.EqualityOperationNode;
+import water.compiler.parser.nodes.operation.LogicalOperationNode;
 import water.compiler.parser.nodes.operation.RelativeOperationNode;
 import water.compiler.util.OptimizationUtil;
 import water.compiler.util.TypeUtil;
@@ -58,6 +59,9 @@ public class ForStatementNode implements Node {
 		}
 		else if(condition instanceof RelativeOperationNode) {
 			((RelativeOperationNode) condition).generateConditional(context, end);
+		}
+		else if(condition instanceof LogicalOperationNode) {
+			((LogicalOperationNode) condition).generateConditional(context, end);
 		}
 		else {
 			condition.visit(context);

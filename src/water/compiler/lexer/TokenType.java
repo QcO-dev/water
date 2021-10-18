@@ -15,12 +15,16 @@ public enum TokenType {
 	EQUALS,
 	EXCLAIM,
 	LESS, GREATER,
+	BITWISE_AND,
+	BITWISE_OR,
 
 	// Multi character
 	ARROW,
 	EQEQ, TRI_EQ,
 	EXEQ, TRI_EXEQ,
 	LESS_EQ, GREATER_EQ,
+	LOGICAL_AND,
+	LOGICAL_OR,
 
 	// Inplace
 	IN_PLUS,
