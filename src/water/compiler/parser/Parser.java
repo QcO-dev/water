@@ -445,18 +445,32 @@ public class Parser {
 		return assignExpr();
 	}
 
-	/** Forms grammar: equalityExpr (('=' | INPLACE_OPERATOR) equalityExpr)* */
+	/** Forms grammar: logicalAndExpr (('=' | INPLACE_OPERATOR) logicalAndExpr)* */
 	private Node assignExpr() throws UnexpectedTokenException {
-		Node left = equalityExpr();
+		Node left = logicalAndExpr();
 
 		while(matchAssignment()) {
 			Token op = tokens.get(index - 1);
 
-			Node right = equalityExpr();
+			Node right = logicalAndExpr();
 
 			left = new AssignmentNode(left, op, right);
 		}
 
+		return left;
+	}
+
+	/** Forms grammar: equalityExpr ('&&' equalityExpr)* */
+	private Node logicalAndExpr() throws UnexpectedTokenException {
+		Node left = equalityExpr();
+
+		while(match(TokenType.LOGICAL_AND)) {
+			Token op = tokens.get(index - 1);
+
+			Node right = equalityExpr();
+
+			left = new LogicalOperationNode(left, op, right);
+		}
 		return left;
 	}
 

@@ -103,6 +103,7 @@ public class Lexer {
 					case '!' -> next('=') ? (next('=') ? TokenType.TRI_EXEQ : TokenType.EXEQ) : TokenType.EXCLAIM;
 					case '<' -> next('=') ? TokenType.LESS_EQ : TokenType.LESS;
 					case '>' -> next('=') ? TokenType.GREATER_EQ : TokenType.GREATER;
+					case '&' -> next('&') ? TokenType.LOGICAL_AND : TokenType.BITWISE_AND;
 					default -> TokenType.ERROR;
 				};
 				token = makeToken(type);
