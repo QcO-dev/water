@@ -108,7 +108,7 @@ public class Parser {
 
 	/**
 	 *  Declarations used within classes / top level
-	 *  Forms grammar: functionDeclaration | variableDeclaration
+	 *  Forms grammar: functionDeclaration | variableDeclaration | classDeclaration | enumDeclaration | constructorDeclaration
 	 */
 	private Node declaration() throws UnexpectedTokenException {
 		Token accessModifier = null;
@@ -172,7 +172,7 @@ public class Parser {
 		return new FunctionDeclarationNode(type, name, body, parameters, returnType, throwsList, access, staticModifier);
 	}
 
-	/** Forms grammar: 'constructor' typedParameters blockStatement */
+	/** Forms grammar: 'constructor' typedParameters (':' arguments)? blockStatement */
 	private Node constructorDeclaration(Token access, Token staticModifier) throws UnexpectedTokenException {
 		if(!isParsingClass) throw new UnexpectedTokenException(tokens.get(index - 1), "Cannot declare constructor outside of class");
 		if(staticModifier != null) throw new UnexpectedTokenException(staticModifier, "Cannot declare constructor as static");
@@ -239,7 +239,7 @@ public class Parser {
 		return new EnumDeclarationNode(name, fields, access);
 	}
 
-	/** Forms grammar: 'var' IDENTIFIER '=' expression ';' */
+	/** Forms grammar: ('var' | 'const') IDENTIFIER '=' expression ';' */
 	private Node variableDeclaration(Token access, Token staticModifier) throws UnexpectedTokenException {
 		boolean isConst = tokens.get(index - 1).getType() == TokenType.CONST;
 		Token name = consume(TokenType.IDENTIFIER, "Expected variable name");
@@ -530,9 +530,9 @@ public class Parser {
 		return left;
 	}
 
-	/** Forms grammar: '!' unary | atom */
+	/** Forms grammar: ('!' | '-') unary | memberAccess */
 	private Node unary() throws UnexpectedTokenException {
-		if(match(TokenType.EXCLAIM)) {
+		if(match(TokenType.EXCLAIM) || match(TokenType.MINUS)) {
 			Token op = tokens.get(index - 1);
 
 			Node right = unary();
@@ -570,7 +570,7 @@ public class Parser {
 		return left;
 	}
 
-	/** Forms grammar: NUMBER | STRING | CHAR_LITERAL | 'true' | 'false' | 'null' | 'this' | newObject | grouping | variable */
+	/** Forms grammar: NUMBER | STRING | CHAR_LITERAL | 'true' | 'false' | 'null' | 'this' | superCall | newObject | grouping | variable */
 	private Node atom() throws UnexpectedTokenException {
 		Token tok = advance();
 		return switch(tok.getType()) {
