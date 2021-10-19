@@ -21,7 +21,20 @@ public class StringNode implements Node {
 		// Remove double quotes
 		String val = value.getValue().substring(1, value.getValue().length() - 1);
 
+		val = escape(val);
+
 		context.getContext().getMethodVisitor().visitLdcInsn(val);
+	}
+
+	private String escape(String value) {
+		return value.replace("\\\\", "\\")
+				.replace("\\t", "\t")
+				.replace("\\b", "\b")
+				.replace("\\n", "\n")
+				.replace("\\r", "\r")
+				.replace("\\f", "\f")
+				.replace("\\'", "\'")
+				.replace("\\\"", "\"");
 	}
 
 	@Override

@@ -20,10 +20,30 @@ public class CharNode implements Node {
 	public void visit(FileContext context) throws SemanticException {
 		context.getContext().updateLine(value.getLine());
 
-		// Remove double quotes
-		char val = value.getValue().charAt(1);
+		// Remove quotes
+		String val = value.getValue().substring(1, value.getValue().length() - 1);
 
-		TypeUtil.generateCorrectInt(val, context.getContext());
+		if(val.length() == 0 || (val.length() != 1 && val.charAt(0) != '\\') || (val.charAt(0) == '\\' && val.length() > 2)) {
+			throw new SemanticException(value, "Character literal may only represent a single character");
+		}
+
+		val = escape(val);
+
+		int code = val.charAt(0);
+
+		TypeUtil.generateCorrectInt(code, context.getContext());
+	}
+
+	//TODO Remove Code duplication of StringNode
+	private String escape(String value) {
+		return value.replace("\\\\", "\\")
+				.replace("\\t", "\t")
+				.replace("\\b", "\b")
+				.replace("\\n", "\n")
+				.replace("\\r", "\r")
+				.replace("\\f", "\f")
+				.replace("\\'", "\'")
+				.replace("\\\"", "\"");
 	}
 
 	@Override
