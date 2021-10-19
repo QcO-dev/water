@@ -124,7 +124,14 @@ public class Lexer {
 	private Token string() {
 		advance();
 
-		while(!isAtEnd() && current != '"') {
+		boolean escape = false;
+		while(!isAtEnd()) {
+			if(current == '"' && !escape) break;
+
+			if(current == '\n') line++;
+			if(escape) escape = false;
+			if(current == '\\') escape = true;
+
 			advance();
 		}
 
