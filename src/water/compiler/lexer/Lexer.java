@@ -140,14 +140,22 @@ public class Lexer {
 
 	/**
 	 * Consumes a character literal
-	 * @return The character token, or error
+	 * @return The character token
 	 */
 	private Token character() {
 		advance();
 
-		// The character
-		advance();
-		TokenType type = current == '\'' ? TokenType.CHAR_LITERAL : TokenType.ERROR;
+		boolean escape = false;
+		while(!isAtEnd()) {
+			if(current == '\'' && !escape) break;
+
+			if(current == '\n') line++;
+			if(escape) escape = false;
+			if(current == '\\') escape = true;
+
+			advance();
+		}
+
 		return makeToken(TokenType.CHAR_LITERAL);
 	}
 
