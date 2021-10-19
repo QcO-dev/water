@@ -97,7 +97,7 @@ public class EqualityOperationNode implements Node {
 				case EXEQ:
 					isEqual(methodVisitor, leftType);
 					not(methodVisitor, falseL);
-					return false;
+					return true;
 				case TRI_EQ:
 					generateIfBytecode(methodVisitor, Opcodes.IF_ACMPNE, falseL);
 					return true;
