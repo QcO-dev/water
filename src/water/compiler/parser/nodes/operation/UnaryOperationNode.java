@@ -37,7 +37,7 @@ public class UnaryOperationNode implements Node {
 
 		if(op.getType() == TokenType.EXCLAIM) {
 			if(expressionType.getSort() != Type.BOOLEAN)
-				throw new SemanticException(op, "Con only perform '!' on boolean values. (%s =/= boolean)".formatted(TypeUtil.stringify(expressionType)));
+				throw new SemanticException(op, "Can only perform '!' on boolean values. (%s =/= boolean)".formatted(TypeUtil.stringify(expressionType)));
 
 			Label falseL = new Label();
 			Label end = new Label();
@@ -51,17 +51,27 @@ public class UnaryOperationNode implements Node {
 		}
 		else if(op.getType() == TokenType.MINUS) {
 			if(!TypeUtil.isNumeric(expressionType)) {
-				throw new SemanticException(op, "Con only perform '-' on numeric values. (%s is not numeric)".formatted(TypeUtil.stringify(expressionType)));
+				throw new SemanticException(op, "Can only perform '-' on numeric values. (%s is not numeric)".formatted(TypeUtil.stringify(expressionType)));
 			}
 
-			switch(expressionType.getSort()) {
-				case Type.DOUBLE -> mv.visitInsn(Opcodes.DNEG);
-				case Type.FLOAT -> mv.visitInsn(Opcodes.FNEG);
-				case Type.LONG -> mv.visitInsn(Opcodes.LNEG);
-				default -> mv.visitInsn(Opcodes.INEG);
+
+			mv.visitInsn(expressionType.getOpcode(Opcodes.INEG));
+		}
+		else if(op.getType() == TokenType.BITWISE_NOT) {
+			if(!TypeUtil.isInteger(expressionType)) {
+				throw new SemanticException(op,
+						"Can only perform '~' on integer values. ('%s' is not an integer)".formatted(TypeUtil.stringify(expressionType)));
+			}
+
+			if(expressionType.getSort() == Type.LONG) {
+				TypeUtil.generateCorrectLong(-1, context.getContext());
+				mv.visitInsn(Opcodes.LXOR);
+			}
+			else {
+				TypeUtil.generateCorrectInt(-1, context.getContext());
+				mv.visitInsn(Opcodes.IXOR);
 			}
 		}
-		//TODO other unary operations
 	}
 
 	@Override
@@ -109,6 +119,7 @@ public class UnaryOperationNode implements Node {
 				default -> false;
 			};
 		}
+		else if(op.getType() == TokenType.BITWISE_NOT) return false;
 		return expression.isConstant(context);
 	}
 
@@ -116,7 +127,7 @@ public class UnaryOperationNode implements Node {
 	public Type getReturnType(Context context) throws SemanticException {
 		return switch (op.getType()) {
 			case EXCLAIM -> Type.BOOLEAN_TYPE;
-			case MINUS -> expression.getReturnType(context);
+			case MINUS, BITWISE_NOT -> expression.getReturnType(context);
 			default -> throw new IllegalStateException("Unknown unary operator " + op.getType());
 		};
 	}

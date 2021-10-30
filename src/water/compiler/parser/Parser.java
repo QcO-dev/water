@@ -622,7 +622,7 @@ public class Parser {
 
 	/** Forms grammar: ('!' | '-') unary | memberAccess */
 	private Node unary() throws UnexpectedTokenException {
-		if(match(TokenType.EXCLAIM) || match(TokenType.MINUS)) {
+		if(match(TokenType.EXCLAIM) || match(TokenType.MINUS) || match(TokenType.BITWISE_NOT)) {
 			Token op = tokens.get(index - 1);
 
 			Node right = unary();
