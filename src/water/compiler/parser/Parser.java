@@ -814,7 +814,8 @@ public class Parser {
 
 	private boolean matchAssignment() {
 		switch (tokens.get(index).getType()) {
-			case EQUALS, IN_PLUS, IN_MINUS, IN_MUL, IN_DIV, IN_MOD -> {
+			case EQUALS, IN_PLUS, IN_MINUS, IN_MUL, IN_DIV, IN_MOD,
+					IN_BITWISE_AND, IN_BITWISE_OR, IN_BITWISE_XOR, IN_BITWISE_SHL, IN_BITWISE_SHR, IN_BITWISE_USHR -> {
 				advance();
 				return true;
 			}

@@ -37,6 +37,12 @@ public enum TokenType {
 	IN_MUL,
 	IN_DIV,
 	IN_MOD,
+	IN_BITWISE_SHL,
+	IN_BITWISE_SHR,
+	IN_BITWISE_USHR,
+	IN_BITWISE_AND,
+	IN_BITWISE_OR,
+	IN_BITWISE_XOR,
 
 	// Identifiers / Keywords
 	IDENTIFIER,
