@@ -17,6 +17,8 @@ public enum TokenType {
 	LESS, GREATER,
 	BITWISE_AND,
 	BITWISE_OR,
+	BITWISE_XOR,
+	BITWISE_NOT,
 
 	// Multi character
 	ARROW,
@@ -25,6 +27,9 @@ public enum TokenType {
 	LESS_EQ, GREATER_EQ,
 	LOGICAL_AND,
 	LOGICAL_OR,
+	BITWISE_SHL,
+	BITWISE_SHR,
+	BITWISE_USHR,
 
 	// Inplace
 	IN_PLUS,
@@ -32,6 +37,12 @@ public enum TokenType {
 	IN_MUL,
 	IN_DIV,
 	IN_MOD,
+	IN_BITWISE_SHL,
+	IN_BITWISE_SHR,
+	IN_BITWISE_USHR,
+	IN_BITWISE_AND,
+	IN_BITWISE_OR,
+	IN_BITWISE_XOR,
 
 	// Identifiers / Keywords
 	IDENTIFIER,

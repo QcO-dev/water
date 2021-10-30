@@ -13,6 +13,7 @@ import water.compiler.lexer.TokenType;
 import water.compiler.parser.LValue;
 import water.compiler.parser.Node;
 import water.compiler.parser.nodes.operation.ArithmeticOperationNode;
+import water.compiler.parser.nodes.operation.IntegerOperationNode;
 import water.compiler.parser.nodes.value.ThisNode;
 import water.compiler.util.TypeUtil;
 
@@ -231,15 +232,32 @@ public class AssignmentNode implements Node {
 			case IN_MUL -> TokenType.STAR;
 			case IN_DIV -> TokenType.SLASH;
 			case IN_MOD -> TokenType.PERCENT;
+			case IN_BITWISE_AND -> TokenType.BITWISE_AND;
+			case IN_BITWISE_OR -> TokenType.BITWISE_OR;
+			case IN_BITWISE_XOR -> TokenType.BITWISE_XOR;
+			case IN_BITWISE_SHL -> TokenType.BITWISE_SHL;
+			case IN_BITWISE_SHR -> TokenType.BITWISE_SHR;
+			case IN_BITWISE_USHR -> TokenType.BITWISE_USHR;
 			default -> null;
 		}, op.getValue(), op.getLine(), op.getColumn());
+	}
+
+	private boolean isBitwise(TokenType type) {
+		return switch (type) {
+			case IN_BITWISE_AND, IN_BITWISE_OR, IN_BITWISE_XOR, IN_BITWISE_SHL, IN_BITWISE_SHR, IN_BITWISE_USHR -> true;
+			default -> false;
+		};
 	}
 
 	private Node generateSyntheticOperation() {
 		if(op.getType() == TokenType.EQUALS) return right;
 
 		Token syntheticOp = makeSyntheticToken();
-		
+
+		if(isBitwise(op.getType())) {
+			return new IntegerOperationNode(left, syntheticOp, right);
+		}
+
 		return new ArithmeticOperationNode(left, syntheticOp, right);
 	}
 

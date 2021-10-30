@@ -101,10 +101,12 @@ public class Lexer {
 					case ':' -> TokenType.COLON;
 					case '.' -> TokenType.DOT;
 					case '!' -> next('=') ? (next('=') ? TokenType.TRI_EXEQ : TokenType.EXEQ) : TokenType.EXCLAIM;
-					case '<' -> next('=') ? TokenType.LESS_EQ : TokenType.LESS;
-					case '>' -> next('=') ? TokenType.GREATER_EQ : TokenType.GREATER;
-					case '&' -> next('&') ? TokenType.LOGICAL_AND : TokenType.BITWISE_AND;
-					case '|' -> next('|') ? TokenType.LOGICAL_OR : TokenType.BITWISE_OR;
+					case '<' -> next('=') ? TokenType.LESS_EQ : next('<') ? TokenType.BITWISE_SHL : TokenType.LESS;
+					case '>' -> lexGreaterThan();
+					case '&' -> next('&') ? TokenType.LOGICAL_AND : next('=') ? TokenType.IN_BITWISE_AND : TokenType.BITWISE_AND;
+					case '|' -> next('|') ? TokenType.LOGICAL_OR : next('=') ? TokenType.IN_BITWISE_OR : TokenType.BITWISE_OR;
+					case '^' -> next('=') ? TokenType.IN_BITWISE_XOR : TokenType.BITWISE_XOR;
+					case '~' -> TokenType.BITWISE_NOT;
 					default -> TokenType.ERROR;
 				};
 				token = makeToken(type);
@@ -115,6 +117,26 @@ public class Lexer {
 		tokens.add(makeToken(TokenType.EOF));
 
 		return tokens;
+	}
+
+	/** Matches against different tokens which start with '>' */
+	private TokenType lexGreaterThan() {
+		if(next('=')) {
+			return TokenType.GREATER_EQ;
+		}
+		else if(next('>')) {
+			if(next('=')) {
+				return TokenType.IN_BITWISE_SHR;
+			}
+			else if(next('>')) {
+				if(next('=')) {
+					return TokenType.IN_BITWISE_USHR;
+				}
+				return TokenType.BITWISE_USHR;
+			}
+			return TokenType.BITWISE_SHR;
+		}
+		return TokenType.GREATER;
 	}
 
 	/**
@@ -280,8 +302,7 @@ public class Lexer {
 	 * @return The created token.
 	 */
 	private Token makeToken(TokenType type) {
-		Token token = new Token(type, text.substring(start, index), line, column);
-		return token;
+		return new Token(type, text.substring(start, index), line, column);
 	}
 
 	/**
