@@ -26,6 +26,9 @@ public enum TokenType {
 	LESS_EQ, GREATER_EQ,
 	LOGICAL_AND,
 	LOGICAL_OR,
+	BITWISE_SHL,
+	BITWISE_SHR,
+	BITWISE_USHR,
 
 	// Inplace
 	IN_PLUS,

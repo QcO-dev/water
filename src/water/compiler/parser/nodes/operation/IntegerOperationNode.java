@@ -59,6 +59,9 @@ public class IntegerOperationNode implements Node {
 			case BITWISE_OR -> Opcodes.IOR;
 			case BITWISE_XOR -> Opcodes.IXOR;
 			case BITWISE_AND -> Opcodes.IAND;
+			case BITWISE_SHL -> Opcodes.ISHL;
+			case BITWISE_SHR -> Opcodes.ISHR;
+			case BITWISE_USHR -> Opcodes.IUSHR;
 			default -> throw new IllegalStateException("Invalid operation of '%s' in IntegerOperationNode".formatted(op.getType()));
 		};
 	}

@@ -440,6 +440,7 @@ public class Parser {
 	bitwiseAndExpr &
 	equalityExpr == != === !==
 	relativeExpr < <= > >=
+	shiftExpr << >> >>>
 	arithExpr + -
 	term * / %
 	atom (value)
@@ -521,7 +522,7 @@ public class Parser {
 		return left;
 	}
 
-	/** Forms grammar: equalityExpr ('^' equalityExpr)* */
+	/** Forms grammar: equalityExpr ('&' equalityExpr)* */
 	private Node bitwiseAndExpr() throws UnexpectedTokenException {
 		Node left = equalityExpr();
 
@@ -549,16 +550,30 @@ public class Parser {
 		return left;
 	}
 
-	/** Forms grammar: arithExpr (('<' | '<=' | '>' '>=') arithExpr)* */
+	/** Forms grammar: shiftExpr (({@literal '<' | '<=' | '>' '>='}) shiftExpr)* */
 	private Node relativeExpr() throws UnexpectedTokenException {
-		Node left = arithExpr();
+		Node left = shiftExpr();
 
 		while(match(TokenType.LESS) || match(TokenType.LESS_EQ) || match(TokenType.GREATER) || match(TokenType.GREATER_EQ)) {
 			Token op = tokens.get(index - 1);
 
-			Node right = arithExpr();
+			Node right = shiftExpr();
 
 			left = new RelativeOperationNode(left, op, right);
+		}
+		return left;
+	}
+
+	/** Forms grammar: arithExpr (({@literal '<<' | '>>' | '>>>'}) arithExpr)* */
+	private Node shiftExpr() throws UnexpectedTokenException {
+		Node left = arithExpr();
+
+		while(match(TokenType.BITWISE_SHL) || match(TokenType.BITWISE_SHR) || match(TokenType.BITWISE_USHR)) {
+			Token op = tokens.get(index - 1);
+
+			Node right = arithExpr();
+
+			left = new IntegerOperationNode(left, op, right);
 		}
 		return left;
 	}
