@@ -105,6 +105,7 @@ public class Lexer {
 					case '>' -> next('=') ? TokenType.GREATER_EQ : TokenType.GREATER;
 					case '&' -> next('&') ? TokenType.LOGICAL_AND : TokenType.BITWISE_AND;
 					case '|' -> next('|') ? TokenType.LOGICAL_OR : TokenType.BITWISE_OR;
+					case '^' -> TokenType.BITWISE_XOR;
 					default -> TokenType.ERROR;
 				};
 				token = makeToken(type);

@@ -17,6 +17,7 @@ public enum TokenType {
 	LESS, GREATER,
 	BITWISE_AND,
 	BITWISE_OR,
+	BITWISE_XOR,
 
 	// Multi character
 	ARROW,

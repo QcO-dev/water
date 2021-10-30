@@ -435,6 +435,9 @@ public class Parser {
 	assignExpr = += (etc)
 	logicalOrExpr ||
 	logicalAndExpr &&
+	bitwiseOrExpr |
+	bitwiseXorExpr ^
+	bitwiseAndExpr &
 	equalityExpr == != === !==
 	relativeExpr < <= > >=
 	arithExpr + -
@@ -476,16 +479,58 @@ public class Parser {
 		return left;
 	}
 
-	/** Forms grammar: equalityExpr ('&&' equalityExpr)* */
+	/** Forms grammar: bitwiseOrExpr ('&&' bitwiseOrExpr)* */
 	private Node logicalAndExpr() throws UnexpectedTokenException {
-		Node left = equalityExpr();
+		Node left = bitwiseOrExpr();
 
 		while(match(TokenType.LOGICAL_AND)) {
 			Token op = tokens.get(index - 1);
 
-			Node right = equalityExpr();
+			Node right = bitwiseOrExpr();
 
 			left = new LogicalOperationNode(left, op, right);
+		}
+		return left;
+	}
+
+	/** Forms grammar: bitwiseXorExpr ('|' bitwiseXorExpr)* */
+	private Node bitwiseOrExpr() throws UnexpectedTokenException {
+		Node left = bitwiseXorExpr();
+
+		while(match(TokenType.BITWISE_OR)) {
+			Token op = tokens.get(index - 1);
+
+			Node right = bitwiseXorExpr();
+
+			left = new IntegerOperationNode(left, op, right);
+		}
+		return left;
+	}
+
+	/** Forms grammar: bitwiseAndExpr ('^' bitwiseAndExpr)* */
+	private Node bitwiseXorExpr() throws UnexpectedTokenException {
+		Node left = bitwiseAndExpr();
+
+		while(match(TokenType.BITWISE_XOR)) {
+			Token op = tokens.get(index - 1);
+
+			Node right = bitwiseAndExpr();
+
+			left = new IntegerOperationNode(left, op, right);
+		}
+		return left;
+	}
+
+	/** Forms grammar: equalityExpr ('^' equalityExpr)* */
+	private Node bitwiseAndExpr() throws UnexpectedTokenException {
+		Node left = equalityExpr();
+
+		while(match(TokenType.BITWISE_AND)) {
+			Token op = tokens.get(index - 1);
+
+			Node right = equalityExpr();
+
+			left = new IntegerOperationNode(left, op, right);
 		}
 		return left;
 	}
