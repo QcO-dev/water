@@ -2,6 +2,7 @@ package water.compiler.compiler;
 
 import org.objectweb.asm.Opcodes;
 import org.objectweb.asm.Type;
+import water.compiler.util.WaterType;
 
 /**
  * Provides information about a function available without class reference
@@ -10,9 +11,9 @@ public class Function {
 	private final FunctionType functionType;
 	private final String name;
 	private final String owner;
-	private final Type type;
+	private final WaterType type;
 
-	public Function(FunctionType functionType, String name, String owner, Type type) {
+	public Function(FunctionType functionType, String name, String owner, WaterType type) {
 		this.functionType = functionType;
 		this.name = name;
 		this.type = type;
@@ -27,7 +28,7 @@ public class Function {
 		return name;
 	}
 
-	public Type getType() {
+	public WaterType getType() {
 		return type;
 	}
 

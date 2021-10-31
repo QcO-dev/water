@@ -7,6 +7,7 @@ import water.compiler.compiler.Context;
 import water.compiler.compiler.SemanticException;
 import water.compiler.lexer.Token;
 import water.compiler.parser.Node;
+import water.compiler.util.WaterType;
 
 public class SuperNode implements Node {
 
@@ -23,7 +24,7 @@ public class SuperNode implements Node {
 	}
 
 	@Override
-	public Type getReturnType(Context context) throws SemanticException {
+	public WaterType getReturnType(Context context) throws SemanticException {
 		if(context.getCurrentSuperClass() == null) {
 			throw new SemanticException(superTok, "Can only use 'super' within a class.");
 		}

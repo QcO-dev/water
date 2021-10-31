@@ -3,14 +3,13 @@ package water.compiler.parser.nodes.operation;
 import org.objectweb.asm.Label;
 import org.objectweb.asm.MethodVisitor;
 import org.objectweb.asm.Opcodes;
-import org.objectweb.asm.Type;
 import water.compiler.FileContext;
 import water.compiler.compiler.Context;
 import water.compiler.compiler.SemanticException;
 import water.compiler.lexer.Token;
 import water.compiler.lexer.TokenType;
 import water.compiler.parser.Node;
-import water.compiler.util.TypeUtil;
+import water.compiler.util.WaterType;
 
 public class EqualityOperationNode implements Node {
 
@@ -43,77 +42,81 @@ public class EqualityOperationNode implements Node {
 	}
 
 	public boolean generateConditional(FileContext context, Label falseL) throws SemanticException {
-		Type leftType = left.getReturnType(context.getContext());
-		Type rightType = right.getReturnType(context.getContext());
+		WaterType leftType = left.getReturnType(context.getContext());
+		WaterType rightType = right.getReturnType(context.getContext());
 
 		MethodVisitor methodVisitor = context.getContext().getMethodVisitor();
 
-		if(TypeUtil.isPrimitive(leftType) && TypeUtil.isPrimitive(rightType)) {
-			boolean same = leftType.getSort() == rightType.getSort();
+		if(leftType.isPrimitive() && rightType.isPrimitive()) {
+			boolean same = leftType.equals(rightType);
 
-			Type larger = TypeUtil.getLarger(leftType, rightType);
+			WaterType larger = leftType.getLarger(rightType);
 
 			left.visit(context);
 
-			if(!same && larger.getSort() == rightType.getSort()) {
-				TypeUtil.cast(methodVisitor, leftType, rightType);
+			if(!same && larger.equals(rightType)) {
+				leftType.cast(rightType, methodVisitor);
 			}
 
 			right.visit(context);
 
-			if(!same && larger.getSort() == leftType.getSort()) {
-				TypeUtil.cast(methodVisitor, rightType, leftType);
+			if(!same && larger.equals(leftType)) {
+				rightType.cast(leftType, methodVisitor);
 			}
 
-			if(TypeUtil.isInteger(larger) && larger.getSize() != 2) {
+			if(larger.isRepresentedAsInteger()) {
 				switch (op.getType()) {
 					case EQEQ -> generateIfBytecode(methodVisitor, Opcodes.IF_ICMPNE, falseL);
 					case EXEQ -> generateIfBytecode(methodVisitor, Opcodes.IF_ICMPEQ, falseL);
 					case TRI_EQ, TRI_EXEQ -> throw new SemanticException(op,
 							"Cannot perform address comparison on primitives ('%s', '%s')"
-									.formatted(TypeUtil.stringify(leftType), TypeUtil.stringify(rightType)));
+									.formatted(leftType, rightType));
 				}
 			}
 			else {
-				TypeUtil.compareInit(methodVisitor, larger);
+				larger.compareInit(methodVisitor);
 
 				switch (op.getType()) {
 					case EQEQ -> generateIfBytecode(methodVisitor, Opcodes.IFNE, falseL);
 					case EXEQ -> generateIfBytecode(methodVisitor, Opcodes.IFEQ, falseL);
 					case TRI_EQ, TRI_EXEQ -> throw new SemanticException(op,
 							"Cannot perform address comparison on primitives ('%s', '%s')"
-									.formatted(TypeUtil.stringify(leftType), TypeUtil.stringify(rightType)));
+									.formatted(leftType, rightType));
 				}
 			}
 			return true;
 		}
-		else if(!TypeUtil.isPrimitive(leftType) && !TypeUtil.isPrimitive(rightType)) {
+		else if(!leftType.isPrimitive() && !rightType.isPrimitive()) {
 			left.visit(context);
 			right.visit(context);
 			switch (op.getType()) {
-				case EQEQ:
+				case EQEQ -> {
 					isEqual(methodVisitor, leftType);
 					return false;
-				case EXEQ:
+				}
+				case EXEQ -> {
 					isEqual(methodVisitor, leftType);
 					not(methodVisitor, falseL);
 					return true;
-				case TRI_EQ:
+				}
+				case TRI_EQ -> {
 					generateIfBytecode(methodVisitor, Opcodes.IF_ACMPNE, falseL);
 					return true;
-				case TRI_EXEQ:
+				}
+				case TRI_EXEQ -> {
 					generateIfBytecode(methodVisitor, Opcodes.IF_ACMPEQ, falseL);
 					return true;
+				}
 			}
 		}
 		else {
 			// Due to the above if statements we can presume we have a pair of operands where one is an object and one is a primitive
 
 			left.visit(context);
-			leftType = TypeUtil.autoBox(methodVisitor, leftType);
+			leftType = leftType.autoBox(methodVisitor);
 
 			right.visit(context);
-			TypeUtil.autoBox(methodVisitor, rightType);
+			rightType.autoBox(methodVisitor);
 
 			switch (op.getType()) {
 				case EQEQ -> isEqual(methodVisitor, leftType);
@@ -123,13 +126,13 @@ public class EqualityOperationNode implements Node {
 				}
 				case TRI_EQ, TRI_EXEQ -> throw new SemanticException(op,
 						"Cannot perform address comparison on types ('%s', '%s')"
-								.formatted(TypeUtil.stringify(leftType), TypeUtil.stringify(rightType)));
+								.formatted(leftType, rightType));
 			}
 		}
 		return false;
 	}
 
-	private void isEqual(MethodVisitor methodVisitor, Type owner) {
+	private void isEqual(MethodVisitor methodVisitor, WaterType owner) {
 		methodVisitor.visitMethodInsn(Opcodes.INVOKEVIRTUAL, owner.getInternalName(), "equals", "(Ljava/lang/Object;)Z", false);
 	}
 
@@ -142,8 +145,8 @@ public class EqualityOperationNode implements Node {
 	}
 
 	@Override
-	public Type getReturnType(Context context) throws SemanticException {
-		return Type.BOOLEAN_TYPE;
+	public WaterType getReturnType(Context context) throws SemanticException {
+		return WaterType.BOOLEAN_TYPE;
 	}
 
 	@Override

@@ -1,7 +1,6 @@
 package water.compiler.parser.nodes.function;
 
 import org.objectweb.asm.Opcodes;
-import org.objectweb.asm.Type;
 import water.compiler.FileContext;
 import water.compiler.compiler.Context;
 import water.compiler.compiler.Function;
@@ -9,7 +8,7 @@ import water.compiler.compiler.FunctionType;
 import water.compiler.compiler.SemanticException;
 import water.compiler.lexer.Token;
 import water.compiler.parser.Node;
-import water.compiler.util.TypeUtil;
+import water.compiler.util.WaterType;
 
 import java.util.List;
 import java.util.stream.Collectors;
@@ -27,7 +26,7 @@ public class FunctionCallNode implements Node {
 	@Override
 	public void visit(FileContext context) throws SemanticException {
 		context.getContext().updateLine(name.getLine());
-		Type[] argTypes = new Type[args.size()];
+		WaterType[] argTypes = new WaterType[args.size()];
 
 		for(int i = 0; i < args.size(); i++) {
 			Node arg = args.get(i);
@@ -41,7 +40,7 @@ public class FunctionCallNode implements Node {
 			if(function == null) throw new SemanticException(name,
 					"Could not resolve function '%s' with arguments: %s".formatted(name.getValue(),
 							argTypes.length == 0 ? "(none)" :
-							List.of(argTypes).stream().map(TypeUtil::stringify).collect(Collectors.joining(", "))));
+							List.of(argTypes).stream().map(WaterType::toString).collect(Collectors.joining(", "))));
 
 			if(function.getFunctionType() == FunctionType.SOUT)
 				context.getContext().getMethodVisitor().visitFieldInsn(Opcodes.GETSTATIC, "java/lang/System", "out", "Ljava/io/PrintStream;");
@@ -62,8 +61,8 @@ public class FunctionCallNode implements Node {
 	}
 
 	@Override
-	public Type getReturnType(Context context) throws SemanticException {
-		Type[] argTypes = new Type[args.size()];
+	public WaterType getReturnType(Context context) throws SemanticException {
+		WaterType[] argTypes = new WaterType[args.size()];
 
 		for(int i = 0; i < args.size(); i++) {
 			Node arg = args.get(i);
@@ -77,7 +76,7 @@ public class FunctionCallNode implements Node {
 			if(function == null) throw new SemanticException(name,
 					"Could not resolve function '%s' with arguments: %s".formatted(name.getValue(),
 							argTypes.length == 0 ? "(none)" :
-									List.of(argTypes).stream().map(TypeUtil::stringify).collect(Collectors.joining(", "))));
+									List.of(argTypes).stream().map(WaterType::toString).collect(Collectors.joining(", "))));
 
 			return function.getType().getReturnType();
 

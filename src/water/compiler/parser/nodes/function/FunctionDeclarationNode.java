@@ -2,14 +2,13 @@ package water.compiler.parser.nodes.function;
 
 import org.objectweb.asm.MethodVisitor;
 import org.objectweb.asm.Opcodes;
-import org.objectweb.asm.Type;
 import water.compiler.FileContext;
 import water.compiler.compiler.*;
 import water.compiler.lexer.Token;
 import water.compiler.parser.Node;
 import water.compiler.util.Pair;
-import water.compiler.util.TypeUtil;
 import water.compiler.util.Unthrow;
+import water.compiler.util.WaterType;
 
 import java.util.ArrayList;
 import java.util.List;
@@ -30,7 +29,7 @@ public class FunctionDeclarationNode implements Node {
 	private final List<Node> throwsList;
 	private final Token access;
 	private final Token staticModifier;
-	private Type returnType;
+	private WaterType returnType;
 	private String descriptor;
 
 	public FunctionDeclarationNode(DeclarationType type, Token name, Node body, List<Pair<Token, Node>> parameters, Node returnType, List<Node> throwsList,
@@ -59,18 +58,18 @@ public class FunctionDeclarationNode implements Node {
 
 	private void preprocessGlobal(Context context) throws SemanticException {
 		try {
-			if (context.getScope().exactLookupFunction(name.getValue(), parameters.stream().map(n -> Unthrow.wrap(() -> n.getSecond().getReturnType(context))).toArray(Type[]::new)) != null) throw new SemanticException(name,
+			if (context.getScope().exactLookupFunction(name.getValue(), parameters.stream().map(n -> Unthrow.wrap(() -> n.getSecond().getReturnType(context))).toArray(WaterType[]::new)) != null) throw new SemanticException(name,
 					"Redefinition of function '%s' in global scope.".formatted(name.getValue()));
 
 			computeReturnType(context, true);
 
 			ArrayList<Function> functions = context.getScope().lookupFunctions(name.getValue());
 			if(functions != null) {
-				Type expectedReturnType = functions.get(0).getType().getReturnType();
+				WaterType expectedReturnType = functions.get(0).getType().getReturnType();
 				if (!expectedReturnType.equals(returnType)) {
 					throw new SemanticException(name,
 							"Function overloads may only differ in parameters, not return type. (%s =/= %s)"
-									.formatted(TypeUtil.stringify(returnType), TypeUtil.stringify(expectedReturnType)));
+									.formatted(returnType, expectedReturnType));
 				}
 			}
 
@@ -82,13 +81,13 @@ public class FunctionDeclarationNode implements Node {
 		MethodVisitor mv = makeGlobalFunction(context);
 		finalizeMethod(mv);
 
-		context.getScope().addFunction(new Function(FunctionType.STATIC, name.getValue(), context.getCurrentClass(), Type.getMethodType(descriptor)));
+		context.getScope().addFunction(new Function(FunctionType.STATIC, name.getValue(), context.getCurrentClass(), WaterType.getMethodType(descriptor)));
 	}
 
 	private void preprocessClass(Context context) throws SemanticException {
 		try {
 			// Verify this function is unique
-			Function function = context.getScope().exactLookupFunction(name.getValue(), parameters.stream().map(n -> Unthrow.wrap(() -> n.getSecond().getReturnType(context))).toArray(Type[]::new));
+			Function function = context.getScope().exactLookupFunction(name.getValue(), parameters.stream().map(n -> Unthrow.wrap(() -> n.getSecond().getReturnType(context))).toArray(WaterType[]::new));
 
 			if(function != null && function.getFunctionType() == FunctionType.CLASS) {
 				throw new SemanticException(name, "Redefinition of function '%s' in current class.".formatted(name.getValue()));
@@ -98,11 +97,11 @@ public class FunctionDeclarationNode implements Node {
 
 			ArrayList<Function> functions = context.getScope().lookupFunctions(name.getValue());
 			if(functions != null) {
-				Type expectedReturnType = functions.get(0).getType().getReturnType();
+				WaterType expectedReturnType = functions.get(0).getType().getReturnType();
 				if (!expectedReturnType.equals(returnType)) {
 					throw new SemanticException(name,
 							"Function overloads may only differ in parameters, not return type. (%s =/= %s)"
-									.formatted(TypeUtil.stringify(returnType), TypeUtil.stringify(expectedReturnType)));
+									.formatted(returnType, expectedReturnType));
 				}
 			}
 
@@ -114,7 +113,7 @@ public class FunctionDeclarationNode implements Node {
 		MethodVisitor mv = makeClassFunction(context);
 		finalizeMethod(mv);
 
-		context.getScope().addFunction(new Function(FunctionType.CLASS, name.getValue(), context.getCurrentClass(), Type.getMethodType(descriptor)));
+		context.getScope().addFunction(new Function(FunctionType.CLASS, name.getValue(), context.getCurrentClass(), WaterType.getMethodType(descriptor)));
 	}
 
 	@Override
@@ -149,7 +148,7 @@ public class FunctionDeclarationNode implements Node {
 		if(type == DeclarationType.EXPRESSION) mv.visitInsn(returnType.getOpcode(Opcodes.IRETURN));
 
 		if(type == DeclarationType.STANDARD && !context.getContext().getScope().isReturned()) {
-			if(returnType.getSort() == Type.VOID)
+			if(returnType.equals(WaterType.VOID_TYPE))
 				mv.visitInsn(Opcodes.RETURN);
 			else
 				throw new SemanticException(name, "Non-void function must return a value.");
@@ -179,7 +178,7 @@ public class FunctionDeclarationNode implements Node {
 	private void finalizeMethod(MethodVisitor mv) {
 		mv.visitCode();
 
-		if(returnType.getSort() != Type.VOID) mv.visitInsn(TypeUtil.dummyConstant(returnType));
+		if(!returnType.equals(WaterType.VOID_TYPE)) mv.visitInsn(returnType.dummyConstant());
 		mv.visitInsn(returnType.getOpcode(Opcodes.IRETURN));
 
 		mv.visitMaxs(0, 0);
@@ -191,7 +190,7 @@ public class FunctionDeclarationNode implements Node {
 	}
 
 	private void computeReturnType(Context context, boolean isStatic) throws SemanticException {
-		returnType = returnTypeNode == null ? Type.VOID_TYPE : returnTypeNode.getReturnType(context);
+		returnType = returnTypeNode == null ? WaterType.VOID_TYPE : returnTypeNode.getReturnType(context);
 
 		if(type == DeclarationType.EXPRESSION) {
 			// For the return type to be computed the parameter types may be needed, therefore a new Context is created.
@@ -240,7 +239,7 @@ public class FunctionDeclarationNode implements Node {
 				|| parameters.size() != 0  // no args
 				|| verifyAccess() != Opcodes.ACC_PUBLIC // public
 				|| !isStatic(context) // static
-				|| returnType.getSort() != Type.VOID) // return void
+				|| !returnType.equals(WaterType.VOID_TYPE)) // return void
 			return;
 
 		String[] exceptions = computeExceptions(context);
@@ -267,15 +266,15 @@ public class FunctionDeclarationNode implements Node {
 
 		ArrayList<String> exceptions = new ArrayList<>();
 		for(Node exception : throwsList) {
-			Type exceptionType = exception.getReturnType(context);
+			WaterType exceptionType = exception.getReturnType(context);
 
-			if(TypeUtil.isPrimitive(exceptionType)) {
-				throw new SemanticException(name, "Cannot throw primitive type (got '%s').".formatted(TypeUtil.stringify(exceptionType)));
+			if(exceptionType.isPrimitive()) {
+				throw new SemanticException(name, "Cannot throw primitive type (got '%s').".formatted(exceptionType));
 			}
 
 			try {
-				if(!TypeUtil.isAssignableFrom(Type.getObjectType("java/lang/Throwable"), exceptionType, context, false)) {
-					throw new SemanticException(name, "throw target must be an extension of java.lang.Throwable ('%s' cannot be cast).".formatted(TypeUtil.stringify(exceptionType)));
+				if(!WaterType.getObjectType("java/lang/Throwable").isAssignableFrom(exceptionType, context, false)) {
+					throw new SemanticException(name, "throw target must be an extension of java.lang.Throwable ('%s' cannot be cast).".formatted(exceptionType));
 				}
 			} catch (ClassNotFoundException e) {
 				throw new SemanticException(name, "Could not resolve class '%s'".formatted(e.getMessage()));

@@ -1,12 +1,11 @@
 package water.compiler.parser.nodes.exception;
 
 import org.objectweb.asm.Opcodes;
-import org.objectweb.asm.Type;
 import water.compiler.FileContext;
 import water.compiler.compiler.SemanticException;
 import water.compiler.lexer.Token;
 import water.compiler.parser.Node;
-import water.compiler.util.TypeUtil;
+import water.compiler.util.WaterType;
 
 public class ThrowNode implements Node {
 	private final Token throwTok;
@@ -19,15 +18,15 @@ public class ThrowNode implements Node {
 
 	@Override
 	public void visit(FileContext context) throws SemanticException {
-		Type throweeType = throwee.getReturnType(context.getContext());
+		WaterType throweeType = throwee.getReturnType(context.getContext());
 
-		if(TypeUtil.isPrimitive(throweeType)) {
-			throw new SemanticException(throwTok, "Cannot throw primitive type (got '%s').".formatted(TypeUtil.stringify(throweeType)));
+		if(throweeType.isPrimitive()) {
+			throw new SemanticException(throwTok, "Cannot throw primitive type (got '%s').".formatted(throweeType));
 		}
 
 		try {
-			if(!TypeUtil.isAssignableFrom(Type.getObjectType("java/lang/Throwable"), throweeType, context.getContext(), false)) {
-				throw new SemanticException(throwTok, "throw target must be an extension of java.lang.Throwable ('%s' cannot be cast).".formatted(TypeUtil.stringify(throweeType)));
+			if(!WaterType.getObjectType("java/lang/Throwable").isAssignableFrom(throweeType, context.getContext(), false)) {
+				throw new SemanticException(throwTok, "throw target must be an extension of java.lang.Throwable ('%s' cannot be cast).".formatted(throweeType));
 			}
 		} catch (ClassNotFoundException e) {
 			throw new SemanticException(throwTok, "Could not resolve class '%s'".formatted(e.getMessage()));

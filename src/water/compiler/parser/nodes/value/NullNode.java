@@ -7,6 +7,7 @@ import water.compiler.compiler.Context;
 import water.compiler.compiler.SemanticException;
 import water.compiler.parser.Node;
 import water.compiler.util.TypeUtil;
+import water.compiler.util.WaterType;
 
 public class NullNode implements Node {
 	@Override
@@ -15,12 +16,12 @@ public class NullNode implements Node {
 	}
 
 	@Override
-	public Type getReturnType(Context context) throws SemanticException {
-		return TypeUtil.OBJECT_TYPE;
+	public WaterType getReturnType(Context context) throws SemanticException {
+		return WaterType.OBJECT_TYPE;
 	}
 
 	@Override
-	public Object getConstantValue(Context context) throws SemanticException {
+	public Object getConstantValue(Context context) {
 		return null;
 	}
 

@@ -11,6 +11,7 @@ import water.compiler.lexer.Token;
 import water.compiler.lexer.TokenType;
 import water.compiler.parser.Node;
 import water.compiler.util.TypeUtil;
+import water.compiler.util.WaterType;
 
 public class RelativeOperationNode implements Node {
 	private final Node left;
@@ -41,35 +42,35 @@ public class RelativeOperationNode implements Node {
 	}
 
 	public void generateConditional(FileContext context, Label falseL) throws SemanticException {
-		Type leftType = left.getReturnType(context.getContext());
-		Type rightType = right.getReturnType(context.getContext());
+		WaterType leftType = left.getReturnType(context.getContext());
+		WaterType rightType = right.getReturnType(context.getContext());
 
 		MethodVisitor methodVisitor = context.getContext().getMethodVisitor();
 
-		if(TypeUtil.isPrimitive(leftType) && TypeUtil.isPrimitive(rightType)) {
+		if(leftType.isPrimitive() && rightType.isPrimitive()) {
 
-			if(!TypeUtil.isNumeric(leftType) || !TypeUtil.isNumeric(rightType))
+			if(!leftType.isNumeric() || !rightType.isNumeric())
 				throw new SemanticException(op,
 						"Unsupported operation of '%s' between types '%s' and '%s'".formatted(op.getValue(),
-								TypeUtil.stringify(leftType), TypeUtil.stringify(rightType)));
+								leftType, rightType));
 
-			boolean same = leftType.getSort() == rightType.getSort();
+			boolean same = leftType.equals(rightType);
 
-			Type larger = TypeUtil.getLarger(leftType, rightType);
+			WaterType larger = leftType.getLarger(rightType);
 
 			left.visit(context);
 
-			if(!same && larger.getSort() == rightType.getSort()) {
-				TypeUtil.cast(methodVisitor, leftType, rightType);
+			if(!same && larger.equals(rightType)) {
+				leftType.cast(rightType, methodVisitor);
 			}
 
 			right.visit(context);
 
-			if(!same && larger.getSort() == leftType.getSort()) {
-				TypeUtil.cast(methodVisitor, rightType, leftType);
+			if(!same && larger.equals(leftType)) {
+				rightType.cast(leftType, methodVisitor);
 			}
 
-			if(TypeUtil.isInteger(larger) && larger.getSize() != 2) {
+			if(larger.isRepresentedAsInteger()) {
 				switch (op.getType()) {
 					case LESS -> generateIfBytecode(methodVisitor, Opcodes.IF_ICMPGE, falseL);
 					case LESS_EQ -> generateIfBytecode(methodVisitor, Opcodes.IF_ICMPGT, falseL);
@@ -78,7 +79,7 @@ public class RelativeOperationNode implements Node {
 				}
 			}
 			else {
-				TypeUtil.compareInit(methodVisitor, larger);
+				larger.compareInit(methodVisitor);
 
 				switch (op.getType()) {
 					case LESS -> generateIfBytecode(methodVisitor, Opcodes.IFGE, falseL);
@@ -92,7 +93,7 @@ public class RelativeOperationNode implements Node {
 		else
 			throw new SemanticException(op,
 					"Unsupported operation of '%s' between types '%s' and '%s'".formatted(op.getValue(),
-							TypeUtil.stringify(leftType), TypeUtil.stringify(rightType)));
+							leftType, rightType));
 	}
 
 	private void generateIfBytecode(MethodVisitor methodVisitor, int opcode, Label falseL) {
@@ -100,8 +101,8 @@ public class RelativeOperationNode implements Node {
 	}
 
 	@Override
-	public Type getReturnType(Context context) throws SemanticException {
-		return Type.BOOLEAN_TYPE;
+	public WaterType getReturnType(Context context) throws SemanticException {
+		return WaterType.BOOLEAN_TYPE;
 	}
 
 	@Override

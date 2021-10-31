@@ -13,6 +13,7 @@ import water.compiler.parser.nodes.variable.VariableDeclarationNode;
 import water.compiler.util.Pair;
 import water.compiler.util.TypeUtil;
 import water.compiler.util.Unthrow;
+import water.compiler.util.WaterType;
 
 import java.lang.reflect.Constructor;
 import java.lang.reflect.Modifier;
@@ -115,12 +116,12 @@ public class ConstructorDeclarationNode implements Node {
 
 	private void createSuperCall(MethodVisitor methodVisitor, FileContext fc) throws SemanticException {
 		Context context = fc.getContext();
-		Type[] argTypes;
+		WaterType[] argTypes;
 		if(superArgs == null) {
-			argTypes = new Type[] {};
+			argTypes = new WaterType[] {};
 		}
 		else {
-			argTypes = superArgs.stream().map(n -> Unthrow.wrap(() -> n.getReturnType(context))).toArray(Type[]::new);
+			argTypes = superArgs.stream().map(n -> Unthrow.wrap(() -> n.getReturnType(context))).toArray(WaterType[]::new);
 		}
 
 		Class<?> klass;
@@ -136,18 +137,18 @@ public class ConstructorDeclarationNode implements Node {
 		Constructor<?> superConstructor = TypeUtil.getConstructor(constructorToken, constructors, argTypes, context);
 
 		if(superConstructor == null) throw new SemanticException(constructorToken, "SuperClass '%s' cannot be instantiated with arguments: %s"
-				.formatted(TypeUtil.stringify(context.getCurrentSuperClass()),
-						Arrays.stream(argTypes).map(TypeUtil::stringify).collect(Collectors.joining(", "))));
+				.formatted(context.getCurrentSuperClass(),
+						Arrays.stream(argTypes).map(WaterType::toString).collect(Collectors.joining(", "))));
 
-		Type[] resolvedTypes = Type.getType(superConstructor).getArgumentTypes();
+		WaterType[] resolvedTypes = WaterType.getType(superConstructor).getArgumentTypes();
 		if(superArgs != null) {
 			for (int i = 0; i < superArgs.size(); i++) {
 				Node arg = superArgs.get(i);
-				Type resolvedType = resolvedTypes[i];
+				WaterType resolvedType = resolvedTypes[i];
 
 				arg.visit(fc);
 				try {
-					TypeUtil.isAssignableFrom(resolvedType, arg.getReturnType(context), context, true);
+					resolvedType.isAssignableFrom(arg.getReturnType(context), context, true);
 				} catch (ClassNotFoundException e) {
 					throw new SemanticException(constructorToken, "Could not resolve class '%s'".formatted(e.getMessage()));
 				}

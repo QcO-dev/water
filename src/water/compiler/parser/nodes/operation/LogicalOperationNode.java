@@ -3,14 +3,13 @@ package water.compiler.parser.nodes.operation;
 import org.objectweb.asm.Label;
 import org.objectweb.asm.MethodVisitor;
 import org.objectweb.asm.Opcodes;
-import org.objectweb.asm.Type;
 import water.compiler.FileContext;
 import water.compiler.compiler.Context;
 import water.compiler.compiler.SemanticException;
 import water.compiler.lexer.Token;
 import water.compiler.lexer.TokenType;
 import water.compiler.parser.Node;
-import water.compiler.util.TypeUtil;
+import water.compiler.util.WaterType;
 
 public class LogicalOperationNode implements Node {
 
@@ -26,14 +25,14 @@ public class LogicalOperationNode implements Node {
 
 	@Override
 	public void visit(FileContext context) throws SemanticException {
-		Type leftType = left.getReturnType(context.getContext());
-		Type rightType = right.getReturnType(context.getContext());
+		WaterType leftType = left.getReturnType(context.getContext());
+		WaterType rightType = right.getReturnType(context.getContext());
 
 		if(!verifyTypes(leftType, rightType)) {
 			throw new SemanticException(op, "Unsupported operation of '%s' between types '%s' and '%s'".formatted(
 					op.getValue(),
-					TypeUtil.stringify(leftType),
-					TypeUtil.stringify(rightType)
+					leftType,
+					rightType
 			));
 		}
 
@@ -81,14 +80,14 @@ public class LogicalOperationNode implements Node {
 	}
 
 	public boolean generateConditional(FileContext context, Label falseL) throws SemanticException {
-		Type leftType = left.getReturnType(context.getContext());
-		Type rightType = right.getReturnType(context.getContext());
+		WaterType leftType = left.getReturnType(context.getContext());
+		WaterType rightType = right.getReturnType(context.getContext());
 
 		if(!verifyTypes(leftType, rightType)) {
 			throw new SemanticException(op, "Unsupported operation of '%s' between types '%s' and '%s'".formatted(
 					op.getValue(),
-					TypeUtil.stringify(leftType),
-					TypeUtil.stringify(rightType)
+					leftType,
+					rightType
 			));
 		}
 
@@ -117,13 +116,13 @@ public class LogicalOperationNode implements Node {
 		return true;
 	}
 
-	private boolean verifyTypes(Type left, Type right) {
-		return left.getSort() == Type.BOOLEAN && right.getSort() == Type.BOOLEAN;
+	private boolean verifyTypes(WaterType left, WaterType right) {
+		return left.equals(WaterType.BOOLEAN_TYPE) && right.equals(WaterType.BOOLEAN_TYPE);
 	}
 
 	@Override
-	public Type getReturnType(Context context) throws SemanticException {
-		return Type.BOOLEAN_TYPE;
+	public WaterType getReturnType(Context context) throws SemanticException {
+		return WaterType.BOOLEAN_TYPE;
 	}
 
 	@Override

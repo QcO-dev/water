@@ -8,6 +8,7 @@ import water.compiler.compiler.SemanticException;
 import water.compiler.lexer.Token;
 import water.compiler.parser.Node;
 import water.compiler.util.TypeUtil;
+import water.compiler.util.WaterType;
 
 public class CastNode implements Node {
 	private final Node left;
@@ -23,44 +24,45 @@ public class CastNode implements Node {
 	@Override
 	public void visit(FileContext fc) throws SemanticException {
 		Context context = fc.getContext();
-		Type from = left.getReturnType(context);
-		Type to = type.getReturnType(context);
+		WaterType from = left.getReturnType(context);
+		WaterType to = type.getReturnType(context);
 
 		try {
-			if(TypeUtil.typeToClass(from, context).equals(TypeUtil.typeToClass(to, context))) return;
+			if(from.toClass(context).equals(to.toClass(context))) return;
 		} catch (ClassNotFoundException e) {
 			throw new SemanticException(as, "Could not resolve class '%s'".formatted(e.getMessage()));
 		}
 
-		if(from.getSort() == Type.VOID) throw new SemanticException(as, "Cannot cast from void");
+		if(from.equals(WaterType.VOID_TYPE)) throw new SemanticException(as, "Cannot cast from void");
 
-		if(TypeUtil.isPrimitive(from) && TypeUtil.isPrimitive(to)) {
+		if(from.isPrimitive() && to.isPrimitive()) {
 			left.visit(fc);
-			TypeUtil.cast(context.getMethodVisitor(), from, to);
+			from.cast(to, context.getMethodVisitor());
 		}
-		else if(!TypeUtil.isPrimitive(from) && !TypeUtil.isPrimitive(to)) {
+		else if(!from.isPrimitive() && !to.isPrimitive()) {
 			left.visit(fc);
 			context.getMethodVisitor().visitTypeInsn(Opcodes.CHECKCAST, to.getInternalName());
 
 			try {
-				if(!TypeUtil.typeToClass(to, context).isAssignableFrom(TypeUtil.typeToClass(from, context))
-				&& !TypeUtil.typeToClass(from, context).isAssignableFrom(TypeUtil.typeToClass(to, context)))
+				if(!to.toClass(context).isAssignableFrom(from.toClass(context))
+				&& !from.toClass(context).isAssignableFrom(to.toClass(context)))
 					throw new SemanticException(as, "Cannot cast type '%s' to '%s'".formatted(from.getClassName(), to.getClassName()));
 			} catch (ClassNotFoundException e) {
 				throw new SemanticException(as, "Could not resolve class '%s'".formatted(e.getMessage()));
 			}
 		}
 		else {
-			if(from.equals(TypeUtil.STRING_TYPE)) {
+			if(from.equals(WaterType.STRING_TYPE)) {
 				stringCast(to, fc);
 			}
 			else throw new SemanticException(as, "Cannot cast between objects and primitives ('%s' to '%s')".formatted(from.getClassName(), to.getClassName()));
 		}
 	}
 
-	private void stringCast(Type to, FileContext fc) throws SemanticException {
+	private void stringCast(WaterType to, FileContext fc) throws SemanticException {
 		//TODO other primitives
-		switch (to.getSort()) {
+		//TODO Avoid getRawType() call
+		switch (to.getRawType().getSort()) {
 			case Type.INT -> {
 				left.visit(fc);
 				fc.getContext().getMethodVisitor().visitMethodInsn(Opcodes.INVOKESTATIC, "java/lang/Integer", "parseInt", "(Ljava/lang/String;)I", false);
@@ -78,7 +80,7 @@ public class CastNode implements Node {
 	}
 
 	@Override
-	public Type getReturnType(Context context) throws SemanticException {
+	public WaterType getReturnType(Context context) throws SemanticException {
 		return type.getReturnType(context);
 	}
 

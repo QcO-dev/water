@@ -12,6 +12,7 @@ import water.compiler.parser.nodes.operation.EqualityOperationNode;
 import water.compiler.parser.nodes.operation.LogicalOperationNode;
 import water.compiler.parser.nodes.operation.RelativeOperationNode;
 import water.compiler.util.TypeUtil;
+import water.compiler.util.WaterType;
 
 public class WhileStatementNode implements Node {
 
@@ -29,10 +30,10 @@ public class WhileStatementNode implements Node {
 	public void visit(FileContext context) throws SemanticException {
 		MethodVisitor methodVisitor = context.getContext().getMethodVisitor();
 
-		Type conditionReturnType = condition.getReturnType(context.getContext());
-		if(conditionReturnType.getSort() != Type.BOOLEAN) {
+		WaterType conditionReturnType = condition.getReturnType(context.getContext());
+		if(!conditionReturnType.equals(WaterType.BOOLEAN_TYPE)) {
 			throw new SemanticException(whileTok, "Invalid condition type (%s =/= boolean)"
-					.formatted(TypeUtil.stringify(conditionReturnType)));
+					.formatted(conditionReturnType));
 		}
 
 		context.getContext().updateLine(whileTok.getLine());

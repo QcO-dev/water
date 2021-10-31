@@ -4,6 +4,7 @@ import org.objectweb.asm.Type;
 import water.compiler.FileContext;
 import water.compiler.compiler.Context;
 import water.compiler.compiler.SemanticException;
+import water.compiler.util.WaterType;
 
 /**
  * All Nodes created by the Parser in the AST must implement this interface
@@ -14,7 +15,7 @@ public interface Node {
 	/** Create outlining for template class */
 	default void preprocess(Context context) throws SemanticException { }
 	/** The type which this node will produce */
-	default Type getReturnType(Context context) throws SemanticException { return Type.VOID_TYPE; }
+	default WaterType getReturnType(Context context) throws SemanticException { return WaterType.VOID_TYPE; }
 	/** Returns a constant value for use in optimisations. Only needs to be implemented if isConstant can return true */
 	default Object getConstantValue(Context context) throws SemanticException { return null; }
 	/** If the node can be transformed to a constant value for optimisation */

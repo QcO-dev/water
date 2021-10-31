@@ -7,6 +7,7 @@ import water.compiler.compiler.SemanticException;
 import water.compiler.lexer.Token;
 import water.compiler.parser.Node;
 import water.compiler.util.TypeUtil;
+import water.compiler.util.WaterType;
 
 public class ImportNode implements Node {
 	private final Token importTok;
@@ -24,9 +25,9 @@ public class ImportNode implements Node {
 
 	@Override
 	public void preprocess(Context context) throws SemanticException {
-		Type importType = type.getReturnType(context);
+		WaterType importType = type.getReturnType(context);
 
-		if(TypeUtil.isPrimitive(importType)) {
+		if(importType.isPrimitive()) {
 			throw new SemanticException(importTok, "Cannot import primitive type");
 		}
 

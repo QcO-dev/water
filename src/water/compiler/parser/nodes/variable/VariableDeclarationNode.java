@@ -8,6 +8,7 @@ import water.compiler.compiler.*;
 import water.compiler.lexer.Token;
 import water.compiler.parser.Node;
 import water.compiler.util.TypeUtil;
+import water.compiler.util.WaterType;
 
 public class VariableDeclarationNode implements Node {
 
@@ -51,7 +52,7 @@ public class VariableDeclarationNode implements Node {
 
 	@Override
 	public void visit(FileContext context) throws SemanticException {
-		Type returnType = computeExpectedType(context.getContext());
+		WaterType returnType = computeExpectedType(context.getContext());
 
 		if(context.getContext().getType() == ContextType.GLOBAL) {
 			defineGetAndSet(true, true, context.getContext());
@@ -120,7 +121,7 @@ public class VariableDeclarationNode implements Node {
 
 		String beanName = name.getValue().substring(0, 1).toUpperCase() + name.getValue().substring(1);
 
-		Type fieldType = computeExpectedType(context);
+		WaterType fieldType = computeExpectedType(context);
 		String descriptor = fieldType.getDescriptor();
 
 		// Getter
@@ -158,7 +159,7 @@ public class VariableDeclarationNode implements Node {
 		};
 	}
 
-	private Type computeExpectedType(Context context) throws SemanticException {
+	private WaterType computeExpectedType(Context context) throws SemanticException {
 		if(expectedType == null) {
 			return value.getReturnType(context);
 		}
@@ -166,14 +167,14 @@ public class VariableDeclarationNode implements Node {
 			return expectedType.getReturnType(context);
 		}
 
-		Type expected = expectedType.getReturnType(context);
-		Type valueType = value.getReturnType(context);
+		WaterType expected = expectedType.getReturnType(context);
+		WaterType valueType = value.getReturnType(context);
 
 		try {
-			if(!TypeUtil.isAssignableFrom(expected, valueType, context, false)) {
+			if(!expected.isAssignableFrom(valueType, context, false)) {
 				throw new SemanticException(name, "Cannot assign type of '%s' to annotated type of '%s'.".formatted(
-						TypeUtil.stringify(valueType),
-						TypeUtil.stringify(expected)
+						valueType,
+						expected
 				));
 			}
 		} catch (ClassNotFoundException e) {
@@ -184,7 +185,7 @@ public class VariableDeclarationNode implements Node {
 
 	private void generateValue(FileContext context) throws SemanticException {
 		if(value == null) {
-			context.getContext().getMethodVisitor().visitInsn(TypeUtil.dummyConstant(expectedType.getReturnType(context.getContext())));
+			context.getContext().getMethodVisitor().visitInsn(expectedType.getReturnType(context.getContext()).dummyConstant());
 		}
 		else {
 			value.visit(context);

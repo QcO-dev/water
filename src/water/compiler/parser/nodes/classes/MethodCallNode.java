@@ -11,6 +11,7 @@ import water.compiler.parser.nodes.variable.VariableAccessNode;
 import water.compiler.util.Pair;
 import water.compiler.util.TypeUtil;
 import water.compiler.util.Unthrow;
+import water.compiler.util.WaterType;
 
 import java.lang.reflect.Method;
 import java.lang.reflect.Modifier;
@@ -39,68 +40,68 @@ public class MethodCallNode implements Node {
 
 	@Override
 	public void visit(FileContext context) throws SemanticException {
-		Type leftType = getLeftType(context.getContext());
+		WaterType leftType = getLeftType(context.getContext());
 
-		if(leftType.getSort() == Type.ARRAY && name.getValue().equals("length") && args.size() == 0) {
+		if(leftType.isArray() && name.getValue().equals("length") && args.size() == 0) {
 			left.visit(context);
 			context.getContext().getMethodVisitor().visitInsn(Opcodes.ARRAYLENGTH);
 			return;
 		}
 
-		if(leftType.getSort() != Type.OBJECT) {
-			throw new SemanticException(name, "Cannot invoke method on type '%s'".formatted(TypeUtil.stringify(leftType)));
+		if(!leftType.isObject()) {
+			throw new SemanticException(name, "Cannot invoke method on type '%s'".formatted(leftType));
 		}
 
 		left.visit(context);
 
 		Method toCall = resolve(leftType, context.getContext());
 
-		Type[] resolvedTypes = Type.getType(toCall).getArgumentTypes();
+		WaterType[] resolvedTypes = WaterType.getType(toCall).getArgumentTypes();
 
 		for(int i = 0; i < args.size(); i++) {
 			Node arg = args.get(i);
-			Type resolvedType = resolvedTypes[i];
+			WaterType resolvedType = resolvedTypes[i];
 
 			arg.visit(context);
 			try {
-				TypeUtil.isAssignableFrom(resolvedType, arg.getReturnType(context.getContext()), context.getContext(), true);
+				resolvedType.isAssignableFrom(arg.getReturnType(context.getContext()), context.getContext(), true);
 			} catch (ClassNotFoundException e) {
 				throw new SemanticException(name, "Could not resolve class '%s'".formatted(e.getMessage()));
 			}
 		}
 
-		Stream<Type> paramTypes = Arrays.stream(resolvedTypes);
+		Stream<WaterType> paramTypes = Arrays.stream(resolvedTypes);
 
 		String descriptor = "(%s)%s"
-				.formatted(paramTypes.map(Type::getDescriptor).collect(Collectors.joining()), Type.getType(toCall.getReturnType()).getDescriptor());
+				.formatted(paramTypes.map(WaterType::getDescriptor).collect(Collectors.joining()), Type.getType(toCall.getReturnType()).getDescriptor());
 
 		context.getContext().getMethodVisitor().visitMethodInsn(isSuper ? Opcodes.INVOKESPECIAL : TypeUtil.getInvokeOpcode(toCall), leftType.getInternalName(), name.getValue(), descriptor, false);
 
 	}
 
 	@Override
-	public Type getReturnType(Context context) throws SemanticException {
-		Type leftType = getLeftType(context);
+	public WaterType getReturnType(Context context) throws SemanticException {
+		WaterType leftType = getLeftType(context);
 
-		if(leftType.getSort() == Type.ARRAY && name.getValue().equals("length") && args.size() == 0) return Type.INT_TYPE;
+		if(leftType.isArray() && name.getValue().equals("length") && args.size() == 0) return WaterType.INT_TYPE;
 
-		return Type.getType(resolve(leftType, context).getReturnType());
+		return WaterType.getType(resolve(leftType, context).getReturnType());
 	}
 
-	private Type getLeftType(Context context) throws SemanticException {
+	private WaterType getLeftType(Context context) throws SemanticException {
 		if(left instanceof VariableAccessNode) {
 			VariableAccessNode van = (VariableAccessNode) left;
 			van.setMemberAccess(true);
-			Type leftType = left.getReturnType(context);
+			WaterType leftType = left.getReturnType(context);
 			isStaticAccess = van.isStaticClassAccess();
-			return  leftType;
+			return leftType;
 		}
 		return left.getReturnType(context);
 	}
 
-	private Method resolve(Type leftType, Context context) throws SemanticException {
-		Type[] argTypes = args.stream()
-				.map(n -> Unthrow.wrap(() -> n.getReturnType(context))).toArray(Type[]::new);
+	private Method resolve(WaterType leftType, Context context) throws SemanticException {
+		WaterType[] argTypes = args.stream()
+				.map(n -> Unthrow.wrap(() -> n.getReturnType(context))).toArray(WaterType[]::new);
 
 		Class<?> klass;
 
@@ -116,21 +117,21 @@ public class MethodCallNode implements Node {
 			out:
 			for (Method method : klass.getMethods()) {
 				if(!method.getName().equals(name.getValue())) continue;
-				Type[] expectArgs = Type.getType(method).getArgumentTypes();
+				WaterType[] expectArgs = WaterType.getType(method).getArgumentTypes();
 
 				if (expectArgs.length != argTypes.length) continue;
 
 				int changes = 0;
 
 				for (int i = 0; i < expectArgs.length; i++) {
-					Type expectArg = expectArgs[i];
-					Type arg = argTypes[i];
+					WaterType expectArg = expectArgs[i];
+					WaterType arg = argTypes[i];
 
-					if (arg.getSort() == Type.VOID)
+					if (arg.equals(WaterType.VOID_TYPE))
 						continue out;
 
-					if (TypeUtil.isAssignableFrom(expectArg, arg, context, false)) {
-						if (!expectArg.equals(arg)) changes += TypeUtil.assignChanges(expectArg, arg);
+					if (expectArg.isAssignableFrom(arg, context, false)) {
+						if (!expectArg.equals(arg)) changes += expectArg.assignChangesFrom(arg);
 					} else {
 						continue out;
 					}
@@ -146,7 +147,7 @@ public class MethodCallNode implements Node {
 			throw new SemanticException(name,
 					"Could not resolve method '%s' with arguments: %s".formatted(name.getValue(),
 							argTypes.length == 0 ? "(none)" :
-									List.of(argTypes).stream().map(TypeUtil::stringify).collect(Collectors.joining(", "))));
+									List.of(argTypes).stream().map(WaterType::toString).collect(Collectors.joining(", "))));
 		}
 
 		List<Pair<Integer, Method>> appliedPossible = possible.stream()

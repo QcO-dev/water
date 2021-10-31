@@ -9,6 +9,7 @@ import water.compiler.compiler.SemanticException;
 import water.compiler.lexer.Token;
 import water.compiler.parser.Node;
 import water.compiler.util.TypeUtil;
+import water.compiler.util.WaterType;
 
 public class ReturnNode implements Node {
 	private final Token returnTok;
@@ -27,24 +28,24 @@ public class ReturnNode implements Node {
 		Scope scope = context.getContext().getScope();
 
 		if(expression == null) {
-			if(scope.getReturnType().getSort() != Type.VOID) throw new SemanticException(returnTok, "Non-void function's return must have a value.");
+			if(!scope.getReturnType().equals(WaterType.VOID_TYPE)) throw new SemanticException(returnTok, "Non-void function's return must have a value.");
 			mv.visitInsn(Opcodes.RETURN);
 			scope.setReturned(true);
 		}
 		else {
-			Type returnType = expression.getReturnType(context.getContext());
+			WaterType returnType = expression.getReturnType(context.getContext());
 
-			if(returnType.getSort() == Type.VOID) throw new SemanticException(returnTok, "Cannot return void value");
+			if(returnType.equals(WaterType.VOID_TYPE)) throw new SemanticException(returnTok, "Cannot return void value");
 
-			if(scope.getReturnType().getSort() == Type.VOID) throw new SemanticException(returnTok, "Cannot return value from void function");
+			if(scope.getReturnType().equals(WaterType.VOID_TYPE)) throw new SemanticException(returnTok, "Cannot return value from void function");
 
 			expression.visit(context);
 
 			try {
-				if(!TypeUtil.isAssignableFrom(scope.getReturnType(), returnType, context.getContext(), true)) {
+				if(!scope.getReturnType().isAssignableFrom(returnType, context.getContext(), true)) {
 					throw new SemanticException(returnTok,
 							"Cannot return type '%s' from function expecting '%s'"
-									.formatted(TypeUtil.stringify(returnType), TypeUtil.stringify(scope.getReturnType())));
+									.formatted(returnType, scope.getReturnType()));
 				}
 			} catch (ClassNotFoundException e) {
 				throw new SemanticException(returnTok, "Could not resolve class '%s'".formatted(e.getMessage()));

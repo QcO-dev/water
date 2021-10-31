@@ -3,14 +3,16 @@ package water.compiler.parser.nodes.classes;
 import org.objectweb.asm.ClassWriter;
 import org.objectweb.asm.MethodVisitor;
 import org.objectweb.asm.Opcodes;
-import org.objectweb.asm.Type;
 import water.compiler.FileContext;
-import water.compiler.compiler.*;
+import water.compiler.compiler.Context;
+import water.compiler.compiler.ContextType;
+import water.compiler.compiler.Scope;
+import water.compiler.compiler.SemanticException;
 import water.compiler.lexer.Token;
 import water.compiler.lexer.TokenType;
 import water.compiler.parser.Node;
 import water.compiler.parser.nodes.variable.VariableDeclarationNode;
-import water.compiler.util.TypeUtil;
+import water.compiler.util.WaterType;
 
 import java.lang.reflect.Constructor;
 import java.lang.reflect.Modifier;
@@ -54,7 +56,7 @@ public class ClassDeclarationNode implements Node {
 		Context context = fc.getContext();
 		ContextType prevType = context.getType();
 		String prevClass = context.getCurrentClass();
-		Type prevSuperClass = context.getCurrentSuperClass();
+		WaterType prevSuperClass = context.getCurrentSuperClass();
 		context.setCurrentSuperClass(getSuperclassType(context));
 
 		ClassWriter writer = initClass(getSuperclassType(context).getInternalName(), context);
@@ -110,15 +112,15 @@ public class ClassDeclarationNode implements Node {
 	@Override
 	public void preprocess(Context context) throws SemanticException {
 		if(superclass != null) {
-			Type superclassType = superclass.getReturnType(context);
-			if(TypeUtil.isPrimitive(superclassType)) {
-				throw new SemanticException(name, "Superclass must not be a primitive (got '%s').".formatted(TypeUtil.stringify(superclassType)));
+			WaterType superclassType = superclass.getReturnType(context);
+			if(superclassType.isPrimitive()) {
+				throw new SemanticException(name, "Superclass must not be a primitive (got '%s').".formatted(superclassType));
 			}
 		}
 
 		ContextType prevType = context.getType();
 		String prevClass = context.getCurrentClass();
-		Type prevSuperClass = context.getCurrentSuperClass();
+		WaterType prevSuperClass = context.getCurrentSuperClass();
 		context.setCurrentSuperClass(getSuperclassType(context));
 
 		ClassWriter writer = initClass(getSuperclassType(context).getInternalName(), context);
@@ -232,7 +234,7 @@ public class ClassDeclarationNode implements Node {
 			}
 			if(!hasDefaultConstructor) {
 				throw new SemanticException(name, "Cannot create default constructor: superclass '%s' has no default.".formatted(
-						TypeUtil.stringify(getSuperclassType(context))
+						getSuperclassType(context)
 				));
 			}
 		}
@@ -240,8 +242,8 @@ public class ClassDeclarationNode implements Node {
 		return constructor;
 	}
 
-	private Type getSuperclassType(Context context) throws SemanticException {
-		if(superclass == null) return TypeUtil.OBJECT_TYPE;
+	private WaterType getSuperclassType(Context context) throws SemanticException {
+		if(superclass == null) return WaterType.OBJECT_TYPE;
 		return superclass.getReturnType(context);
 	}
 

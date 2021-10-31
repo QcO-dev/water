@@ -1,7 +1,6 @@
 package water.compiler.parser.nodes.variable;
 
 import org.objectweb.asm.Opcodes;
-import org.objectweb.asm.Type;
 import water.compiler.FileContext;
 import water.compiler.compiler.Context;
 import water.compiler.compiler.SemanticException;
@@ -11,6 +10,7 @@ import water.compiler.lexer.Token;
 import water.compiler.parser.LValue;
 import water.compiler.parser.Node;
 import water.compiler.util.TypeUtil;
+import water.compiler.util.WaterType;
 
 public class VariableAccessNode implements Node {
 	private final Token name;
@@ -55,7 +55,7 @@ public class VariableAccessNode implements Node {
 	}
 
 	@Override
-	public Type getReturnType(Context context) throws SemanticException {
+	public WaterType getReturnType(Context context) throws SemanticException {
 		Variable v = context.getScope().lookupVariable(name.getValue());
 
 		if(v == null) {
@@ -63,7 +63,7 @@ public class VariableAccessNode implements Node {
 				try {
 					Class<?> staticClass = TypeUtil.classForName(name.getValue(), context);
 					isStaticClassAccess = true;
-					return Type.getType(staticClass);
+					return WaterType.getType(staticClass);
 				} catch (ClassNotFoundException e) {
 					throw new SemanticException(name, "Cannot resolve variable '%s' in current scope.".formatted(name.getValue()));
 				}

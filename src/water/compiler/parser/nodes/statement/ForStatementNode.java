@@ -3,7 +3,6 @@ package water.compiler.parser.nodes.statement;
 import org.objectweb.asm.Label;
 import org.objectweb.asm.MethodVisitor;
 import org.objectweb.asm.Opcodes;
-import org.objectweb.asm.Type;
 import water.compiler.FileContext;
 import water.compiler.compiler.Scope;
 import water.compiler.compiler.SemanticException;
@@ -13,7 +12,7 @@ import water.compiler.parser.nodes.operation.EqualityOperationNode;
 import water.compiler.parser.nodes.operation.LogicalOperationNode;
 import water.compiler.parser.nodes.operation.RelativeOperationNode;
 import water.compiler.util.OptimizationUtil;
-import water.compiler.util.TypeUtil;
+import water.compiler.util.WaterType;
 
 public class ForStatementNode implements Node {
 
@@ -33,10 +32,10 @@ public class ForStatementNode implements Node {
 
 	@Override
 	public void visit(FileContext context) throws SemanticException {
-		Type conditionReturnType = condition.getReturnType(context.getContext());
-		if(conditionReturnType.getSort() != Type.BOOLEAN) {
+		WaterType conditionReturnType = condition.getReturnType(context.getContext());
+		if(!conditionReturnType.equals(WaterType.BOOLEAN_TYPE)) {
 			throw new SemanticException(forTok, "Invalid condition type (%s =/= boolean)"
-					.formatted(TypeUtil.stringify(conditionReturnType)));
+					.formatted(conditionReturnType));
 		}
 
 		Scope outer = context.getContext().getScope();
@@ -72,9 +71,9 @@ public class ForStatementNode implements Node {
 
 		boolean varAssign = OptimizationUtil.assignmentNodeExpressionEval(iterate, context);
 
-		Type iterateType = iterate.getReturnType(context.getContext());
+		WaterType iterateType = iterate.getReturnType(context.getContext());
 
-		if(iterateType.getSort() != Type.VOID && !varAssign) methodVisitor.visitInsn(TypeUtil.getPopOpcode(iterateType));
+		if(!iterateType.equals(WaterType.VOID_TYPE) && !varAssign) methodVisitor.visitInsn(iterateType.getPopOpcode());
 
 		methodVisitor.visitJumpInsn(Opcodes.GOTO, conditionL);
 

@@ -2,13 +2,12 @@ package water.compiler.parser.nodes.operation;
 
 import org.objectweb.asm.MethodVisitor;
 import org.objectweb.asm.Opcodes;
-import org.objectweb.asm.Type;
 import water.compiler.FileContext;
 import water.compiler.compiler.Context;
 import water.compiler.compiler.SemanticException;
 import water.compiler.lexer.Token;
 import water.compiler.parser.Node;
-import water.compiler.util.TypeUtil;
+import water.compiler.util.WaterType;
 
 public class IntegerOperationNode implements Node {
 
@@ -24,31 +23,31 @@ public class IntegerOperationNode implements Node {
 
 	@Override
 	public void visit(FileContext context) throws SemanticException {
-		Type leftType = left.getReturnType(context.getContext());
-		Type rightType = right.getReturnType(context.getContext());
+		WaterType leftType = left.getReturnType(context.getContext());
+		WaterType rightType = right.getReturnType(context.getContext());
 
-		if(!TypeUtil.isInteger(leftType) || !TypeUtil.isInteger(rightType)) {
+		if(!leftType.isInteger() || !rightType.isInteger()) {
 			throw new SemanticException(op, "Unsupported operation of '%s' between types '%s' and '%s'".formatted(
-					op.getValue(), TypeUtil.stringify(leftType), TypeUtil.stringify(rightType)
+					op.getValue(), leftType, rightType
 			));
 		}
 
 		MethodVisitor visitor = context.getContext().getMethodVisitor();
 
-		Type larger = TypeUtil.getLarger(leftType, rightType);
+		WaterType larger = leftType.getLarger(rightType);
 
-		boolean same = leftType.getSort() == rightType.getSort();
+		boolean same = leftType.equals(rightType);
 
 		left.visit(context);
 
-		if(!same && larger.getSort() == rightType.getSort()) {
-			TypeUtil.cast(visitor, leftType, rightType);
+		if(!same && larger.equals(rightType)) {
+			leftType.cast(rightType, visitor);
 		}
 
 		right.visit(context);
 
-		if(!same && larger.getSort() == leftType.getSort()) {
-			TypeUtil.cast(visitor, rightType, leftType);
+		if(!same && larger.equals(leftType)) {
+			rightType.cast(leftType, visitor);
 		}
 
 		visitor.visitInsn(larger.getOpcode(getOpcode()));
@@ -67,8 +66,8 @@ public class IntegerOperationNode implements Node {
 	}
 
 	@Override
-	public Type getReturnType(Context context) throws SemanticException {
-		return TypeUtil.getLarger(left.getReturnType(context), right.getReturnType(context));
+	public WaterType getReturnType(Context context) throws SemanticException {
+		return left.getReturnType(context).getLarger(right.getReturnType(context));
 	}
 
 	@Override
