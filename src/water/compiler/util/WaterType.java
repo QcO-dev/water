@@ -27,11 +27,28 @@ public class WaterType {
 	/** A constant defining a Type representing the java.lang.Object class */
 	public static final WaterType OBJECT_TYPE = WaterType.getObjectType("java/lang/Object");
 
+	public enum Sort {
+		VOID,
+		BOOLEAN,
+		CHAR,
+		BYTE,
+		SHORT,
+		INT,
+		FLOAT,
+		LONG,
+		DOUBLE,
+		ARRAY,
+		OBJECT,
+		METHOD
+	}
+
 
 	private final Type asmType;
+	private final Sort sort;
 
 	public WaterType(Type asmType) {
 		this.asmType = asmType;
+		sort = Sort.values()[asmType.getSort()];
 	}
 
 	/**
@@ -464,7 +481,10 @@ public class WaterType {
 		return asmType.getDescriptor();
 	}
 
-	public Type getRawType() {
+	public Sort getSort() {
+		return sort;
+	}
+	private Type getRawType() {
 		return asmType;
 	}
 

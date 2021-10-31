@@ -115,9 +115,8 @@ public class UnaryOperationNode implements Node {
 	public boolean isConstant(Context context) throws SemanticException {
 		if(op.getType() == TokenType.MINUS) {
 			WaterType type = expression.getReturnType(context);
-			//TODO Refactor out of getRawType
-			return switch(type.getRawType().getSort()) {
-				case Type.DOUBLE, Type.FLOAT, Type.INT, Type.LONG -> true;
+			return switch(type.getSort()) {
+				case DOUBLE, FLOAT, INT, LONG -> true;
 				default -> false;
 			};
 		}

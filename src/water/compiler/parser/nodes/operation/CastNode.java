@@ -61,17 +61,16 @@ public class CastNode implements Node {
 
 	private void stringCast(WaterType to, FileContext fc) throws SemanticException {
 		//TODO other primitives
-		//TODO Avoid getRawType() call
-		switch (to.getRawType().getSort()) {
-			case Type.INT -> {
+		switch (to.getSort()) {
+			case INT -> {
 				left.visit(fc);
 				fc.getContext().getMethodVisitor().visitMethodInsn(Opcodes.INVOKESTATIC, "java/lang/Integer", "parseInt", "(Ljava/lang/String;)I", false);
 			}
-			case Type.DOUBLE -> {
+			case DOUBLE -> {
 				left.visit(fc);
 				fc.getContext().getMethodVisitor().visitMethodInsn(Opcodes.INVOKESTATIC, "java/lang/Double", "parseDouble", "(Ljava/lang/String;)D", false);
 			}
-			case Type.BOOLEAN -> {
+			case BOOLEAN -> {
 				left.visit(fc);
 				fc.getContext().getMethodVisitor().visitMethodInsn(Opcodes.INVOKESTATIC, "java/lang/Boolean", "parseBoolean", "(Ljava/lang/String;)Z", false);
 			}
