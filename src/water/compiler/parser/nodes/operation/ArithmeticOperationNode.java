@@ -11,6 +11,7 @@ import water.compiler.lexer.Token;
 import water.compiler.lexer.TokenType;
 import water.compiler.parser.Node;
 import water.compiler.util.TypeUtil;
+import water.compiler.util.WaterType;
 
 import java.util.List;
 
@@ -28,8 +29,8 @@ public class ArithmeticOperationNode implements Node {
 
 	@Override
 	public void visit(FileContext context) throws SemanticException {
-		Type leftType = left.getReturnType(context.getContext());
-		Type rightType = right.getReturnType(context.getContext());
+		WaterType leftType = left.getReturnType(context.getContext());
+		WaterType rightType = right.getReturnType(context.getContext());
 
 		MethodVisitor visitor = context.getContext().getMethodVisitor();
 
@@ -38,21 +39,21 @@ public class ArithmeticOperationNode implements Node {
 			TypeUtil.correctLdc(val, context.getContext());
 		}
 
-		else if(TypeUtil.isPrimitive(leftType) && TypeUtil.isPrimitive(rightType)) {
-			Type larger = TypeUtil.getLarger(leftType, rightType);
+		else if(leftType.isPrimitive() && rightType.isPrimitive()) {
+			WaterType larger = leftType.getLarger(rightType);
 
-			boolean same = leftType.getSort() == rightType.getSort();
+			boolean same = leftType.equals(rightType);
 
 			left.visit(context);
 
-			if(!same && larger.getSort() == rightType.getSort()) {
-				TypeUtil.cast(visitor, leftType, rightType);
+			if(!same && larger.equals(rightType)) {
+				leftType.cast(rightType, visitor);
 			}
 
 			right.visit(context);
 
-			if(!same && larger.getSort() == leftType.getSort()) {
-				TypeUtil.cast(visitor, rightType, leftType);
+			if(!same && larger.equals(leftType)) {
+				rightType.cast(leftType, visitor);
 			}
 
 			visitor.visitInsn(larger.getOpcode(getOpcode()));
@@ -60,26 +61,26 @@ public class ArithmeticOperationNode implements Node {
 		}
 
 		// Special string operations
-		else if((leftType.equals(TypeUtil.STRING_TYPE) || rightType.equals(TypeUtil.STRING_TYPE)) && op.getType() == TokenType.PLUS) {
+		else if((leftType.equals(WaterType.STRING_TYPE) || rightType.equals(WaterType.STRING_TYPE)) && op.getType() == TokenType.PLUS) {
 			concatStrings(context);
 		}
-		else if(leftType.equals(TypeUtil.STRING_TYPE) && TypeUtil.isInteger(rightType) && op.getType() == TokenType.STAR) {
+		else if(leftType.equals(WaterType.STRING_TYPE) && rightType.isRepresentedAsInteger() && op.getType() == TokenType.STAR) {
 			left.visit(context);
 			right.visit(context);
 			context.getContext().getMethodVisitor().visitMethodInsn(Opcodes.INVOKEVIRTUAL, "java/lang/String", "repeat", "(I)Ljava/lang/String;", false);
 		}
-		else if(TypeUtil.isInteger(leftType) && rightType.equals(TypeUtil.STRING_TYPE) && op.getType() == TokenType.STAR) {
+		else if(leftType.isRepresentedAsInteger() && rightType.equals(WaterType.STRING_TYPE) && op.getType() == TokenType.STAR) {
 			left.visit(context);
 			right.visit(context);
-			TypeUtil.swap(context.getContext().getMethodVisitor(), rightType, leftType);
+			rightType.swap(leftType, context.getContext().getMethodVisitor());
 			context.getContext().getMethodVisitor().visitMethodInsn(Opcodes.INVOKEVIRTUAL, "java/lang/String", "repeat", "(I)Ljava/lang/String;", false);
 		}
 
-		else throw new SemanticException(op, "Unsupported operation of '%s' between types '%s' and '%s'".formatted(op.getValue(), TypeUtil.stringify(leftType), TypeUtil.stringify(rightType)));
+		else throw new SemanticException(op, "Unsupported operation of '%s' between types '%s' and '%s'".formatted(op.getValue(), leftType, rightType));
 	}
 
-	private boolean resolvableConstantWithOptimizations(Type leftType, Type rightType, FileContext context) {
-		return context.shouldOptimize("constant.arithmetic") && TypeUtil.isNumeric(leftType) && TypeUtil.isNumeric(rightType); // Numerical arithmetic
+	private boolean resolvableConstantWithOptimizations(WaterType leftType, WaterType rightType, FileContext context) {
+		return context.shouldOptimize("constant.arithmetic") && leftType.isNumeric() && rightType.isNumeric(); // Numerical arithmetic
 	}
 
 	private void concatStrings(FileContext fc) throws SemanticException {
@@ -142,14 +143,14 @@ public class ArithmeticOperationNode implements Node {
 	}
 
 	@Override
-	public Type getReturnType(Context context) throws SemanticException {
-		Type leftType = left.getReturnType(context);
-		Type rightType = right.getReturnType(context);
+	public WaterType getReturnType(Context context) throws SemanticException {
+		WaterType leftType = left.getReturnType(context);
+		WaterType rightType = right.getReturnType(context);
 
-		if(leftType.equals(TypeUtil.STRING_TYPE) || rightType.equals(TypeUtil.STRING_TYPE))
-			return TypeUtil.STRING_TYPE;
+		if(leftType.equals(WaterType.STRING_TYPE) || rightType.equals(WaterType.STRING_TYPE))
+			return WaterType.STRING_TYPE;
 
-		return TypeUtil.getLarger(leftType, rightType);
+		return leftType.getLarger(rightType);
 	}
 
 	@Override
@@ -195,11 +196,17 @@ public class ArithmeticOperationNode implements Node {
 	@Override
 	public boolean isConstant(Context context) throws SemanticException {
 		List<Class<?>> shouldBeConstant = List.of(String.class, Integer.class, Double.class);
-		Object leftReturnType = left.getReturnType(context);
-		Type rightReturnType = right.getReturnType(context);
+		WaterType leftReturnType = left.getReturnType(context);
+		WaterType rightReturnType = right.getReturnType(context);
 
-		if(!shouldBeConstant.contains(leftReturnType.getClass()) || !shouldBeConstant.contains(rightReturnType.getClass())) return false;
-		if((leftReturnType.equals(TypeUtil.STRING_TYPE) || rightReturnType.equals(TypeUtil.STRING_TYPE)) && op.getType() == TokenType.STAR) return false;
+		try {
+			if (!shouldBeConstant.contains(leftReturnType.toClass(context)) || !shouldBeConstant.contains(rightReturnType.toClass(context)))
+				return false;
+		}
+		catch (ClassNotFoundException e) {
+			throw new SemanticException(op, "Could not resolve class '%s'".formatted(e.getMessage()));
+		}
+		if((leftReturnType.equals(WaterType.STRING_TYPE) || rightReturnType.equals(WaterType.STRING_TYPE)) && op.getType() == TokenType.STAR) return false;
 		return left.isConstant(context) && right.isConstant(context);
 	}
 

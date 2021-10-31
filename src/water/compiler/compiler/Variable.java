@@ -1,6 +1,7 @@
 package water.compiler.compiler;
 
 import org.objectweb.asm.Type;
+import water.compiler.util.WaterType;
 
 /**
  * Represents a variable which can be accessed without class reference.
@@ -8,12 +9,12 @@ import org.objectweb.asm.Type;
 public class Variable {
 	private final String name;
 	private final String owner;
-	private final Type type;
+	private final WaterType type;
 	private final VariableType variableType;
 	private final int index;
 	private final boolean isConst;
 
-	public Variable(VariableType variableType, String name, String owner, Type type, boolean isConst) {
+	public Variable(VariableType variableType, String name, String owner, WaterType type, boolean isConst) {
 		this.name = name;
 		this.owner = owner;
 		this.type = type;
@@ -22,7 +23,7 @@ public class Variable {
 		this.index = 0;
 	}
 
-	public Variable(VariableType variableType, String name, int index, Type type, boolean isConst) {
+	public Variable(VariableType variableType, String name, int index, WaterType type, boolean isConst) {
 		this.variableType = variableType;
 		this.index = index;
 		this.type = type;
@@ -39,7 +40,7 @@ public class Variable {
 		return owner;
 	}
 
-	public Type getType() {
+	public WaterType getType() {
 		return type;
 	}
 

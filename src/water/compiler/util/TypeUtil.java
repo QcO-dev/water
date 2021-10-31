@@ -3,7 +3,6 @@ package water.compiler.util;
 import org.objectweb.asm.MethodVisitor;
 import org.objectweb.asm.Opcodes;
 import org.objectweb.asm.Type;
-import water.compiler.FileContext;
 import water.compiler.compiler.Context;
 import water.compiler.compiler.SemanticException;
 import water.compiler.lexer.Token;
@@ -14,7 +13,6 @@ import java.lang.reflect.Method;
 import java.lang.reflect.Modifier;
 import java.util.ArrayList;
 import java.util.Comparator;
-import java.util.List;
 
 /**
  * Extra utility for dealing with ASM Type objects.
@@ -22,304 +20,6 @@ import java.util.List;
  * @see org.objectweb.asm.Type
  */
 public class TypeUtil {
-
-	private static final List<Integer> TYPE_SIZE = List.of(Type.DOUBLE, Type.FLOAT, Type.LONG, Type.INT, Type.SHORT, Type.CHAR, Type.BYTE);
-	/** A constant defining a Type representing the java.lang.String class */
-	public static final Type STRING_TYPE = Type.getObjectType("java/lang/String");
-	/** A constant defining a Type representing the java.lang.Object class */
-	public static final Type OBJECT_TYPE = Type.getObjectType("java/lang/Object");
-
-	/** Returns the correct opcode given a type. */
-	public static int getPopOpcode(Type type) {
-		if(type.getSize() == 2) return Opcodes.POP2;
-		else if(type.getSize() == 1) return Opcodes.POP;
-		return -1;
-	}
-
-	/** Returns the correct opcode given a type. */
-	public static int getDupOpcode(Type type) {
-		if(type.getSize() == 2) return Opcodes.DUP2;
-		else if(type.getSize() == 1) return Opcodes.DUP;
-		return -1;
-	}
-
-	/**
-	 *
-	 * Converts a type to the class of same type.
-	 *
-	 * Method types should not be passed to this method -> resulting in an IllegalArgumentException
-	 *
-	 * @param type The type to convert
-	 * @param context The current compiler context - used for resolving the class loader
-	 * @return The Class representing the same type as the Type
-	 * @throws ClassNotFoundException Given an object type, or array type of objects, if the class cannot be found
-	 */
-	public static Class<?> typeToClass(Type type, Context context) throws ClassNotFoundException {
-		return switch (type.getSort()) {
-			case Type.BOOLEAN -> boolean.class;
-			case Type.CHAR -> char.class;
-			case Type.BYTE -> byte.class;
-			case Type.SHORT -> short.class;
-			case Type.INT -> int.class;
-			case Type.FLOAT -> float.class;
-			case Type.LONG -> long.class;
-			case Type.DOUBLE -> double.class;
-			case Type.ARRAY -> typeToClass(type.getElementType(), context).arrayType();
-			case Type.OBJECT -> Class.forName(type.getClassName(), false, context.getLoader());
-			default -> throw new IllegalArgumentException("Unexpected value: " + type.getSort());
-		};
-	}
-
-	/**
-	 * If the type is primitive - not an object, array, or method
-	 *
-	 * @param type The type to check
-	 * @return If the type is of a primitive value
-	 */
-	public static boolean isPrimitive(Type type) {
-		return type.getSort() != Type.OBJECT &&
-				type.getSort() != Type.ARRAY &&
-				type.getSort() != Type.METHOD;
-	}
-
-	/**
-	 * If the type represents an integer type - including long.
-	 * @param type The type to check
-	 * @return If the type is an integer type
-	 */
-	public static boolean isInteger(Type type) {
-		return isPrimitive(type) && (
-					type.getSort() == Type.INT ||
-					type.getSort() == Type.BYTE ||
-					type.getSort() == Type.CHAR ||
-					type.getSort() == Type.SHORT ||
-					type.getSort() == Type.LONG ||
-					type.getSort() == Type.BOOLEAN
-				);
-	}
-	/**
-	 * If the type represents an integer type - excluding long.
-	 * @param type The type to check
-	 * @return If the type is an integer type
-	 */
-	public static boolean isRepresentedAsInteger(Type type) {
-		return isPrimitive(type) && (
-				type.getSort() == Type.INT ||
-				type.getSort() == Type.BYTE ||
-				type.getSort() == Type.CHAR ||
-				type.getSort() == Type.SHORT ||
-				type.getSort() == Type.BOOLEAN
-		);
-	}
-
-	/**
-	 *
-	 * Returns the 'larger' of the type types - the one with greater precision.
-	 *
-	 * The sequence is as follows: <br/>
-	 * double, float, long, int, short, char, byte
-	 *
-	 * @param left The first type to compare
-	 * @param right The second type to compare
-	 * @return The larger / more precise type
-	 */
-	public static Type getLarger(Type left, Type right) {
-		if(TYPE_SIZE.indexOf(left.getSort()) < TYPE_SIZE.indexOf(right.getSort())) return left;
-		else if(TYPE_SIZE.indexOf(left.getSort()) > TYPE_SIZE.indexOf(right.getSort())) return right;
-		return left; // The same
-	}
-
-	/**
-	 *
-	 * Returns if the type given is a floating point type.
-	 *
-	 * This includes double and float.
-	 *
-	 * @param type The type to test
-	 * @return If the type represents a floating point type.
-	 */
-	public static boolean isFloat(Type type) {
-		return type.getSort() == Type.DOUBLE ||
-				type.getSort() == Type.FLOAT;
-	}
-
-	/**
-	 * Returns if the type is numeric - an integer type or a float type.
-	 *
-	 * @param type The type to test
-	 * @return If the type is numeric
-	 */
-	public static boolean isNumeric(Type type) {
-		return isInteger(type) || isFloat(type);
-	}
-
-	/**
-	 * Converts a type to a String.
-	 * This String representation differs from Type.toString()
-	 * as it gives a standard String instead of a descriptor.
-	 *
-	 * E.g.
-	 * Type.BOOLEAN_TYPE
-	 * -> "boolean"
-	 * instead of "Z"
-	 *
-	 * @param type The type to convert
-	 * @return The String representation
-	 */
-	public static String stringify(Type type) {
-		return switch (type.getSort()) {
-			case Type.VOID -> "void";
-			case Type.BOOLEAN -> "boolean";
-			case Type.CHAR -> "char";
-			case Type.BYTE -> "byte";
-			case Type.SHORT -> "short";
-			case Type.INT -> "int";
-			case Type.FLOAT -> "float";
-			case Type.LONG -> "long";
-			case Type.DOUBLE -> "double";
-			case Type.ARRAY -> stringify(type.getElementType()) + "[]";
-			case Type.OBJECT -> type.getClassName();
-			case Type.METHOD -> "method"; // Should not be reached
-			default -> null; // Unreachable
-		};
-	}
-
-	// https://stackoverflow.com/questions/11340330/java-bytecode-swap-for-double-and-long-values - accepted answer
-	/**
-	 *
-	 * Generates bytecode to swap the two top values.
-	 * This bytecode differs based on the size of the types.
-	 *
-	 * @param mv The MethodVisitor to append the instructions to
-	 * @param stackTop The top value type
-	 * @param belowTop The bottom value type
-	 */
-	public static void swap(MethodVisitor mv, Type stackTop, Type belowTop) {
-		if (stackTop.getSize() == 1) {
-			if (belowTop.getSize() == 1) {
-				// Top = 1, below = 1
-				mv.visitInsn(Opcodes.SWAP);
-			} else {
-				// Top = 1, below = 2
-				mv.visitInsn(Opcodes.DUP_X2);
-				mv.visitInsn(Opcodes.POP);
-			}
-		} else {
-			if (belowTop.getSize() == 1) {
-				// Top = 2, below = 1
-				mv.visitInsn(Opcodes.DUP2_X1);
-			} else {
-				// Top = 2, below = 2
-				mv.visitInsn(Opcodes.DUP2_X2);
-			}
-			mv.visitInsn(Opcodes.POP2);
-		}
-	}
-
-	/**
-	 *
-	 * Returns an opcode to generate a 'dummy constant'.
-	 * This is a value which is used for bytecode verification expecting a value,
-	 * when the actual value is not known.
-	 *
-	 * @param type The type to create a dummy value for
-	 * @return The opcode of the dummy constant
-	 */
-	public static int dummyConstant(Type type) {
-		return switch (type.getSort()) {
-			case Type.BOOLEAN, Type.CHAR, Type.BYTE, Type.SHORT, Type.INT -> Opcodes.ICONST_0;
-			case Type.LONG -> Opcodes.LCONST_0;
-			case Type.FLOAT -> Opcodes.FCONST_0;
-			case Type.DOUBLE -> Opcodes.DCONST_0;
-			default -> Opcodes.ACONST_NULL;
-		};
-	}
-
-	/**
-	 *
-	 * Tests if two types can be implicitly cast.
-	 * For example:
-	 * int -> double returns true <br/>
-	 * double -> int returns false <br/>
-	 * Due to loss of precision
-	 *
-	 * @param to The type to attempt to cast to
-	 * @param from The type to attempt to cast from
-	 * @param context The current compiler context
-	 * @param convert If bytecode should be generated for conversions (such as i2d)
-	 * @return If the types can be cast implicitly
-	 * @throws ClassNotFoundException If either type represents a class which cannot be resolved
-	 */
-	public static boolean isAssignableFrom(Type to, Type from, Context context, boolean convert) throws ClassNotFoundException {
-		if(to.getSort() == Type.OBJECT && from.getSort() == Type.OBJECT) {
-			return typeToClass(to, context).isAssignableFrom(typeToClass(from, context));
-		}
-
-		else if(isPrimitive(to) && isPrimitive(from)) {
-			if(TYPE_SIZE.indexOf(to.getSort()) <= TYPE_SIZE.indexOf(from.getSort())) {
-				if(convert) cast(context.getMethodVisitor(), from, to);
-				return true;
-			}
-			if(isRepresentedAsInteger(to) && isRepresentedAsInteger(from)) {
-				if(convert) cast(context.getMethodVisitor(), from, to);
-				return true;
-			}
-			return false;
-		}
-
-		if(to.getSort() == Type.ARRAY && from.getSort() == Type.ARRAY) {
-			return to.getElementType().getSort() == from.getElementType().getSort();
-		}
-
-		//TODO Auto-boxing
-
-		return false;
-	}
-
-	/**
-	 * Returns how many changes / how simple the conversion between types is. Assumes the types can be cast.
-	 * @param to The type to attempt to cast to
-	 * @param from The type to attempt to cast from
-	 * @return The complexity of the change
-	 */
-	public static int assignChanges(Type to, Type from) {
-		if(to.getSort() == Type.OBJECT && from.getSort() == Type.OBJECT) {
-			return 1;
-		}
-
-		else if(isPrimitive(to) && isPrimitive(from)) {
-			if(TYPE_SIZE.indexOf(to.getSort()) <= TYPE_SIZE.indexOf(from.getSort())) {
-				return 1;
-			}
-			if(isRepresentedAsInteger(to) && isRepresentedAsInteger(from)) {
-				return 2;
-			}
-		}
-
-		if(to.getSort() == Type.ARRAY && from.getSort() == Type.ARRAY) {
-			return 0;
-		}
-
-		//TODO Auto-boxing
-
-		assert false;
-		return -1;
-	}
-
-	/**
-	 * Gets the appropriate compare opcode for types double, float, and long.
-	 * Adds this opcode to the method visitor.
-	 * @param mv The method visitor to use.
-	 * @param type The type to generate opcode for - only types double, float, and long are not no-ops.
-	 */
-	public static void compareInit(MethodVisitor mv, Type type) {
-		switch (type.getSort()) {
-			case Type.DOUBLE -> mv.visitInsn(Opcodes.DCMPL);
-			case Type.FLOAT -> mv.visitInsn(Opcodes.FCMPL);
-			case Type.LONG -> mv.visitInsn(Opcodes.LCMP);
-		}
-	}
-
 	/**
 	 * Creates the optimal integer opcode for the given value.
 	 * @param val The integer to add to bytecode
@@ -436,56 +136,6 @@ public class TypeUtil {
 	}
 
 	/**
-	 * Auto-boxes a type to its Object wrapper.
-	 * Adds the correct bytecode to the method visitor.
-	 * @param mv The method visitor.
-	 * @param type The (primitive) type to auto-box
-	 * @return The auto-boxed object type.
-	 */
-	public static Type autoBox(MethodVisitor mv, Type type) {
-		if(!isPrimitive(type)) return type;
-
-		Type wrapper = getAutoBoxWrapper(type);
-
-		autoBox(mv, wrapper, type);
-
-		return wrapper;
-	}
-
-	/**
-	 * Gets the auto-boxed Object type for a given type.
-	 * @param type The type to auto-box.
-	 * @return The Object wrapper type.
-	 */
-	public static Type getAutoBoxWrapper(Type type) {
-		if(!isPrimitive(type)) return type;
-
-		String internalName = switch (type.getSort()) {
-			case Type.BOOLEAN -> "java/lang/Boolean";
-			case Type.BYTE -> "java/lang/Byte";
-			case Type.CHAR -> "java/lang/Character";
-			case Type.FLOAT -> "java/lang/Float";
-			case Type.INT -> "java/lang/Integer";
-			case Type.LONG -> "java/lang/Long";
-			case Type.SHORT -> "java/lang/Short";
-			case Type.DOUBLE -> "java/lang/Double";
-			default -> null;
-		};
-
-		return Type.getObjectType(internalName);
-	}
-
-	/**
-	 * Generates the bytecode to auto-box.
-	 * @param mv The method visitor.
-	 * @param wrapper The type to wrap to.
-	 * @param type The type to wrap from.
-	 */
-	private static void autoBox(MethodVisitor mv, Type wrapper, Type type) {
-		mv.visitMethodInsn(Opcodes.INVOKESTATIC, wrapper.getInternalName(), "valueOf", "(%s)%s".formatted(type.getDescriptor(), wrapper.getDescriptor()), false);
-	}
-
-	/**
 	 * Returns the correct opcode to invoke a given method.
 	 * @param m The method to invoke
 	 * @return The correct opcode
@@ -510,45 +160,6 @@ public class TypeUtil {
 	 */
 	public static int getMemberPutOpcode(Field f) {
 		return Modifier.isStatic(f.getModifiers()) ? Opcodes.PUTSTATIC : Opcodes.PUTFIELD;
-	}
-
-	/**
-	 * Returns the correct opcode for DUPY_X1 where Y is either 2 or not present, based on type size.
-	 * @param type The type to duplicate
-	 * @return The correct opcode
-	 */
-	public static int getDupX1Opcode(Type type) {
-		return type.getSize() == 2 ? Opcodes.DUP2_X1 : Opcodes.DUP_X1;
-	}
-
-	/**
-	 * Returns the correct opcode for DUPY_X2 where Y is either 2 or not present, based on type size.
-	 * @param type The type to duplicate
-	 * @return The correct opcode
-	 */
-	public static int getDupX2Opcode(Type type) {
-		return type.getSize() == 2 ? Opcodes.DUP2_X2 : Opcodes.DUP_X2;
-	}
-
-	/**
-	 * Converts a primitive type to the {@link org.objectweb.asm.Opcodes}.T_TYPE integer constant, for use with integer instructions.
-	 * @param type A primitive type
-	 * @return The integer encoding of the type
-	 */
-	public static int primitiveToTType(Type type) {
-		if(!isPrimitive(type)) return -1;
-
-		return switch (type.getSort()) {
-			case Type.BOOLEAN -> Opcodes.T_BOOLEAN;
-			case Type.CHAR -> Opcodes.T_CHAR;
-			case Type.BYTE -> Opcodes.T_BYTE;
-			case Type.SHORT -> Opcodes.T_SHORT;
-			case Type.INT -> Opcodes.T_INT;
-			case Type.LONG -> Opcodes.T_LONG;
-			case Type.FLOAT -> Opcodes.T_FLOAT;
-			case Type.DOUBLE -> Opcodes.T_DOUBLE;
-			default -> 0;
-		};
 	}
 
 	/**
@@ -577,28 +188,28 @@ public class TypeUtil {
 	 * @return The most suitable constructor
 	 * @throws SemanticException If a class cannot be resolved
 	 */
-	public static Constructor<?> getConstructor(Token location, Constructor<?>[] constructors, Type[] argTypes, Context context) throws SemanticException {
+	public static Constructor<?> getConstructor(Token location, Constructor<?>[] constructors, WaterType[] argTypes, Context context) throws SemanticException {
 
 		ArrayList<Pair<Integer, Constructor<?>>> possible = new ArrayList<>();
 
 		try {
 			out:
 			for (Constructor<?> c : constructors) {
-				Type[] expectArgs = Type.getType(c).getArgumentTypes();
+				WaterType[] expectArgs = new WaterType(Type.getType(c)).getArgumentTypes();
 
 				if (expectArgs.length != argTypes.length) continue;
 
 				int changes = 0;
 
 				for (int i = 0; i < expectArgs.length; i++) {
-					Type expectArg = expectArgs[i];
-					Type arg = argTypes[i];
+					WaterType expectArg = expectArgs[i];
+					WaterType arg = argTypes[i];
 
-					if (arg.getSort() == Type.VOID)
+					if (arg.equals(WaterType.VOID_TYPE))
 						continue out;
 
-					if (TypeUtil.isAssignableFrom(expectArg, arg, context, false)) {
-						if (!expectArg.equals(arg)) changes += TypeUtil.assignChanges(expectArg, arg);
+					if (expectArg.isAssignableFrom(arg, context, false)) {
+						if (!expectArg.equals(arg)) changes += expectArg.assignChangesFrom(arg);
 					} else {
 						continue out;
 					}
@@ -615,96 +226,6 @@ public class TypeUtil {
 		possible.sort(Comparator.comparingInt(Pair::getFirst));
 
 		return possible.get(0).getSecond();
-	}
-
-	/*
-	 Copyright Notice for use of ASM code (if link dies):
-
-	 ASM: a very small and fast Java bytecode manipulation framework
-	 Copyright (c) 2000-2011 INRIA, France Telecom
-	 All rights reserved.
-
-	 Redistribution and use in source and binary forms, with or without
-	 modification, are permitted provided that the following conditions
-	 are met:
-	 1. Redistributions of source code must retain the above copyright
-		notice, this list of conditions and the following disclaimer.
-	 2. Redistributions in binary form must reproduce the above copyright
-		notice, this list of conditions and the following disclaimer in the
-		documentation and/or other materials provided with the distribution.
-	 3. Neither the name of the copyright holders nor the names of its
-		contributors may be used to endorse or promote products derived from
-		this software without specific prior written permission.
-
-	 THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS AND CONTRIBUTORS "AS IS"
-	 AND ANY EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE
-	 IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS FOR A PARTICULAR PURPOSE
-	 ARE DISCLAIMED. IN NO EVENT SHALL THE COPYRIGHT OWNER OR CONTRIBUTORS BE
-	 LIABLE FOR ANY DIRECT, INDIRECT, INCIDENTAL, SPECIAL, EXEMPLARY, OR
-	 CONSEQUENTIAL DAMAGES (INCLUDING, BUT NOT LIMITED TO, PROCUREMENT OF
-	 SUBSTITUTE GOODS OR SERVICES; LOSS OF USE, DATA, OR PROFITS; OR BUSINESS
-	 INTERRUPTION) HOWEVER CAUSED AND ON ANY THEORY OF LIABILITY, WHETHER IN
-	 CONTRACT, STRICT LIABILITY, OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE)
-	 ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF
-	 THE POSSIBILITY OF SUCH DAMAGE.
-
-	 */
-	/**
-	 * Generates the correct bytecode for a cast (of primitives)
-	 *
-	 * Taken from ASM Commons InstructionAdapter
-	 * <a href="https://github.com/llbit/ow2-asm/blob/master/src/org/objectweb/asm/commons/InstructionAdapter.java">Github</a>
-	 *
-	 * <a href="https://github.com/llbit/ow2-asm/blob/master/LICENSE.txt">Copyright Notice</a>
-	 *
-	 * @param from The type to cast from
-	 * @param to The type to cast to
-	 */
-	public static void cast(MethodVisitor mv, final Type from, final Type to) {
-		if (from != to) {
-			if (from == Type.DOUBLE_TYPE) {
-				if (to == Type.FLOAT_TYPE) {
-					mv.visitInsn(Opcodes.D2F);
-				} else if (to == Type.LONG_TYPE) {
-					mv.visitInsn(Opcodes.D2L);
-				} else {
-					mv.visitInsn(Opcodes.D2I);
-					cast(mv, Type.INT_TYPE, to);
-				}
-			} else if (from == Type.FLOAT_TYPE) {
-				if (to == Type.DOUBLE_TYPE) {
-					mv.visitInsn(Opcodes.F2D);
-				} else if (to == Type.LONG_TYPE) {
-					mv.visitInsn(Opcodes.F2L);
-				} else {
-					mv.visitInsn(Opcodes.F2I);
-					cast(mv, Type.INT_TYPE, to);
-				}
-			} else if (from == Type.LONG_TYPE) {
-				if (to == Type.DOUBLE_TYPE) {
-					mv.visitInsn(Opcodes.L2D);
-				} else if (to == Type.FLOAT_TYPE) {
-					mv.visitInsn(Opcodes.L2F);
-				} else {
-					mv.visitInsn(Opcodes.L2I);
-					cast(mv, Type.INT_TYPE, to);
-				}
-			} else {
-				if (to == Type.BYTE_TYPE) {
-					mv.visitInsn(Opcodes.I2B);
-				} else if (to == Type.CHAR_TYPE) {
-					mv.visitInsn(Opcodes.I2C);
-				} else if (to == Type.DOUBLE_TYPE) {
-					mv.visitInsn(Opcodes.I2D);
-				} else if (to == Type.FLOAT_TYPE) {
-					mv.visitInsn(Opcodes.I2F);
-				} else if (to == Type.LONG_TYPE) {
-					mv.visitInsn(Opcodes.I2L);
-				} else if (to == Type.SHORT_TYPE) {
-					mv.visitInsn(Opcodes.I2S);
-				}
-			}
-		}
 	}
 
 }

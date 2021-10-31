@@ -11,6 +11,7 @@ import water.compiler.lexer.Token;
 import water.compiler.lexer.TokenType;
 import water.compiler.parser.Node;
 import water.compiler.util.TypeUtil;
+import water.compiler.util.WaterType;
 
 public class UnaryOperationNode implements Node {
 	private final Token op;
@@ -31,13 +32,13 @@ public class UnaryOperationNode implements Node {
 
 		expression.visit(context);
 
-		Type expressionType = expression.getReturnType(context.getContext());
+		WaterType expressionType = expression.getReturnType(context.getContext());
 
 		MethodVisitor mv = context.getContext().getMethodVisitor();
 
 		if(op.getType() == TokenType.EXCLAIM) {
-			if(expressionType.getSort() != Type.BOOLEAN)
-				throw new SemanticException(op, "Can only perform '!' on boolean values. (%s =/= boolean)".formatted(TypeUtil.stringify(expressionType)));
+			if(!expressionType.equals(WaterType.BOOLEAN_TYPE))
+				throw new SemanticException(op, "Can only perform '!' on boolean values. (%s =/= boolean)".formatted(expressionType));
 
 			Label falseL = new Label();
 			Label end = new Label();
@@ -50,20 +51,20 @@ public class UnaryOperationNode implements Node {
 			mv.visitLabel(end);
 		}
 		else if(op.getType() == TokenType.MINUS) {
-			if(!TypeUtil.isNumeric(expressionType)) {
-				throw new SemanticException(op, "Can only perform '-' on numeric values. (%s is not numeric)".formatted(TypeUtil.stringify(expressionType)));
+			if(!expressionType.isNumeric()) {
+				throw new SemanticException(op, "Can only perform '-' on numeric values. (%s is not numeric)".formatted(expressionType));
 			}
 
 
 			mv.visitInsn(expressionType.getOpcode(Opcodes.INEG));
 		}
 		else if(op.getType() == TokenType.BITWISE_NOT) {
-			if(!TypeUtil.isInteger(expressionType)) {
+			if(!expressionType.isInteger()) {
 				throw new SemanticException(op,
-						"Can only perform '~' on integer values. ('%s' is not an integer)".formatted(TypeUtil.stringify(expressionType)));
+						"Can only perform '~' on integer values. ('%s' is not an integer)".formatted(expressionType));
 			}
 
-			if(expressionType.getSort() == Type.LONG) {
+			if(expressionType.equals(WaterType.LONG_TYPE)) {
 				TypeUtil.generateCorrectLong(-1, context.getContext());
 				mv.visitInsn(Opcodes.LXOR);
 			}
@@ -79,18 +80,18 @@ public class UnaryOperationNode implements Node {
 		Object value = expression.getConstantValue(context);
 
 		if(op.getType() == TokenType.EXCLAIM) {
-			Type returnType = expression.getReturnType(context);
-			if(returnType.getSort() != Type.BOOLEAN)
-				throw new SemanticException(op, "Con only perform '!' on boolean values. (%s =/= boolean)".formatted(TypeUtil.stringify(returnType)));
+			WaterType returnType = expression.getReturnType(context);
+			if(!returnType.equals(WaterType.BOOLEAN_TYPE))
+				throw new SemanticException(op, "Con only perform '!' on boolean values. (%s =/= boolean)".formatted(returnType));
 
 			boolean boolVal = (Boolean) value;
 
 			return !boolVal;
 		}
 		else if(op.getType() == TokenType.MINUS) {
-			Type returnType = expression.getReturnType(context);
-			if(!TypeUtil.isNumeric(returnType)) {
-				throw new SemanticException(op, "Con only perform '-' on numeric values. (%s is not numeric)".formatted(TypeUtil.stringify(returnType)));
+			WaterType returnType = expression.getReturnType(context);
+			if(!returnType.isNumeric()) {
+				throw new SemanticException(op, "Con only perform '-' on numeric values. (%s is not numeric)".formatted(returnType));
 			}
 
 			if(value instanceof Double) {
@@ -113,9 +114,9 @@ public class UnaryOperationNode implements Node {
 	@Override
 	public boolean isConstant(Context context) throws SemanticException {
 		if(op.getType() == TokenType.MINUS) {
-			Type type = expression.getReturnType(context);
+			WaterType type = expression.getReturnType(context);
 			return switch(type.getSort()) {
-				case Type.DOUBLE, Type.FLOAT, Type.INT, Type.LONG -> true;
+				case DOUBLE, FLOAT, INT, LONG -> true;
 				default -> false;
 			};
 		}
@@ -124,9 +125,9 @@ public class UnaryOperationNode implements Node {
 	}
 
 	@Override
-	public Type getReturnType(Context context) throws SemanticException {
+	public WaterType getReturnType(Context context) throws SemanticException {
 		return switch (op.getType()) {
-			case EXCLAIM -> Type.BOOLEAN_TYPE;
+			case EXCLAIM -> WaterType.BOOLEAN_TYPE;
 			case MINUS, BITWISE_NOT -> expression.getReturnType(context);
 			default -> throw new IllegalStateException("Unknown unary operator " + op.getType());
 		};

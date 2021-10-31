@@ -1,13 +1,12 @@
 package water.compiler.parser.nodes.special;
 
-import org.objectweb.asm.Type;
 import water.compiler.FileContext;
 import water.compiler.compiler.Context;
 import water.compiler.compiler.SemanticException;
 import water.compiler.lexer.Token;
 import water.compiler.parser.Node;
 import water.compiler.parser.nodes.value.TypeNode;
-import water.compiler.util.TypeUtil;
+import water.compiler.util.WaterType;
 
 public class PackageNode implements Node {
 	private final Token packageNode;
@@ -24,7 +23,7 @@ public class PackageNode implements Node {
 	}
 
 	@Override
-	public Type getReturnType(Context context) throws SemanticException {
+	public WaterType getReturnType(Context context) throws SemanticException {
 		return name.getRawClassType();
 	}
 

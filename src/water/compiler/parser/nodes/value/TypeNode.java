@@ -7,6 +7,7 @@ import water.compiler.compiler.SemanticException;
 import water.compiler.lexer.Token;
 import water.compiler.parser.Node;
 import water.compiler.util.TypeUtil;
+import water.compiler.util.WaterType;
 
 public class TypeNode implements Node {
 	private final Token root;
@@ -40,34 +41,34 @@ public class TypeNode implements Node {
 	}
 
 	@Override
-	public Type getReturnType(Context context) throws SemanticException {
+	public WaterType getReturnType(Context context) throws SemanticException {
 
-		if(dimensions != 0) return Type.getType("[".repeat(dimensions) + element.getReturnType(context).getDescriptor());
+		if(dimensions != 0) return WaterType.getType("[".repeat(dimensions) + element.getReturnType(context).getDescriptor());
 
 		if(isPrimitive) return switch (root.getType()) {
-			case VOID -> Type.VOID_TYPE;
-			case INT -> Type.INT_TYPE;
-			case DOUBLE -> Type.DOUBLE_TYPE;
-			case FLOAT -> Type.FLOAT_TYPE;
-			case BOOLEAN -> Type.BOOLEAN_TYPE;
-			case CHAR -> Type.CHAR_TYPE;
-			case LONG -> Type.LONG_TYPE;
-			case BYTE -> Type.BYTE_TYPE;
-			case SHORT -> Type.SHORT_TYPE;
+			case VOID -> WaterType.VOID_TYPE;
+			case INT -> WaterType.INT_TYPE;
+			case DOUBLE -> WaterType.DOUBLE_TYPE;
+			case FLOAT -> WaterType.FLOAT_TYPE;
+			case BOOLEAN -> WaterType.BOOLEAN_TYPE;
+			case CHAR -> WaterType.CHAR_TYPE;
+			case LONG -> WaterType.LONG_TYPE;
+			case BYTE -> WaterType.BYTE_TYPE;
+			case SHORT -> WaterType.SHORT_TYPE;
 			default -> null;
 		};
 
 		try {
-			return Type.getType(TypeUtil.classForName(path, context));
+			return WaterType.getType(TypeUtil.classForName(path, context));
 		} catch (ClassNotFoundException e) {
 			throw new SemanticException(root, "Could not resolve class '%s'".formatted(e.getMessage()));
 		}
 	}
 
-	public Type getRawClassType() throws SemanticException {
+	public WaterType getRawClassType() throws SemanticException {
 		if(isPrimitive) throw new SemanticException(root, "Unexpected primitive type");
 
-		return Type.getObjectType(path.replace('.', '/'));
+		return WaterType.getObjectType(path.replace('.', '/'));
 	}
 
 	@Override

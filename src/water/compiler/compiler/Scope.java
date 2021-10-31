@@ -4,13 +4,12 @@ import org.objectweb.asm.Type;
 import water.compiler.FileContext;
 import water.compiler.parser.Node;
 import water.compiler.util.Pair;
-import water.compiler.util.TypeUtil;
+import water.compiler.util.WaterType;
 
 import java.lang.reflect.Field;
 import java.lang.reflect.Method;
 import java.lang.reflect.Modifier;
 import java.util.ArrayList;
-import java.util.Collections;
 import java.util.Comparator;
 import java.util.HashMap;
 
@@ -25,7 +24,7 @@ public class Scope {
 	private HashMap<String, ArrayList<Function>> functionMap;
 	private HashMap<String, Variable> variables;
 	private int localIndex;
-	private Type returnType;
+	private WaterType returnType;
 	private boolean returned;
 
 	public Scope(FileContext context) {
@@ -33,16 +32,16 @@ public class Scope {
 		variables = new HashMap<>();
 		this.context = context.getContext();
 		this.localIndex = 0;
-		this.returnType = Type.VOID_TYPE;
+		this.returnType = WaterType.VOID_TYPE;
 
-		addFunction(new Function(FunctionType.SOUT, "println", "java/io/PrintStream", Type.getMethodType("()V")));
-		addFunction(new Function(FunctionType.SOUT, "println", "java/io/PrintStream", Type.getMethodType("(D)V")));
-		addFunction(new Function(FunctionType.SOUT, "println", "java/io/PrintStream", Type.getMethodType("(F)V")));
-		addFunction(new Function(FunctionType.SOUT, "println", "java/io/PrintStream", Type.getMethodType("(I)V")));
-		addFunction(new Function(FunctionType.SOUT, "println", "java/io/PrintStream", Type.getMethodType("(Z)V")));
-		addFunction(new Function(FunctionType.SOUT, "println", "java/io/PrintStream", Type.getMethodType("(C)V")));
-		addFunction(new Function(FunctionType.SOUT, "println", "java/io/PrintStream", Type.getMethodType("(J)V")));
-		addFunction(new Function(FunctionType.SOUT, "println", "java/io/PrintStream", Type.getMethodType("(Ljava/lang/Object;)V")));
+		addFunction(new Function(FunctionType.SOUT, "println", "java/io/PrintStream", WaterType.getMethodType("()V")));
+		addFunction(new Function(FunctionType.SOUT, "println", "java/io/PrintStream", WaterType.getMethodType("(D)V")));
+		addFunction(new Function(FunctionType.SOUT, "println", "java/io/PrintStream", WaterType.getMethodType("(F)V")));
+		addFunction(new Function(FunctionType.SOUT, "println", "java/io/PrintStream", WaterType.getMethodType("(I)V")));
+		addFunction(new Function(FunctionType.SOUT, "println", "java/io/PrintStream", WaterType.getMethodType("(Z)V")));
+		addFunction(new Function(FunctionType.SOUT, "println", "java/io/PrintStream", WaterType.getMethodType("(C)V")));
+		addFunction(new Function(FunctionType.SOUT, "println", "java/io/PrintStream", WaterType.getMethodType("(J)V")));
+		addFunction(new Function(FunctionType.SOUT, "println", "java/io/PrintStream", WaterType.getMethodType("(Ljava/lang/Object;)V")));
 
 		updateCurrentClassMethods(context);
 	}
@@ -51,6 +50,15 @@ public class Scope {
 		this.context = context;
 		this.functionMap = new HashMap<>();
 		this.variables = new HashMap<>();
+
+		addFunction(new Function(FunctionType.SOUT, "println", "java/io/PrintStream", WaterType.getMethodType("()V")));
+		addFunction(new Function(FunctionType.SOUT, "println", "java/io/PrintStream", WaterType.getMethodType("(D)V")));
+		addFunction(new Function(FunctionType.SOUT, "println", "java/io/PrintStream", WaterType.getMethodType("(F)V")));
+		addFunction(new Function(FunctionType.SOUT, "println", "java/io/PrintStream", WaterType.getMethodType("(I)V")));
+		addFunction(new Function(FunctionType.SOUT, "println", "java/io/PrintStream", WaterType.getMethodType("(Z)V")));
+		addFunction(new Function(FunctionType.SOUT, "println", "java/io/PrintStream", WaterType.getMethodType("(C)V")));
+		addFunction(new Function(FunctionType.SOUT, "println", "java/io/PrintStream", WaterType.getMethodType("(J)V")));
+		addFunction(new Function(FunctionType.SOUT, "println", "java/io/PrintStream", WaterType.getMethodType("(Ljava/lang/Object;)V")));
 	}
 
 	private Scope() {}
@@ -61,13 +69,13 @@ public class Scope {
 		for(Method m : klass.getDeclaredMethods()) {
 			int modifier = m.getModifiers();
 			boolean isStatic = Modifier.isStatic(modifier);
-			addFunction(new Function(isStatic ? FunctionType.STATIC : FunctionType.CLASS, m.getName(), Type.getInternalName(klass), Type.getType(m)));
+			addFunction(new Function(isStatic ? FunctionType.STATIC : FunctionType.CLASS, m.getName(), Type.getInternalName(klass), WaterType.getType(m)));
 		}
 
 		for(Field f : klass.getDeclaredFields()) {
 			int modifier = f.getModifiers();
 			boolean isStatic = Modifier.isStatic(modifier);
-			addVariable(new Variable(isStatic ? VariableType.STATIC : VariableType.CLASS, f.getName(), Type.getInternalName(klass), Type.getType(f.getType()), Modifier.isFinal(f.getModifiers())));
+			addVariable(new Variable(isStatic ? VariableType.STATIC : VariableType.CLASS, f.getName(), Type.getInternalName(klass), WaterType.getType(f.getType()), Modifier.isFinal(f.getModifiers())));
 		}
 	}
 
@@ -87,28 +95,28 @@ public class Scope {
 		return functionMap.get(name);
 	}
 
-	public Function lookupFunction(String name, Type[] argsTypes, Node[] args, boolean visit, FileContext fc) throws ClassNotFoundException, SemanticException {
+	public Function lookupFunction(String name, WaterType[] argsTypes, Node[] args, boolean visit, FileContext fc) throws ClassNotFoundException, SemanticException {
 		ArrayList<Function> funcs = functionMap.get(name);
 		if(funcs == null) return null;
 
 		ArrayList<Pair<Integer, Function>> possible = new ArrayList<>();
 
 		out : for(Function f : funcs) {
-			Type[] expectArgs = f.getType().getArgumentTypes();
+			WaterType[] expectArgs = f.getType().getArgumentTypes();
 
 			if (expectArgs.length != argsTypes.length) continue;
 
 			int changes = 0;
 
 			for (int i = 0; i < expectArgs.length; i++) {
-				Type expectArg = expectArgs[i];
-				Type arg = argsTypes[i];
+				WaterType expectArg = expectArgs[i];
+				WaterType arg = argsTypes[i];
 
-				if (arg.getSort() == Type.VOID)
+				if (arg.equals(WaterType.VOID_TYPE))
 					continue out;
 
-				if (TypeUtil.isAssignableFrom(expectArg, arg, context, false)) {
-					if (!expectArg.equals(arg)) changes += TypeUtil.assignChanges(expectArg, arg);
+				if (expectArg.isAssignableFrom(arg, context, false)) {
+					if (!expectArg.equals(arg)) changes += expectArg.assignChangesFrom(arg);
 				} else {
 					continue out;
 				}
@@ -121,38 +129,38 @@ public class Scope {
 
 		Function resolved = possible.get(0).getSecond();
 
-		Type[] resolvedArgs = resolved.getType().getArgumentTypes();
+		WaterType[] resolvedArgs = resolved.getType().getArgumentTypes();
 
 		if(visit) {
 			for (int i = 0; i < resolvedArgs.length; i++) {
-				Type resolvedArg = resolvedArgs[i];
+				WaterType resolvedArg = resolvedArgs[i];
 				Node arg = args[i];
 
 				arg.visit(fc);
-				TypeUtil.isAssignableFrom(resolvedArg, argsTypes[i], context, true);
+				resolvedArg.isAssignableFrom(argsTypes[i], context, true);
 			}
 		}
 
 		return resolved;
 	}
 
-	public Function exactLookupFunction(String name, Type... args) throws ClassNotFoundException {
+	public Function exactLookupFunction(String name, WaterType... args) throws ClassNotFoundException {
 		ArrayList<Function> funcs = functionMap.get(name);
 		if(funcs == null) return null;
 
 		out : for(Function f : funcs) {
-			Type[] expectArgs = f.getType().getArgumentTypes();
+			WaterType[] expectArgs = f.getType().getArgumentTypes();
 
 			if(expectArgs.length != args.length) continue;
 
 			for(int i = 0; i < expectArgs.length; i++) {
-				Type expectArg = expectArgs[i];
-				Type arg = args[i];
+				WaterType expectArg = expectArgs[i];
+				WaterType arg = args[i];
 
-				if(arg.getSort() == Type.VOID)
+				if(arg.equals(WaterType.VOID_TYPE))
 					continue out;
 
-				if(!TypeUtil.typeToClass(expectArg, context).isAssignableFrom(TypeUtil.typeToClass(arg, context)))
+				if(!expectArg.toClass(context).isAssignableFrom(arg.toClass(context)))
 					continue out;
 			}
 			return f;
@@ -160,7 +168,7 @@ public class Scope {
 		return null;
 	}
 
-	public Function lookupFunction(String name, Type... args) throws ClassNotFoundException {
+	public Function lookupFunction(String name, WaterType... args) throws ClassNotFoundException {
 		try {
 			return lookupFunction(name, args, null, false, null);
 		} catch (SemanticException e) {
@@ -171,7 +179,7 @@ public class Scope {
 
 	public void addFunction(Function function) {
 		String name = function.getName();
-		if(functionMap.get(name) == null) functionMap.put(name, new ArrayList<>());
+		functionMap.computeIfAbsent(name, k -> new ArrayList<>());
 
 		functionMap.get(name).add(function);
 	}
@@ -213,11 +221,11 @@ public class Scope {
 		return this;
 	}
 
-	public Type getReturnType() {
+	public WaterType getReturnType() {
 		return returnType;
 	}
 
-	public Scope setReturnType(Type returnType) {
+	public Scope setReturnType(WaterType returnType) {
 		this.returnType = returnType;
 		return this;
 	}

@@ -6,6 +6,7 @@ import water.compiler.compiler.Context;
 import water.compiler.compiler.SemanticException;
 import water.compiler.parser.LValue;
 import water.compiler.parser.Node;
+import water.compiler.util.WaterType;
 
 /**
  * A bracketed expression - passes through all methods.
@@ -24,7 +25,7 @@ public class GroupingNode implements Node {
 	}
 
 	@Override
-	public Type getReturnType(Context context) throws SemanticException {
+	public WaterType getReturnType(Context context) throws SemanticException {
 		return value.getReturnType(context);
 	}
 

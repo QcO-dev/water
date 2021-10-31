@@ -7,6 +7,7 @@ import water.compiler.compiler.Context;
 import water.compiler.compiler.SemanticException;
 import water.compiler.lexer.Token;
 import water.compiler.parser.Node;
+import water.compiler.util.WaterType;
 
 public class BooleanNode implements Node {
 	private final Token value;
@@ -23,8 +24,8 @@ public class BooleanNode implements Node {
 	}
 
 	@Override
-	public Type getReturnType(Context context) throws SemanticException {
-		return Type.BOOLEAN_TYPE;
+	public WaterType getReturnType(Context context) throws SemanticException {
+		return WaterType.BOOLEAN_TYPE;
 	}
 
 	@Override

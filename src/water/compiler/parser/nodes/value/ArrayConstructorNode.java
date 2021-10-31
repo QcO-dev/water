@@ -9,6 +9,7 @@ import water.compiler.compiler.SemanticException;
 import water.compiler.lexer.Token;
 import water.compiler.parser.Node;
 import water.compiler.util.TypeUtil;
+import water.compiler.util.WaterType;
 
 import java.util.List;
 import java.util.stream.Collectors;
@@ -28,19 +29,19 @@ public class ArrayConstructorNode implements Node {
 	public void visit(FileContext fileContext) throws SemanticException {
 		Context context = fileContext.getContext();
 		for(Node n : dimensions) {
-			if(!TypeUtil.isInteger(n.getReturnType(context))) {
+			if(!n.getReturnType(context).isInteger()) {
 				throw new SemanticException(newToken, "Array size must be an integer");
 			}
 			n.visit(fileContext);
 		}
 
-		Type elementType = type.getReturnType(context);
+		WaterType elementType = type.getReturnType(context);
 
 		MethodVisitor methodVisitor = context.getMethodVisitor();
 		int size = dimensions.size();
 
 		if(size == 1) {
-			if(TypeUtil.isPrimitive(elementType)) methodVisitor.visitIntInsn(Opcodes.NEWARRAY, TypeUtil.primitiveToTType(elementType));
+			if(elementType.isPrimitive()) methodVisitor.visitIntInsn(Opcodes.NEWARRAY, elementType.primitiveToTType());
 			else methodVisitor.visitTypeInsn(Opcodes.ANEWARRAY, elementType.getInternalName());
 		}
 		else {
@@ -49,8 +50,8 @@ public class ArrayConstructorNode implements Node {
 	}
 
 	@Override
-	public Type getReturnType(Context context) throws SemanticException {
-		return Type.getType(getDescriptor(context));
+	public WaterType getReturnType(Context context) throws SemanticException {
+		return WaterType.getType(getDescriptor(context));
 	}
 
 	private String getDescriptor(Context context) throws SemanticException {

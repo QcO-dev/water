@@ -3,12 +3,11 @@ package water.compiler.parser.nodes.exception;
 import org.objectweb.asm.Label;
 import org.objectweb.asm.MethodVisitor;
 import org.objectweb.asm.Opcodes;
-import org.objectweb.asm.Type;
 import water.compiler.FileContext;
 import water.compiler.compiler.*;
 import water.compiler.lexer.Token;
 import water.compiler.parser.Node;
-import water.compiler.util.TypeUtil;
+import water.compiler.util.WaterType;
 
 public class CatchNode implements Node {
 	private final Token bindingName;
@@ -36,7 +35,7 @@ public class CatchNode implements Node {
 
 		context.getContext().setScope(outer.nextDepth());
 
-		Type exception = getExceptionType(context.getContext());
+		WaterType exception = getExceptionType(context.getContext());
 
 		int varIndex = context.getContext().getScope().nextLocal();
 		context.getContext().getScope().addVariable(new Variable(VariableType.LOCAL, bindingName.getValue(), varIndex, exception, true));
@@ -69,18 +68,18 @@ public class CatchNode implements Node {
 		}
 	}
 
-	private Type getExceptionType(Context context) throws SemanticException {
-		Type exception = exceptionType.getReturnType(context);
+	private WaterType getExceptionType(Context context) throws SemanticException {
+		WaterType exception = exceptionType.getReturnType(context);
 
-		if(TypeUtil.isPrimitive(exception)) {
-			throw new SemanticException(bindingName, "Cannot throw primitive type (got '%s').".formatted(TypeUtil.stringify(exception)));
+		if(exception.isPrimitive()) {
+			throw new SemanticException(bindingName, "Cannot throw primitive type (got '%s').".formatted(exception));
 		}
 
 		try {
-			if(!TypeUtil.isAssignableFrom(Type.getObjectType("java/lang/Throwable"), exception, context, false)) {
-				throw new SemanticException(bindingName, "throw target must be an extension of java.lang.Throwable ('%s' cannot be cast).".formatted(TypeUtil.stringify(exception)));
+			if(!WaterType.getObjectType("java/lang/Throwable").isAssignableFrom(exception, context, false)) {
+				throw new SemanticException(bindingName, "throw target must be an extension of java.lang.Throwable ('%s' cannot be cast).".formatted(exception));
 			}
-		} catch (ClassNotFoundException | SemanticException e) {
+		} catch (ClassNotFoundException e) {
 			throw new SemanticException(bindingName, "Could not resolve class '%s'".formatted(e.getMessage()));
 		}
 		return exception;

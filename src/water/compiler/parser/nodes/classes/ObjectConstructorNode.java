@@ -10,6 +10,7 @@ import water.compiler.lexer.Token;
 import water.compiler.parser.Node;
 import water.compiler.util.TypeUtil;
 import water.compiler.util.Unthrow;
+import water.compiler.util.WaterType;
 
 import java.lang.reflect.Constructor;
 import java.lang.reflect.Modifier;
@@ -31,17 +32,17 @@ public class ObjectConstructorNode implements Node {
 
 	@Override
 	public void visit(FileContext context) throws SemanticException {
-		Type objType = type.getReturnType(context.getContext());
+		WaterType objType = type.getReturnType(context.getContext());
 
-		if(TypeUtil.isPrimitive(objType)) {
+		if(objType.isPrimitive()) {
 			throw new SemanticException(newToken, "Cannot create new instance of primitive type (%s)"
-				.formatted(TypeUtil.stringify(objType)));
+				.formatted(objType));
 		}
 
 		context.getContext().updateLine(newToken.getLine());
 
-		Type[] argTypes = arguments.stream()
-				.map(n -> Unthrow.wrap(() -> n.getReturnType(context.getContext()))).toArray(Type[]::new);
+		WaterType[] argTypes = arguments.stream()
+				.map(n -> Unthrow.wrap(() -> n.getReturnType(context.getContext()))).toArray(WaterType[]::new);
 
 		Class<?> klass;
 
@@ -62,12 +63,12 @@ public class ObjectConstructorNode implements Node {
 		if(toCall == null) {
 			Constructor<?> declaredConstructor = TypeUtil.getConstructor(newToken, klass.getDeclaredConstructors(), argTypes, context.getContext());
 			if(declaredConstructor == null) throw new SemanticException(newToken, "Class '%s' cannot be instantiated with arguments: %s"
-					.formatted(TypeUtil.stringify(objType),
-							argTypes.length == 0 ? "(none)" : Arrays.stream(argTypes).map(TypeUtil::stringify).collect(Collectors.joining(", "))));
+					.formatted(objType,
+							argTypes.length == 0 ? "(none)" : Arrays.stream(argTypes).map(WaterType::toString).collect(Collectors.joining(", "))));
 
 			int modifiers = declaredConstructor.getModifiers();
 			if(Modifier.isPrivate(modifiers) || Modifier.isProtected(modifiers)) {
-				throw new SemanticException(newToken, "Class '%s' does not have a public constructor".formatted(TypeUtil.stringify(objType)));
+				throw new SemanticException(newToken, "Class '%s' does not have a public constructor".formatted(objType));
 			}
 
 			descriptor = "(%s)V".formatted(
@@ -78,14 +79,14 @@ public class ObjectConstructorNode implements Node {
 			descriptor = "(%s)V".formatted(
 					Arrays.stream(toCall.getParameterTypes()).map(Type::getType).map(Type::getDescriptor).collect(Collectors.joining()));
 		}
-		Type[] resolvedTypes = Type.getType(toCall).getArgumentTypes();
+		WaterType[] resolvedTypes = WaterType.getType(toCall).getArgumentTypes();
 		for(int i = 0; i < arguments.size(); i++) {
 			Node arg = arguments.get(i);
-			Type resolvedType = resolvedTypes[i];
+			WaterType resolvedType = resolvedTypes[i];
 
 			arg.visit(context);
 			try {
-				TypeUtil.isAssignableFrom(resolvedType, arg.getReturnType(context.getContext()), context.getContext(), true);
+				resolvedType.isAssignableFrom(arg.getReturnType(context.getContext()), context.getContext(), true);
 			} catch (ClassNotFoundException e) {
 				throw new SemanticException(newToken, "Could not resolve class '%s'".formatted(e.getMessage()));
 			}
@@ -96,7 +97,7 @@ public class ObjectConstructorNode implements Node {
 	}
 
 	@Override
-	public Type getReturnType(Context context) throws SemanticException {
+	public WaterType getReturnType(Context context) throws SemanticException {
 		return type.getReturnType(context);
 	}
 

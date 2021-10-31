@@ -7,6 +7,7 @@ import water.compiler.compiler.SemanticException;
 import water.compiler.lexer.Token;
 import water.compiler.parser.Node;
 import water.compiler.util.TypeUtil;
+import water.compiler.util.WaterType;
 
 public class CharNode implements Node {
 
@@ -47,8 +48,8 @@ public class CharNode implements Node {
 	}
 
 	@Override
-	public Type getReturnType(Context context) throws SemanticException {
-		return Type.CHAR_TYPE;
+	public WaterType getReturnType(Context context) throws SemanticException {
+		return WaterType.CHAR_TYPE;
 	}
 
 	@Override

@@ -1,14 +1,13 @@
 package water.compiler.parser.nodes.operation;
 
 import org.objectweb.asm.Opcodes;
-import org.objectweb.asm.Type;
 import water.compiler.FileContext;
 import water.compiler.compiler.Context;
 import water.compiler.compiler.SemanticException;
 import water.compiler.lexer.Token;
 import water.compiler.parser.LValue;
 import water.compiler.parser.Node;
-import water.compiler.util.TypeUtil;
+import water.compiler.util.WaterType;
 
 public class IndexAccessNode implements Node {
 	private final Token bracket;
@@ -23,14 +22,14 @@ public class IndexAccessNode implements Node {
 
 	@Override
 	public void visit(FileContext context) throws SemanticException {
-		Type leftType = left.getReturnType(context.getContext());
-		Type indexType = index.getReturnType(context.getContext());
+		WaterType leftType = left.getReturnType(context.getContext());
+		WaterType indexType = index.getReturnType(context.getContext());
 
-		if(leftType.getSort() != Type.ARRAY) {
-			throw new SemanticException(bracket, "Cannot get index of type '%s'".formatted(TypeUtil.stringify(leftType)));
+		if(!leftType.isArray()) {
+			throw new SemanticException(bracket, "Cannot get index of type '%s'".formatted(leftType));
 		}
-		if(!TypeUtil.isInteger(indexType)) {
-			throw new SemanticException(bracket, "Index must be an integer type (got '%s')".formatted(TypeUtil.stringify(indexType)));
+		if(!indexType.isInteger()) {
+			throw new SemanticException(bracket, "Index must be an integer type (got '%s')".formatted(indexType));
 		}
 
 		left.visit(context);
@@ -40,11 +39,11 @@ public class IndexAccessNode implements Node {
 	}
 
 	@Override
-	public Type getReturnType(Context context) throws SemanticException {
-		Type leftType = left.getReturnType(context);
+	public WaterType getReturnType(Context context) throws SemanticException {
+		WaterType leftType = left.getReturnType(context);
 
-		if(leftType.getSort() != Type.ARRAY) {
-			throw new SemanticException(bracket, "Cannot get index of type '%s'".formatted(TypeUtil.stringify(leftType)));
+		if(!leftType.isArray()) {
+			throw new SemanticException(bracket, "Cannot get index of type '%s'".formatted(leftType));
 		}
 
 		return leftType.getElementType();

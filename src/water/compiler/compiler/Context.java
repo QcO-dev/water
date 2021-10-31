@@ -7,6 +7,7 @@ import org.objectweb.asm.Type;
 import water.compiler.WaterClassLoader;
 import water.compiler.parser.nodes.classes.ConstructorDeclarationNode;
 import water.compiler.parser.nodes.variable.VariableDeclarationNode;
+import water.compiler.util.WaterType;
 
 import java.util.HashMap;
 import java.util.List;
@@ -28,7 +29,7 @@ public class Context {
 	private MethodVisitor defaultConstructor;
 	private WaterClassLoader loader;
 	private Scope scope;
-	private Type currentSuperClass;
+	private WaterType currentSuperClass;
 	private boolean isStaticMethod;
 	private boolean isConstructor;
 	private int currentLine;
@@ -116,11 +117,11 @@ public class Context {
 		this.scope = scope;
 	}
 
-	public Type getCurrentSuperClass() {
+	public WaterType getCurrentSuperClass() {
 		return currentSuperClass;
 	}
 
-	public void setCurrentSuperClass(Type currentSuperClass) {
+	public void setCurrentSuperClass(WaterType currentSuperClass) {
 		this.currentSuperClass = currentSuperClass;
 	}
 
