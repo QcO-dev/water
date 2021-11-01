@@ -17,7 +17,7 @@ public class NullNode implements Node {
 
 	@Override
 	public WaterType getReturnType(Context context) throws SemanticException {
-		return WaterType.OBJECT_TYPE.setNullable(true);
+		return WaterType.NULL_TYPE;
 	}
 
 	@Override

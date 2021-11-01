@@ -22,10 +22,16 @@ public class WaterType {
 	public static WaterType LONG_TYPE = new WaterType(Type.LONG_TYPE);
 	public static WaterType SHORT_TYPE = new WaterType(Type.SHORT_TYPE);
 	public static WaterType VOID_TYPE = new WaterType(Type.VOID_TYPE);
+	public static WaterType NULL_TYPE = WaterType.getObjectType("java/lang/Object");
 	/** A constant defining a Type representing the java.lang.String class */
 	public static final WaterType STRING_TYPE = WaterType.getObjectType("java/lang/String");
 	/** A constant defining a Type representing the java.lang.Object class */
 	public static final WaterType OBJECT_TYPE = WaterType.getObjectType("java/lang/Object");
+
+	static {
+		NULL_TYPE.isNullable = true;
+		NULL_TYPE.sort = Sort.NULL;
+	}
 
 	public enum Sort {
 		VOID,
@@ -39,12 +45,13 @@ public class WaterType {
 		DOUBLE,
 		ARRAY,
 		OBJECT,
-		METHOD
+		METHOD,
+		NULL
 	}
 
 
 	private final Type asmType;
-	private final Sort sort;
+	private Sort sort;
 	private boolean isNullable;
 
 	public WaterType(Type asmType) {
@@ -105,7 +112,10 @@ public class WaterType {
 	 * @throws ClassNotFoundException If either type represents a class which cannot be resolved
 	 */
 	public boolean isAssignableFrom(WaterType from, Context context, boolean convert) throws ClassNotFoundException {
-		//TODO Null types
+		// Covers assigning null to both arrays and objects.
+		if(isNullable() && (isArray() || isObject()) && from.isNull()) {
+			return true;
+		}
 		if(isObject() && from.isObject()) {
 			if(!isNullable() && from.isNullable()) return false;
 			return toClass(context).isAssignableFrom(from.toClass(context));
@@ -138,7 +148,7 @@ public class WaterType {
 	 * * @return The complexity of the change
 	 */
 	public int assignChangesFrom(WaterType from) {
-		if(from.equals(this)) {
+		if(from.equals(this) || from.isNull()) {
 			return 0;
 		}
 		if(isObject() && from.isObject()) {
@@ -457,6 +467,10 @@ public class WaterType {
 		return asmType.getSort() == Type.ARRAY;
 	}
 
+	public boolean isNull() {
+		return sort == Sort.NULL;
+	}
+
 	public String getInternalName() {
 		return asmType.getInternalName();
 	}
@@ -507,6 +521,7 @@ public class WaterType {
 			return false;
 		}
 		WaterType other = (WaterType) obj;
+		if(isNullable() != other.isNullable()) return false;
 		return other.getRawType().equals(this.asmType);
 	}
 
@@ -528,19 +543,20 @@ public class WaterType {
 	 * @return The String representation
 	 */
 	public String toString() {
-		String base = switch (asmType.getSort()) {
-			case Type.VOID -> "void";
-			case Type.BOOLEAN -> "boolean";
-			case Type.CHAR -> "char";
-			case Type.BYTE -> "byte";
-			case Type.SHORT -> "short";
-			case Type.INT -> "int";
-			case Type.FLOAT -> "float";
-			case Type.LONG -> "long";
-			case Type.DOUBLE -> "double";
-			case Type.ARRAY -> new WaterType(asmType.getElementType()) + "[]";
-			case Type.OBJECT -> asmType.getClassName();
-			case Type.METHOD -> "method"; // Should not be reached
+		String base = switch (getSort()) {
+			case VOID -> "void";
+			case BOOLEAN -> "boolean";
+			case CHAR -> "char";
+			case BYTE -> "byte";
+			case SHORT -> "short";
+			case INT -> "int";
+			case FLOAT -> "float";
+			case LONG -> "long";
+			case DOUBLE -> "double";
+			case ARRAY -> new WaterType(asmType.getElementType()) + "[]";
+			case OBJECT -> asmType.getClassName();
+			case METHOD -> "method"; // Should not be reached
+			case NULL -> "null";
 			default -> null; // Unreachable
 		};
 		if(isNullable) base += "?";
