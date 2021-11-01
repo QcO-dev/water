@@ -185,7 +185,11 @@ public class VariableDeclarationNode implements Node {
 
 	private void generateValue(FileContext context) throws SemanticException {
 		if(value == null) {
-			context.getContext().getMethodVisitor().visitInsn(expectedType.getReturnType(context.getContext()).dummyConstant());
+			WaterType returnType = expectedType.getReturnType(context.getContext());
+			if(!returnType.isNullable() && !returnType.isPrimitive()) throw new SemanticException(name, "Cannot default initialize variable of type '%s'".formatted(
+					returnType
+			));
+			context.getContext().getMethodVisitor().visitInsn(returnType.dummyConstant());
 		}
 		else {
 			value.visit(context);
