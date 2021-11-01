@@ -13,6 +13,7 @@ import water.compiler.parser.nodes.function.FunctionCallNode;
 import water.compiler.parser.nodes.function.FunctionDeclarationNode;
 import water.compiler.parser.nodes.nullability.NonNullAssertionNode;
 import water.compiler.parser.nodes.nullability.NullableMemberAccessNode;
+import water.compiler.parser.nodes.nullability.NullableMethodCallNode;
 import water.compiler.parser.nodes.operation.*;
 import water.compiler.parser.nodes.special.ImportNode;
 import water.compiler.parser.nodes.special.PackageNode;
@@ -656,7 +657,7 @@ public class Parser {
 			if(tokens.get(index).getType() == TokenType.LPAREN) {
 				List<Node> args = arguments("method arguments");
 
-				left = new MethodCallNode(left, name, args, false);
+				left = nullable ? new NullableMethodCallNode(left, name, args, false) : new MethodCallNode(left, name, args, false);
 			}
 			else {
 				left = nullable ? new NullableMemberAccessNode(left, name) : new MemberAccessNode(left, name);

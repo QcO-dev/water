@@ -7,17 +7,24 @@ import water.compiler.compiler.Context;
 import water.compiler.compiler.SemanticException;
 import water.compiler.lexer.Token;
 import water.compiler.parser.Node;
-import water.compiler.parser.nodes.classes.MemberAccessNode;
+import water.compiler.parser.nodes.classes.MethodCallNode;
 import water.compiler.util.WaterType;
 
-public class NullableMemberAccessNode implements Node {
+import java.util.List;
+import java.util.stream.Collectors;
+
+public class NullableMethodCallNode implements Node {
 
 	private final Node left;
 	private final Token name;
+	private final List<Node> args;
+	private final boolean isSuper;
 
-	public NullableMemberAccessNode(Node left, Token name) {
+	public NullableMethodCallNode(Node left, Token name, List<Node> args, boolean isSuper) {
 		this.left = left;
 		this.name = name;
+		this.args = args;
+		this.isSuper = isSuper;
 	}
 
 	@Override
@@ -33,7 +40,7 @@ public class NullableMemberAccessNode implements Node {
 		context.getContext().getMethodVisitor().visitInsn(Opcodes.DUP);
 		context.getContext().getMethodVisitor().visitJumpInsn(Opcodes.IFNULL, nullValue);
 
-		synthetic().visitAccess(context);
+		synthetic().visitCall(context);
 		synthetic().getReturnType(context.getContext()).autoBox(context.getContext().getMethodVisitor());
 
 		context.getContext().getMethodVisitor().visitLabel(nullValue);
@@ -46,12 +53,12 @@ public class NullableMemberAccessNode implements Node {
 		return rawType.getAutoBoxWrapper().setNullable(true);
 	}
 
-	private MemberAccessNode synthetic() {
-		return new MemberAccessNode(left, name);
+	private MethodCallNode synthetic() {
+		return new MethodCallNode(left, name, args, isSuper);
 	}
 
 	@Override
 	public String toString() {
-		return "%s?.%s".formatted(left, name.getValue());
+		return "%s?.%s(%s)".formatted(left, name.getValue(), args.stream().map(Node::toString).collect(Collectors.joining(", ")));
 	}
 }

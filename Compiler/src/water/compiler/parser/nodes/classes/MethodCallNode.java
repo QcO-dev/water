@@ -40,10 +40,15 @@ public class MethodCallNode implements Node {
 
 	@Override
 	public void visit(FileContext context) throws SemanticException {
+		left.visit(context);
+
+		visitCall(context);
+	}
+
+	public void visitCall(FileContext context) throws SemanticException {
 		WaterType leftType = getLeftType(context.getContext());
 
 		if(leftType.isArray() && name.getValue().equals("length") && args.size() == 0) {
-			left.visit(context);
 			context.getContext().getMethodVisitor().visitInsn(Opcodes.ARRAYLENGTH);
 			return;
 		}
@@ -51,8 +56,6 @@ public class MethodCallNode implements Node {
 		if(!leftType.isObject()) {
 			throw new SemanticException(name, "Cannot invoke method on type '%s'".formatted(leftType));
 		}
-
-		left.visit(context);
 
 		Method toCall = resolve(leftType, context.getContext());
 
@@ -76,7 +79,6 @@ public class MethodCallNode implements Node {
 				.formatted(paramTypes.map(WaterType::getDescriptor).collect(Collectors.joining()), Type.getType(toCall.getReturnType()).getDescriptor());
 
 		context.getContext().getMethodVisitor().visitMethodInsn(isSuper ? Opcodes.INVOKESPECIAL : TypeUtil.getInvokeOpcode(toCall), leftType.getInternalName(), name.getValue(), descriptor, false);
-
 	}
 
 	@Override
