@@ -62,7 +62,7 @@ public class NonNullAssertionNode implements Node {
 			throw new SemanticException(op, "Cannot assert non-null on type which is already not null ('%s')".formatted(type));
 		}
 
-		return type.copy().setNullable(false);
+		return type.copy().asNonNullable();
 	}
 
 	@Override

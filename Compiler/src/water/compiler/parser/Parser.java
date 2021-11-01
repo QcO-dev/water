@@ -11,10 +11,7 @@ import water.compiler.parser.nodes.exception.ThrowNode;
 import water.compiler.parser.nodes.exception.TryNode;
 import water.compiler.parser.nodes.function.FunctionCallNode;
 import water.compiler.parser.nodes.function.FunctionDeclarationNode;
-import water.compiler.parser.nodes.nullability.NonNullAssertionNode;
-import water.compiler.parser.nodes.nullability.NullableIndexAccessNode;
-import water.compiler.parser.nodes.nullability.NullableMemberAccessNode;
-import water.compiler.parser.nodes.nullability.NullableMethodCallNode;
+import water.compiler.parser.nodes.nullability.*;
 import water.compiler.parser.nodes.operation.*;
 import water.compiler.parser.nodes.special.ImportNode;
 import water.compiler.parser.nodes.special.PackageNode;
@@ -436,6 +433,7 @@ public class Parser {
 	/*
 	Precedence:
 	assignExpr = += (etc)
+	logicalNullExpr ??
 	logicalOrExpr ||
 	logicalAndExpr &&
 	bitwiseOrExpr |
@@ -454,18 +452,32 @@ public class Parser {
 		return assignExpr();
 	}
 
-	/** Forms grammar: logicalOrExpr (('=' | INPLACE_OPERATOR) logicalOrExpr)* */
+	/** Forms grammar: logicalNullExpr (('=' | INPLACE_OPERATOR) logicalNullExpr)* */
 	private Node assignExpr() throws UnexpectedTokenException {
-		Node left = logicalOrExpr();
+		Node left = logicalNullExpr();
 
 		while(matchAssignment()) {
 			Token op = tokens.get(index - 1);
 
-			Node right = logicalOrExpr();
+			Node right = logicalNullExpr();
 
 			left = new AssignmentNode(left, op, right);
 		}
 
+		return left;
+	}
+
+	/** Forms grammar: logicalOrExpr ('??' logicalOrExpr)* */
+	private Node logicalNullExpr() throws UnexpectedTokenException {
+		Node left = logicalOrExpr();
+
+		while(match(TokenType.QUESTION_QUESTION)) {
+			Token op = tokens.get(index - 1);
+
+			Node right = logicalOrExpr();
+
+			left = new LogicalNullOperatorNode(left, op, right);
+		}
 		return left;
 	}
 

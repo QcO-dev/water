@@ -42,6 +42,11 @@ public class MethodCallNode implements Node {
 	public void visit(FileContext context) throws SemanticException {
 		left.visit(context);
 
+		WaterType returnType = left.getReturnType(context.getContext());
+		if(returnType.isNullable()) {
+			throw new SemanticException(name, "Cannot use '.' to call methods on a nullable type ('%s')".formatted(returnType));
+		}
+
 		visitCall(context);
 	}
 

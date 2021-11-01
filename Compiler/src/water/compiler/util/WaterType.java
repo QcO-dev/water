@@ -454,9 +454,22 @@ public class WaterType {
 		}
 	}
 
-	public WaterType setNullable(boolean isNullable) {
-		this.isNullable = isNullable;
-		return this;
+	public WaterType asNullable() {
+		WaterType type = copy();
+		type.isNullable = true;
+		return type;
+	}
+
+	public WaterType asNullable(boolean isNullable) {
+		WaterType type = copy();
+		type.isNullable = isNullable;
+		return type;
+	}
+
+	public WaterType asNonNullable() {
+		WaterType type = copy();
+		type.isNullable = false;
+		return type;
 	}
 
 	public boolean isObject() {

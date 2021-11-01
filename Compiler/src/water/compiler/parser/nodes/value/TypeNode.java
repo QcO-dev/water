@@ -49,7 +49,7 @@ public class TypeNode implements Node {
 			throw new SemanticException(root, "Primitive types cannot be nullable.");
 		}
 
-		if(dimensions != 0) return WaterType.getType("[".repeat(dimensions) + element.getReturnType(context).getDescriptor()).setNullable(isNullable);
+		if(dimensions != 0) return WaterType.getType("[".repeat(dimensions) + element.getReturnType(context).getDescriptor()).asNullable(isNullable);
 
 		if(isPrimitive) return switch (root.getType()) {
 			case VOID -> WaterType.VOID_TYPE;
@@ -65,7 +65,7 @@ public class TypeNode implements Node {
 		};
 
 		try {
-			return WaterType.getType(TypeUtil.classForName(path, context)).setNullable(isNullable);
+			return WaterType.getType(TypeUtil.classForName(path, context)).asNullable(isNullable);
 		} catch (ClassNotFoundException e) {
 			throw new SemanticException(root, "Could not resolve class '%s'".formatted(e.getMessage()));
 		}
@@ -74,7 +74,7 @@ public class TypeNode implements Node {
 	public WaterType getRawClassType() throws SemanticException {
 		if(isPrimitive) throw new SemanticException(root, "Unexpected primitive type");
 
-		return WaterType.getObjectType(path.replace('.', '/')).setNullable(isNullable);
+		return WaterType.getObjectType(path.replace('.', '/')).asNullable(isNullable);
 	}
 
 	public void setNullable(boolean isNullable) {

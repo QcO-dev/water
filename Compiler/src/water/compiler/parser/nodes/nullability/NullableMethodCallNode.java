@@ -50,7 +50,7 @@ public class NullableMethodCallNode implements Node {
 	public WaterType getReturnType(Context context) throws SemanticException {
 		WaterType rawType = synthetic().getReturnType(context);
 
-		return rawType.getAutoBoxWrapper().setNullable(true);
+		return rawType.getAutoBoxWrapper().asNullable();
 	}
 
 	private MethodCallNode synthetic() {

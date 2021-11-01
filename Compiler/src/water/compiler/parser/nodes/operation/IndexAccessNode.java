@@ -23,6 +23,12 @@ public class IndexAccessNode implements Node {
 	@Override
 	public void visit(FileContext context) throws SemanticException {
 		left.visit(context);
+
+		WaterType returnType = left.getReturnType(context.getContext());
+		if(returnType.isNullable()) {
+			throw new SemanticException(bracket, "Cannot use '[' to call methods on a nullable type ('%s')".formatted(returnType));
+		}
+
 		visitAccess(context);
 	}
 

@@ -128,6 +128,9 @@ public class Lexer {
 		else if(next('[')) {
 			return TokenType.QUESTION_LSQBR;
 		}
+		else if(next('?')) {
+			return TokenType.QUESTION_QUESTION;
+		}
 
 		return TokenType.QUESTION;
 	}
