@@ -19,6 +19,7 @@ public enum TokenType {
 	BITWISE_OR,
 	BITWISE_XOR,
 	BITWISE_NOT,
+	QUESTION,
 
 	// Multi character
 	ARROW,

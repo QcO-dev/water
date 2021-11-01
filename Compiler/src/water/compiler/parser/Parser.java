@@ -737,9 +737,9 @@ public class Parser {
 
 	//============================ Utility ============================
 
-	/** Forms grammar: basicType('[' ']')* */
+	/** Forms grammar: basicType('[' ']')*(\?)? */
 	private Node type() throws UnexpectedTokenException {
-		Node type = basicType();
+		TypeNode type = basicType();
 
 		int dim = 0;
 		while(match(TokenType.LSQBR)) {
@@ -747,14 +747,17 @@ public class Parser {
 			dim++;
 		}
 
+		boolean isNullable = match(TokenType.QUESTION);
+
 		if(dim != 0) {
-			type = new TypeNode((TypeNode) type, dim);
+			type = new TypeNode(type, dim);
 		}
+		type.setNullable(isNullable);
 
 		return type;
 	}
 
-	private Node basicType() throws UnexpectedTokenException {
+	private TypeNode basicType() throws UnexpectedTokenException {
 		if(Lexer.PRIMITIVE_TYPES.contains(tokens.get(index).getType())) {
 			return new TypeNode(advance());
 		}
@@ -764,7 +767,7 @@ public class Parser {
 	}
 
 	/** Forms grammar: IDENTIFIER ('.' IDENTIFIER)* */
-	private Node classType() throws UnexpectedTokenException {
+	private TypeNode classType() throws UnexpectedTokenException {
 		ArrayList<String> parts = new ArrayList<>();
 		Token start = tokens.get(index);
 		do {

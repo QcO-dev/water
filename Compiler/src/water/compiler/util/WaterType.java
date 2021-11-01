@@ -45,10 +45,12 @@ public class WaterType {
 
 	private final Type asmType;
 	private final Sort sort;
+	private boolean isNullable;
 
 	public WaterType(Type asmType) {
 		this.asmType = asmType;
 		sort = Sort.values()[asmType.getSort()];
+		this.isNullable = false;
 	}
 
 	/**
@@ -105,6 +107,7 @@ public class WaterType {
 	public boolean isAssignableFrom(WaterType from, Context context, boolean convert) throws ClassNotFoundException {
 		//TODO Null types
 		if(isObject() && from.isObject()) {
+			if(!isNullable() && from.isNullable()) return false;
 			return toClass(context).isAssignableFrom(from.toClass(context));
 		}
 
@@ -441,6 +444,11 @@ public class WaterType {
 		}
 	}
 
+	public WaterType setNullable(boolean isNullable) {
+		this.isNullable = isNullable;
+		return this;
+	}
+
 	public boolean isObject() {
 		return asmType.getSort() == Type.OBJECT;
 	}
@@ -484,6 +492,11 @@ public class WaterType {
 	public Sort getSort() {
 		return sort;
 	}
+
+	public boolean isNullable() {
+		return isNullable;
+	}
+
 	private Type getRawType() {
 		return asmType;
 	}
@@ -515,7 +528,7 @@ public class WaterType {
 	 * @return The String representation
 	 */
 	public String toString() {
-		return switch (asmType.getSort()) {
+		String base = switch (asmType.getSort()) {
 			case Type.VOID -> "void";
 			case Type.BOOLEAN -> "boolean";
 			case Type.CHAR -> "char";
@@ -530,6 +543,8 @@ public class WaterType {
 			case Type.METHOD -> "method"; // Should not be reached
 			default -> null; // Unreachable
 		};
+		if(isNullable) base += "?";
+		return base;
 	}
 
 	public static WaterType getMethodType(String descriptor) {
