@@ -1,0 +1,53 @@
+package water.compiler.parser.nodes.nullability;
+
+import org.objectweb.asm.Label;
+import org.objectweb.asm.Opcodes;
+import water.compiler.FileContext;
+import water.compiler.compiler.Context;
+import water.compiler.compiler.SemanticException;
+import water.compiler.lexer.Token;
+import water.compiler.parser.Node;
+import water.compiler.parser.nodes.classes.MemberAccessNode;
+import water.compiler.util.WaterType;
+
+public class NullableMemberAccessNode implements Node {
+
+	private final Node left;
+	private final Token name;
+
+	public NullableMemberAccessNode(Node left, Token name) {
+		this.left = left;
+		this.name = name;
+	}
+
+	@Override
+	public void visit(FileContext context) throws SemanticException {
+		//TODO type check
+		Label nullValue = new Label();
+		left.visit(context);
+
+		context.getContext().getMethodVisitor().visitInsn(Opcodes.DUP);
+		context.getContext().getMethodVisitor().visitJumpInsn(Opcodes.IFNULL, nullValue);
+
+		synthetic().visitAccess(context);
+		synthetic().getReturnType(context.getContext()).autoBox(context.getContext().getMethodVisitor());
+
+		context.getContext().getMethodVisitor().visitLabel(nullValue);
+	}
+
+	@Override
+	public WaterType getReturnType(Context context) throws SemanticException {
+		WaterType rawType = synthetic().getReturnType(context);
+
+		return rawType.getAutoBoxWrapper().setNullable(true);
+	}
+
+	private MemberAccessNode synthetic() {
+		return new MemberAccessNode(left, name);
+	}
+
+	@Override
+	public String toString() {
+		return "%s?.%s".formatted(left, name.getValue());
+	}
+}

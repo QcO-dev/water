@@ -31,6 +31,7 @@ public enum TokenType {
 	BITWISE_SHL,
 	BITWISE_SHR,
 	BITWISE_USHR,
+	QUESTION_DOT,
 
 	// Inplace
 	IN_PLUS,

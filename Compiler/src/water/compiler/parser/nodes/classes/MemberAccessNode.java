@@ -30,10 +30,20 @@ public class MemberAccessNode implements Node {
 
 	@Override
 	public void visit(FileContext context) throws SemanticException {
+		left.visit(context);
+
+		WaterType returnType = left.getReturnType(context.getContext());
+		if(returnType.isNullable()) {
+			throw new SemanticException(name, "Cannot use '.' to access members on a nullable type ('%s')".formatted(returnType));
+		}
+
+		visitAccess(context);
+	}
+
+	public void visitAccess(FileContext context) throws SemanticException {
 		WaterType leftType = getLeftType(context.getContext());
 
 		if(leftType.isArray() && name.getValue().equals("length")) {
-			left.visit(context);
 			context.getContext().getMethodVisitor().visitInsn(Opcodes.ARRAYLENGTH);
 			return;
 		}
@@ -41,8 +51,6 @@ public class MemberAccessNode implements Node {
 		if(!leftType.isObject()) {
 			throw new SemanticException(name, "Cannot access member on type '%s'".formatted(leftType));
 		}
-
-		left.visit(context);
 
 		resolve(leftType, context.getContext(), true);
 	}
