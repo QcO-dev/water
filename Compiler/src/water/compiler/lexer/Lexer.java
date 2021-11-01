@@ -107,7 +107,7 @@ public class Lexer {
 					case '|' -> next('|') ? TokenType.LOGICAL_OR : next('=') ? TokenType.IN_BITWISE_OR : TokenType.BITWISE_OR;
 					case '^' -> next('=') ? TokenType.IN_BITWISE_XOR : TokenType.BITWISE_XOR;
 					case '~' -> TokenType.BITWISE_NOT;
-					case '?' -> next('.') ? TokenType.QUESTION_DOT : TokenType.QUESTION;
+					case '?' -> question();
 					default -> TokenType.ERROR;
 				};
 				token = makeToken(type);
@@ -118,6 +118,18 @@ public class Lexer {
 		tokens.add(makeToken(TokenType.EOF));
 
 		return tokens;
+	}
+
+	/** Matches against different token types which begin with '?' */
+	private TokenType question() {
+		if(next('.')) {
+			return TokenType.QUESTION_DOT;
+		}
+		else if(next('[')) {
+			return TokenType.QUESTION_LSQBR;
+		}
+
+		return TokenType.QUESTION;
 	}
 
 	/** Matches against different tokens which start with '>' */

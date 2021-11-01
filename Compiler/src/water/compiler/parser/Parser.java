@@ -12,6 +12,7 @@ import water.compiler.parser.nodes.exception.TryNode;
 import water.compiler.parser.nodes.function.FunctionCallNode;
 import water.compiler.parser.nodes.function.FunctionDeclarationNode;
 import water.compiler.parser.nodes.nullability.NonNullAssertionNode;
+import water.compiler.parser.nodes.nullability.NullableIndexAccessNode;
 import water.compiler.parser.nodes.nullability.NullableMemberAccessNode;
 import water.compiler.parser.nodes.nullability.NullableMethodCallNode;
 import water.compiler.parser.nodes.operation.*;
@@ -642,12 +643,19 @@ public class Parser {
 			left = new NonNullAssertionNode(left, tokens.get(index - 1));
 		}
 
-		while(match(TokenType.DOT) || match(TokenType.QUESTION_DOT) || match(TokenType.LSQBR)) {
+		while(match(TokenType.DOT) || match(TokenType.QUESTION_DOT) || match(TokenType.LSQBR) || match(TokenType.QUESTION_LSQBR)) {
 			if(tokens.get(index - 1).getType() == TokenType.LSQBR) {
 				Token bracket = tokens.get(index - 1);
 				Node index = expression();
 				consume(TokenType.RSQBR, "Expected ']' after index");
 				left = new IndexAccessNode(bracket, left, index);
+				continue;
+			}
+			else if(tokens.get(index - 1).getType() == TokenType.QUESTION_LSQBR) {
+				Token bracket = tokens.get(index - 1);
+				Node index = expression();
+				consume(TokenType.RSQBR, "Expected ']' after index");
+				left = new NullableIndexAccessNode(bracket, left, index);
 				continue;
 			}
 

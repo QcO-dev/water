@@ -22,6 +22,11 @@ public class IndexAccessNode implements Node {
 
 	@Override
 	public void visit(FileContext context) throws SemanticException {
+		left.visit(context);
+		visitAccess(context);
+	}
+
+	public void visitAccess(FileContext context) throws SemanticException {
 		WaterType leftType = left.getReturnType(context.getContext());
 		WaterType indexType = index.getReturnType(context.getContext());
 
@@ -32,7 +37,6 @@ public class IndexAccessNode implements Node {
 			throw new SemanticException(bracket, "Index must be an integer type (got '%s')".formatted(indexType));
 		}
 
-		left.visit(context);
 		index.visit(context);
 
 		context.getContext().getMethodVisitor().visitInsn(leftType.getElementType().getOpcode(Opcodes.IALOAD));
