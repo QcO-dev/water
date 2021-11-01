@@ -88,7 +88,8 @@ public class EqualityOperationNode implements Node {
 		}
 		else if(!leftType.isPrimitive() && !rightType.isPrimitive()) {
 			left.visit(context);
-			right.visit(context);
+
+			if(!rightType.isNull() && op.getType() != TokenType.TRI_EQ && op.getType() != TokenType.TRI_EXEQ) right.visit(context);
 			switch (op.getType()) {
 				case EQEQ -> {
 					isEqual(methodVisitor, leftType);
@@ -100,11 +101,13 @@ public class EqualityOperationNode implements Node {
 					return true;
 				}
 				case TRI_EQ -> {
-					generateIfBytecode(methodVisitor, Opcodes.IF_ACMPNE, falseL);
+					if(rightType.isNull()) generateIfBytecode(methodVisitor, Opcodes.IFNONNULL, falseL);
+					else generateIfBytecode(methodVisitor, Opcodes.IF_ACMPNE, falseL);
 					return true;
 				}
 				case TRI_EXEQ -> {
-					generateIfBytecode(methodVisitor, Opcodes.IF_ACMPEQ, falseL);
+					if(rightType.isNull()) generateIfBytecode(methodVisitor, Opcodes.IFNULL, falseL);
+					else generateIfBytecode(methodVisitor, Opcodes.IF_ACMPEQ, falseL);
 					return true;
 				}
 			}
@@ -132,7 +135,8 @@ public class EqualityOperationNode implements Node {
 		return false;
 	}
 
-	private void isEqual(MethodVisitor methodVisitor, WaterType owner) {
+	private void isEqual(MethodVisitor methodVisitor, WaterType owner) throws SemanticException {
+		if(owner.isNullable()) throw new SemanticException(op, "Cannot perform equality check on nullable type ('%s')".formatted(owner));
 		methodVisitor.visitMethodInsn(Opcodes.INVOKEVIRTUAL, owner.getInternalName(), "equals", "(Ljava/lang/Object;)Z", false);
 	}
 
