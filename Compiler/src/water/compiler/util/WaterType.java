@@ -530,6 +530,13 @@ public class WaterType {
 		return asmType.hashCode();
 	}
 
+	public WaterType copy() {
+		WaterType type = new WaterType(asmType);
+		type.sort = sort;
+		type.isNullable = isNullable;
+		return type;
+	}
+
 	/**
 	 * Converts a type to a String.
 	 * This String representation differs from Type.toString()

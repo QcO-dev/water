@@ -1,6 +1,5 @@
 package water.compiler.parser;
 
-import water.compiler.compiler.SemanticException;
 import water.compiler.lexer.Lexer;
 import water.compiler.lexer.Token;
 import water.compiler.lexer.TokenType;
@@ -12,6 +11,7 @@ import water.compiler.parser.nodes.exception.ThrowNode;
 import water.compiler.parser.nodes.exception.TryNode;
 import water.compiler.parser.nodes.function.FunctionCallNode;
 import water.compiler.parser.nodes.function.FunctionDeclarationNode;
+import water.compiler.parser.nodes.nullability.NonNullAssertionNode;
 import water.compiler.parser.nodes.operation.*;
 import water.compiler.parser.nodes.special.ImportNode;
 import water.compiler.parser.nodes.special.PackageNode;
@@ -632,9 +632,13 @@ public class Parser {
 		return memberAccess();
 	}
 
-	/** Forms grammar: atom (('.' IDENTIFIER arguments?) | ('[' expression ']'))* */
+	/** Forms grammar: atom(!)? (('.' IDENTIFIER arguments?) | ('[' expression ']'))* */
 	private Node memberAccess() throws UnexpectedTokenException {
 		Node left = atom();
+
+		if(match(TokenType.EXCLAIM)) {
+			left = new NonNullAssertionNode(left, tokens.get(index - 1));
+		}
 
 		while(match(TokenType.DOT) || match(TokenType.LSQBR)) {
 			if(tokens.get(index - 1).getType() == TokenType.LSQBR) {
