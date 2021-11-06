@@ -191,18 +191,18 @@ public class FunctionDeclarationNode implements Node {
 
 	private void addNullableAnnotations(MethodVisitor visitor, Context context) throws SemanticException {
 		if(returnType.isNullable()) {
-			visitor.visitAnnotation("Lwater/runtime/annotation/Nullable;", false);
+			visitor.visitAnnotation("Lwater/runtime/annotation/Nullable;", true);
 		}
 
 		int nullableParameterCount = (int) parameters.stream().map(Pair::getSecond).map(n -> Unthrow.wrap(() -> n.getReturnType(context)))
 				.filter(WaterType::isNullable).count();
 
-		visitor.visitAnnotableParameterCount(nullableParameterCount, false);
+		visitor.visitAnnotableParameterCount(nullableParameterCount, true);
 
 		for(int i = 0; i < parameters.size(); i++) {
 			WaterType parameterType = parameters.get(i).getSecond().getReturnType(context);
 			if(parameterType.isNullable()) {
-				visitor.visitParameterAnnotation(i, "Lwater/runtime/annotation/Nullable;", false);
+				visitor.visitParameterAnnotation(i, "Lwater/runtime/annotation/Nullable;", true);
 			}
 		}
 	}

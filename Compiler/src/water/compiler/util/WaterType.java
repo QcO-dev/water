@@ -4,9 +4,12 @@ import org.objectweb.asm.MethodVisitor;
 import org.objectweb.asm.Opcodes;
 import org.objectweb.asm.Type;
 import water.compiler.compiler.Context;
+import water.runtime.annotation.Nullable;
 
 import java.lang.reflect.Constructor;
 import java.lang.reflect.Method;
+import java.lang.reflect.Parameter;
+import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.List;
 
@@ -56,7 +59,7 @@ public class WaterType {
 	private Sort sort;
 	private boolean isNullable;
 	private WaterType returnType;
-	private WaterType argumentTypes[];
+	private WaterType[] argumentTypes;
 
 	public WaterType(Type asmType) {
 		this.asmType = asmType;
@@ -594,7 +597,6 @@ public class WaterType {
 			case OBJECT -> asmType.getClassName();
 			case METHOD -> "method"; // Should not be reached
 			case NULL -> "null";
-			default -> null; // Unreachable
 		};
 		if(isNullable) base += "?";
 		return base;
@@ -627,7 +629,23 @@ public class WaterType {
 	}
 
 	public static WaterType getType(Method method) {
-		return new WaterType(Type.getType(method));
+		Parameter[] parameters = method.getParameters();
+
+		ArrayList<WaterType> parameterTypes = new ArrayList<>();
+		for(Parameter parameter : parameters) {
+			Class<?> typeClass = parameter.getType();
+
+			WaterType type = WaterType.getType(typeClass);
+			if(parameter.getAnnotation(Nullable.class) != null) {
+				type.isNullable = true;
+			}
+			parameterTypes.add(type);
+		}
+		WaterType returnType = WaterType.getType(method.getReturnType());
+		if(method.getAnnotation(Nullable.class) != null) {
+			returnType.isNullable = true;
+		}
+		return WaterType.getMethodType(returnType, parameterTypes.toArray(WaterType[]::new));
 	}
 
 	public static WaterType getType(Constructor<?> constructor) {

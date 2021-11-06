@@ -93,7 +93,7 @@ public class MethodCallNode implements Node {
 
 		if(leftType.isArray() && name.getValue().equals("length") && args.size() == 0) return WaterType.INT_TYPE;
 
-		return WaterType.getType(resolve(leftType, context).getReturnType());
+		return WaterType.getType(resolve(leftType, context)).getReturnType();
 	}
 
 	private WaterType getLeftType(Context context) throws SemanticException {
