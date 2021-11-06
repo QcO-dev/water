@@ -1,5 +1,6 @@
 package water.compiler.parser.nodes.variable;
 
+import org.objectweb.asm.FieldVisitor;
 import org.objectweb.asm.MethodVisitor;
 import org.objectweb.asm.Opcodes;
 import org.objectweb.asm.Type;
@@ -7,7 +8,6 @@ import water.compiler.FileContext;
 import water.compiler.compiler.*;
 import water.compiler.lexer.Token;
 import water.compiler.parser.Node;
-import water.compiler.util.TypeUtil;
 import water.compiler.util.WaterType;
 
 public class VariableDeclarationNode implements Node {
@@ -117,18 +117,28 @@ public class VariableDeclarationNode implements Node {
 		int getOpcode = isStatic ? Opcodes.GETSTATIC : Opcodes.GETFIELD;
 		int setOpcode = isStatic ? Opcodes.PUTSTATIC : Opcodes.PUTFIELD;
 
-		context.getCurrentClassWriter().visitField(Opcodes.ACC_PRIVATE | staticMod | finalMod, name.getValue(), computeExpectedType(context).getDescriptor(), null, null);
-
-		String beanName = name.getValue().substring(0, 1).toUpperCase() + name.getValue().substring(1);
-
 		WaterType fieldType = computeExpectedType(context);
 		String descriptor = fieldType.getDescriptor();
+
+		FieldVisitor fv = context.getCurrentClassWriter().visitField(Opcodes.ACC_PRIVATE | staticMod | finalMod, name.getValue(), descriptor, null, null);
+
+		if(fieldType.isNullable()) {
+			fv.visitAnnotation("Lwater/runtime/annotation/Nullable;", true);
+		}
+		fv.visitEnd();
+
+		String beanName = name.getValue().substring(0, 1).toUpperCase() + name.getValue().substring(1);
 
 		// Getter
 		if(verifyAccess()) {
 			String fName = name.getValue().matches("^is[\\p{Lu}].*") ? name.getValue() : "get" + beanName;
 			MethodVisitor visitor = context.getCurrentClassWriter().visitMethod(Opcodes.ACC_PUBLIC | staticMod | methodFinalMod, fName, "()" + descriptor, null, null);
 			visitor.visitCode();
+
+			if(fieldType.isNullable()) {
+				visitor.visitAnnotation("Lwater/runtime/annotation/Nullable;", true);
+			}
+
 			if(!isStatic) visitor.visitVarInsn(Opcodes.ALOAD, 0);
 			visitor.visitFieldInsn(getOpcode, context.getCurrentClass(), name.getValue(), descriptor);
 			visitor.visitInsn(fieldType.getOpcode(Opcodes.IRETURN));
@@ -140,6 +150,12 @@ public class VariableDeclarationNode implements Node {
 			String fName = "set" + (name.getValue().matches("^is[\\p{Lu}].*") ? beanName.substring(2) : beanName);
 			MethodVisitor visitor = context.getCurrentClassWriter().visitMethod(Opcodes.ACC_PUBLIC | staticMod | methodFinalMod, fName, "("  + descriptor + ")V", null, null);
 			visitor.visitCode();
+
+			if(fieldType.isNullable()) {
+				visitor.visitAnnotableParameterCount(1, true);
+				visitor.visitParameterAnnotation(0, "Lwater/runtime/annotation/Nullable;", true);
+			}
+
 			if(!isStatic) visitor.visitVarInsn(Opcodes.ALOAD, 0);
 			visitor.visitVarInsn(fieldType.getOpcode(Opcodes.ILOAD), isStatic ? 0 : 1);
 			visitor.visitFieldInsn(setOpcode, context.getCurrentClass(), name.getValue(), descriptor);

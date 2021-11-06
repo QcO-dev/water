@@ -123,7 +123,7 @@ public class MemberAccessNode implements Node {
 	private WaterType attemptMethodCall(Class<?> klass, WaterType leftType, String methodName, boolean generate, Context context) throws NoSuchMethodException, SemanticException {
 		Method m = klass.getMethod(methodName);
 
-		WaterType returnType = WaterType.getType(m.getReturnType());
+		WaterType returnType = WaterType.getType(m).getReturnType();
 
 		if(!isStaticAccess && Modifier.isStatic(m.getModifiers())) {
 			throw new SemanticException(name, "Cannot access static member from non-static object.");

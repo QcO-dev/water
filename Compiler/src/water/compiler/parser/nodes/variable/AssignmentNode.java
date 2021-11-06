@@ -139,7 +139,7 @@ public class AssignmentNode implements Node {
 				if(!WaterType.getType(f.getType()).isAssignableFrom(returnType, context.getContext(), true)) {
 					throw new SemanticException(op,
 							"Cannot assign type '%s' to variable of type '%s'"
-									.formatted(returnType, Type.getType(f.getType())));
+									.formatted(returnType, WaterType.getType(f.getType())));
 				}
 			} catch (ClassNotFoundException e) {
 				throw new SemanticException(op, "Could not resolve class '%s'".formatted(e.getMessage()));
