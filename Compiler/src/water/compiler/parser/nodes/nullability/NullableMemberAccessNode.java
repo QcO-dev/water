@@ -6,6 +6,7 @@ import water.compiler.FileContext;
 import water.compiler.compiler.Context;
 import water.compiler.compiler.SemanticException;
 import water.compiler.lexer.Token;
+import water.compiler.parser.LValue;
 import water.compiler.parser.Node;
 import water.compiler.parser.nodes.classes.MemberAccessNode;
 import water.compiler.util.WaterType;
@@ -28,10 +29,21 @@ public class NullableMemberAccessNode implements Node {
 		}
 
 		Label nullValue = new Label();
+
+		boolean isSettingJump = false;
+		if(context.getContext().getNullJumpLabel(nullValue) == nullValue) {
+			context.getContext().setNullJumpLabel(nullValue);
+			isSettingJump = true;
+		}
+
 		left.visit(context);
 
+		if(isSettingJump) {
+			context.getContext().setNullJumpLabel(null);
+		}
+
 		context.getContext().getMethodVisitor().visitInsn(Opcodes.DUP);
-		context.getContext().getMethodVisitor().visitJumpInsn(Opcodes.IFNULL, nullValue);
+		context.getContext().getMethodVisitor().visitJumpInsn(Opcodes.IFNULL, context.getContext().getNullJumpLabel(nullValue));
 
 		synthetic().visitAccess(context);
 		synthetic().getReturnType(context.getContext()).autoBox(context.getContext().getMethodVisitor());
@@ -48,6 +60,16 @@ public class NullableMemberAccessNode implements Node {
 
 	private MemberAccessNode synthetic() {
 		return new MemberAccessNode(left, name);
+	}
+
+	@Override
+	public LValue getLValue() {
+		return LValue.NULLABLE_PROPERTY;
+	}
+
+	@Override
+	public Object[] getLValueData() {
+		return new Object[] { left, name };
 	}
 
 	@Override

@@ -34,6 +34,7 @@ public class Context {
 	private boolean isConstructor;
 	private int currentLine;
 	private List<VariableDeclarationNode> classVariables;
+	private Label nullJumpLabel;
 
 	public Context() {
 		this.imports = new HashMap<>();
@@ -165,6 +166,14 @@ public class Context {
 
 	public ClassWriter getCurrentClassWriter() {
 		return classWriterMap.get(currentClass);
+	}
+
+	public Label getNullJumpLabel(Label other) {
+		return nullJumpLabel == null ? other : nullJumpLabel;
+	}
+
+	public void setNullJumpLabel(Label nullJumpLabel) {
+		this.nullJumpLabel = nullJumpLabel;
 	}
 
 	private void initImports() {

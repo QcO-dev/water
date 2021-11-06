@@ -10,6 +10,7 @@ import water.compiler.compiler.SemanticException;
 import water.compiler.parser.Node;
 import water.compiler.parser.nodes.classes.ClassDeclarationNode;
 import water.compiler.parser.nodes.variable.VariableDeclarationNode;
+import water.compiler.util.WaterClassWriter;
 
 import java.util.List;
 import java.util.stream.Collectors;
@@ -133,7 +134,7 @@ public class ProgramNode implements Node {
 
 		context.setCurrentClass(name);
 
-		ClassWriter writer = new ClassWriter(ClassWriter.COMPUTE_MAXS | ClassWriter.COMPUTE_FRAMES);
+		ClassWriter writer = new WaterClassWriter(ClassWriter.COMPUTE_MAXS | ClassWriter.COMPUTE_FRAMES, context.getLoader());
 
 		writer.visit(Opcodes.V9, Opcodes.ACC_PUBLIC | Opcodes.ACC_FINAL | Opcodes.ACC_SUPER, name, null, "java/lang/Object", null);
 

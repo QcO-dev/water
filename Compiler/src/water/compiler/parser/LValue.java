@@ -4,5 +4,6 @@ public enum LValue {
 	NONE,
 	VARIABLE,
 	PROPERTY,
-	ARRAY
+	ARRAY,
+	NULLABLE_PROPERTY
 }

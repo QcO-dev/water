@@ -12,6 +12,7 @@ import water.compiler.lexer.Token;
 import water.compiler.lexer.TokenType;
 import water.compiler.parser.Node;
 import water.compiler.parser.nodes.variable.VariableDeclarationNode;
+import water.compiler.util.WaterClassWriter;
 import water.compiler.util.WaterType;
 
 import java.lang.reflect.Constructor;
@@ -197,7 +198,7 @@ public class ClassDeclarationNode implements Node {
 
 		context.setCurrentClass(className);
 
-		ClassWriter writer = new ClassWriter(ClassWriter.COMPUTE_MAXS | ClassWriter.COMPUTE_FRAMES);
+		ClassWriter writer = new WaterClassWriter(ClassWriter.COMPUTE_MAXS | ClassWriter.COMPUTE_FRAMES, context.getLoader());
 
 		writer.visit(Opcodes.V9, accessLevel | Opcodes.ACC_SUPER, className, null, superclassName, null);
 
