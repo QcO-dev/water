@@ -195,7 +195,7 @@ public class TypeUtil {
 		try {
 			out:
 			for (Constructor<?> c : constructors) {
-				WaterType[] expectArgs = new WaterType(Type.getType(c)).getArgumentTypes();
+				WaterType[] expectArgs = WaterType.getType(c).getArgumentTypes();
 
 				if (expectArgs.length != argTypes.length) continue;
 

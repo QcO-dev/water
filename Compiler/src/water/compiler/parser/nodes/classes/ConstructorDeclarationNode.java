@@ -48,6 +48,8 @@ public class ConstructorDeclarationNode implements Node {
 		MethodVisitor constructor = writer.visitMethod(getAccess(), "<init>", "(" + args + ")V", null, null);
 		constructor.visitCode();
 
+		addNullableAnnotations(constructor, fc.getContext());
+
 		context.setDefaultConstructor(constructor);
 		context.setMethodVisitor(constructor);
 		context.setConstructor(true);
@@ -102,11 +104,27 @@ public class ConstructorDeclarationNode implements Node {
 		constructor.visitEnd();
 	}
 
-	private MethodVisitor createDefaultConstructor(Context context) {
+	private void addNullableAnnotations(MethodVisitor visitor, Context context) throws SemanticException {
+		int nullableParameterCount = (int) parameters.stream().map(Pair::getSecond).map(n -> Unthrow.wrap(() -> n.getReturnType(context)))
+				.filter(WaterType::isNullable).count();
+
+		visitor.visitAnnotableParameterCount(nullableParameterCount, true);
+
+		for(int i = 0; i < parameters.size(); i++) {
+			WaterType parameterType = parameters.get(i).getSecond().getReturnType(context);
+			if(parameterType.isNullable()) {
+				visitor.visitParameterAnnotation(i, "Lwater/runtime/annotation/Nullable;", true);
+			}
+		}
+	}
+
+	private MethodVisitor createDefaultConstructor(Context context) throws SemanticException {
 		ClassWriter writer = context.getCurrentClassWriter();
 		String args = parameters.stream().map(Pair::getSecond).map(n -> Unthrow.wrap(() -> n.getReturnType(context).getDescriptor())).collect(Collectors.joining());
 		MethodVisitor constructor = writer.visitMethod(getAccess(), "<init>", "(" + args + ")V", null, null);
 		constructor.visitCode();
+
+		addNullableAnnotations(constructor, context);
 
 		constructor.visitVarInsn(Opcodes.ALOAD, 0);
 		constructor.visitMethodInsn(Opcodes.INVOKESPECIAL, context.getCurrentSuperClass().getInternalName(), "<init>", "()V", false);

@@ -649,6 +649,19 @@ public class WaterType {
 	}
 
 	public static WaterType getType(Constructor<?> constructor) {
-		return new WaterType(Type.getType(constructor));
+		Parameter[] parameters = constructor.getParameters();
+
+		ArrayList<WaterType> parameterTypes = new ArrayList<>();
+		for(Parameter parameter : parameters) {
+			Class<?> typeClass = parameter.getType();
+
+			WaterType type = WaterType.getType(typeClass);
+			if(parameter.getAnnotation(Nullable.class) != null) {
+				type.isNullable = true;
+			}
+			parameterTypes.add(type);
+		}
+
+		return WaterType.getMethodType(WaterType.VOID_TYPE, parameterTypes.toArray(WaterType[]::new));
 	}
 }
