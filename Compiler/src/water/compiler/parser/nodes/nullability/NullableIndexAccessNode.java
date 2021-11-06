@@ -30,10 +30,21 @@ public class NullableIndexAccessNode implements Node {
 		}
 
 		Label nullValue = new Label();
+
+		boolean isSettingJump = false;
+		if(context.getContext().getNullJumpLabel(nullValue) == nullValue) {
+			context.getContext().setNullJumpLabel(nullValue);
+			isSettingJump = true;
+		}
+
 		left.visit(context);
 
+		if(isSettingJump) {
+			context.getContext().setNullJumpLabel(null);
+		}
+
 		context.getContext().getMethodVisitor().visitInsn(Opcodes.DUP);
-		context.getContext().getMethodVisitor().visitJumpInsn(Opcodes.IFNULL, nullValue);
+		context.getContext().getMethodVisitor().visitJumpInsn(Opcodes.IFNULL, context.getContext().getNullJumpLabel(nullValue));
 
 		synthetic().visitAccess(context);
 

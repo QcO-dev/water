@@ -67,6 +67,7 @@ public class WaterType {
 		this.asmType = asmType;
 		sort = Sort.values()[asmType.getSort()];
 		this.isNullable = false;
+		this.elementType = asmType.getSort() == Type.ARRAY ? new WaterType(asmType.getElementType()) : null;
 	}
 
 	public WaterType(Sort sort) {
