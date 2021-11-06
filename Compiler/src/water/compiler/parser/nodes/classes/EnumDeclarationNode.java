@@ -12,6 +12,7 @@ import water.compiler.lexer.Token;
 import water.compiler.lexer.TokenType;
 import water.compiler.parser.Node;
 import water.compiler.util.TypeUtil;
+import water.compiler.util.WaterClassWriter;
 
 import java.util.List;
 import java.util.stream.Collectors;
@@ -154,7 +155,7 @@ public class EnumDeclarationNode implements Node {
 
 		context.setCurrentClass(className);
 
-		ClassWriter writer = new ClassWriter(ClassWriter.COMPUTE_MAXS | ClassWriter.COMPUTE_FRAMES);
+		ClassWriter writer = new WaterClassWriter(ClassWriter.COMPUTE_MAXS | ClassWriter.COMPUTE_FRAMES, context.getLoader());
 
 		writer.visit(Opcodes.V9, accessLevel | Opcodes.ACC_SUPER | Opcodes.ACC_FINAL | Opcodes.ACC_ENUM, className, "Ljava/lang/Enum<L%s;>;".formatted(className), "java/lang/Enum", null);
 

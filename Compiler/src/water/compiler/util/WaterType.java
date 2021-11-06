@@ -4,9 +4,13 @@ import org.objectweb.asm.MethodVisitor;
 import org.objectweb.asm.Opcodes;
 import org.objectweb.asm.Type;
 import water.compiler.compiler.Context;
+import water.runtime.annotation.Nullable;
 
 import java.lang.reflect.Constructor;
+import java.lang.reflect.Field;
 import java.lang.reflect.Method;
+import java.lang.reflect.Parameter;
+import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.List;
 
@@ -22,10 +26,18 @@ public class WaterType {
 	public static WaterType LONG_TYPE = new WaterType(Type.LONG_TYPE);
 	public static WaterType SHORT_TYPE = new WaterType(Type.SHORT_TYPE);
 	public static WaterType VOID_TYPE = new WaterType(Type.VOID_TYPE);
+	public static WaterType NULL_TYPE = WaterType.getObjectType("java/lang/Object");
 	/** A constant defining a Type representing the java.lang.String class */
 	public static final WaterType STRING_TYPE = WaterType.getObjectType("java/lang/String");
 	/** A constant defining a Type representing the java.lang.Object class */
 	public static final WaterType OBJECT_TYPE = WaterType.getObjectType("java/lang/Object");
+	/** A constant defining a Type representing the java.lang.Object class, which is nullable (java.lang.Object?) */
+	public static final WaterType NULLABLE_OBJECT_TYPE = OBJECT_TYPE.asNullable();
+
+	static {
+		NULL_TYPE.isNullable = true;
+		NULL_TYPE.sort = Sort.NULL;
+	}
 
 	public enum Sort {
 		VOID,
@@ -39,16 +51,29 @@ public class WaterType {
 		DOUBLE,
 		ARRAY,
 		OBJECT,
-		METHOD
+		METHOD,
+		NULL
 	}
 
 
-	private final Type asmType;
-	private final Sort sort;
+	private Type asmType;
+	private Sort sort;
+	private boolean isNullable;
+	private WaterType returnType;
+	private WaterType[] argumentTypes;
+	private WaterType elementType;
 
 	public WaterType(Type asmType) {
 		this.asmType = asmType;
 		sort = Sort.values()[asmType.getSort()];
+		this.isNullable = false;
+		this.elementType = asmType.getSort() == Type.ARRAY ? new WaterType(asmType.getElementType()) : null;
+	}
+
+	public WaterType(Sort sort) {
+		this.asmType = null;
+		this.sort = sort;
+		this.isNullable = false;
 	}
 
 	/**
@@ -57,9 +82,9 @@ public class WaterType {
 	 * @return If the type is of a primitive value
 	 */
 	public boolean isPrimitive() {
-		return  asmType.getSort() != Type.OBJECT &&
-				asmType.getSort() != Type.ARRAY &&
-				asmType.getSort() != Type.METHOD;
+		return  getSort() != Sort.OBJECT &&
+				getSort() != Sort.ARRAY &&
+				getSort() != Sort.METHOD;
 	}
 
 	/**
@@ -103,8 +128,12 @@ public class WaterType {
 	 * @throws ClassNotFoundException If either type represents a class which cannot be resolved
 	 */
 	public boolean isAssignableFrom(WaterType from, Context context, boolean convert) throws ClassNotFoundException {
-		//TODO Null types
+		// Covers assigning null to both arrays and objects.
+		if(isNullable() && (isArray() || isObject()) && from.isNull()) {
+			return true;
+		}
 		if(isObject() && from.isObject()) {
+			if(!isNullable() && from.isNullable()) return false;
 			return toClass(context).isAssignableFrom(from.toClass(context));
 		}
 
@@ -121,6 +150,9 @@ public class WaterType {
 		}
 
 		if(isArray() && from.isArray()) {
+			if(getElementType().isNullable()) {
+				return getElementType().equals(from.getElementType().asNullable());
+			}
 			return getElementType().equals(from.getElementType());
 		}
 
@@ -135,7 +167,7 @@ public class WaterType {
 	 * * @return The complexity of the change
 	 */
 	public int assignChangesFrom(WaterType from) {
-		if(from.equals(this)) {
+		if(from.equals(this) || from.isNull()) {
 			return 0;
 		}
 		if(isObject() && from.isObject()) {
@@ -441,12 +473,34 @@ public class WaterType {
 		}
 	}
 
+	public WaterType asNullable() {
+		WaterType type = copy();
+		type.isNullable = true;
+		return type;
+	}
+
+	public WaterType asNullable(boolean isNullable) {
+		WaterType type = copy();
+		type.isNullable = isNullable;
+		return type;
+	}
+
+	public WaterType asNonNullable() {
+		WaterType type = copy();
+		type.isNullable = false;
+		return type;
+	}
+
 	public boolean isObject() {
-		return asmType.getSort() == Type.OBJECT;
+		return getSort() == Sort.OBJECT;
 	}
 
 	public boolean isArray() {
-		return asmType.getSort() == Type.ARRAY;
+		return getSort() == Sort.ARRAY;
+	}
+
+	public boolean isNull() {
+		return sort == Sort.NULL;
 	}
 
 	public String getInternalName() {
@@ -458,7 +512,7 @@ public class WaterType {
 	}
 
 	public WaterType getElementType() {
-		return new WaterType(asmType.getElementType());
+		return elementType;
 	}
 
 	public int getOpcode(int opcode) {
@@ -470,20 +524,32 @@ public class WaterType {
 	}
 
 	public WaterType[] getArgumentTypes() {
-		return Arrays.stream(asmType.getArgumentTypes()).map(WaterType::new).toArray(WaterType[]::new);
+		return argumentTypes;
 	}
 
 	public WaterType getReturnType() {
-		return new WaterType(asmType.getReturnType());
+		return returnType;
 	}
 
 	public String getDescriptor() {
+		if(sort == Sort.METHOD) {
+			StringBuilder builder = new StringBuilder("(");
+			for(WaterType type : argumentTypes) {
+				builder.append(type.getDescriptor());
+			}
+			return builder.append(")").append(returnType.getDescriptor()).toString();
+		}
 		return asmType.getDescriptor();
 	}
 
 	public Sort getSort() {
 		return sort;
 	}
+
+	public boolean isNullable() {
+		return isNullable;
+	}
+
 	private Type getRawType() {
 		return asmType;
 	}
@@ -494,12 +560,24 @@ public class WaterType {
 			return false;
 		}
 		WaterType other = (WaterType) obj;
+		if(isNullable() != other.isNullable()) return false;
 		return other.getRawType().equals(this.asmType);
 	}
 
 	@Override
 	public int hashCode() {
 		return asmType.hashCode();
+	}
+
+	public WaterType copy() {
+		WaterType type = new WaterType(sort);
+		type.asmType = asmType;
+		type.sort = sort;
+		type.isNullable = isNullable;
+		type.returnType = returnType;
+		type.argumentTypes = argumentTypes;
+		type.elementType = elementType;
+		return type;
 	}
 
 	/**
@@ -515,25 +593,47 @@ public class WaterType {
 	 * @return The String representation
 	 */
 	public String toString() {
-		return switch (asmType.getSort()) {
-			case Type.VOID -> "void";
-			case Type.BOOLEAN -> "boolean";
-			case Type.CHAR -> "char";
-			case Type.BYTE -> "byte";
-			case Type.SHORT -> "short";
-			case Type.INT -> "int";
-			case Type.FLOAT -> "float";
-			case Type.LONG -> "long";
-			case Type.DOUBLE -> "double";
-			case Type.ARRAY -> new WaterType(asmType.getElementType()) + "[]";
-			case Type.OBJECT -> asmType.getClassName();
-			case Type.METHOD -> "method"; // Should not be reached
-			default -> null; // Unreachable
+		String base = switch (getSort()) {
+			case VOID -> "void";
+			case BOOLEAN -> "boolean";
+			case CHAR -> "char";
+			case BYTE -> "byte";
+			case SHORT -> "short";
+			case INT -> "int";
+			case FLOAT -> "float";
+			case LONG -> "long";
+			case DOUBLE -> "double";
+			case ARRAY -> getElementType() + "[]";
+			case OBJECT -> asmType.getClassName();
+			case METHOD -> "method"; // Should not be reached
+			case NULL -> "null";
 		};
+		if(isNullable) base += "?";
+		return base;
 	}
 
 	public static WaterType getMethodType(String descriptor) {
-		return new WaterType(Type.getMethodType(descriptor));
+		WaterType type = new WaterType(Type.getMethodType(descriptor));
+		type.argumentTypes = Arrays.stream(type.getRawType().getArgumentTypes()).map(WaterType::new).toArray(WaterType[]::new);
+		type.returnType = new WaterType(type.getRawType().getReturnType());
+		return type;
+	}
+
+	public static WaterType getMethodType(WaterType returnType, WaterType... parameterTypes) {
+		WaterType type = new WaterType(Sort.METHOD);
+		type.returnType = returnType;
+		type.argumentTypes = parameterTypes;
+		return type;
+	}
+
+	public static WaterType getArrayType(WaterType elementType, int dimensions) {
+		if(dimensions > 1) {
+			elementType = getArrayType(elementType, dimensions - 1);
+		}
+		WaterType type = new WaterType(Sort.ARRAY);
+		type.elementType = elementType;
+		type.asmType = Type.getType("[" + elementType.getRawType().getDescriptor());
+		return type;
 	}
 
 	public static WaterType getObjectType(String internalName) {
@@ -548,11 +648,49 @@ public class WaterType {
 		return new WaterType(Type.getType(clazz));
 	}
 
+	public static WaterType getType(Field field) {
+		WaterType type = WaterType.getType(field.getType());
+
+		if(field.getAnnotation(Nullable.class) != null) {
+			type.isNullable = true;
+		}
+		return type;
+	}
+
 	public static WaterType getType(Method method) {
-		return new WaterType(Type.getType(method));
+		Parameter[] parameters = method.getParameters();
+
+		ArrayList<WaterType> parameterTypes = new ArrayList<>();
+		for(Parameter parameter : parameters) {
+			Class<?> typeClass = parameter.getType();
+
+			WaterType type = WaterType.getType(typeClass);
+			if(parameter.getAnnotation(Nullable.class) != null) {
+				type.isNullable = true;
+			}
+			parameterTypes.add(type);
+		}
+		WaterType returnType = WaterType.getType(method.getReturnType());
+		if(method.getAnnotation(Nullable.class) != null) {
+			returnType.isNullable = true;
+		}
+		return WaterType.getMethodType(returnType, parameterTypes.toArray(WaterType[]::new));
 	}
 
 	public static WaterType getType(Constructor<?> constructor) {
-		return new WaterType(Type.getType(constructor));
+		Parameter[] parameters = constructor.getParameters();
+
+		ArrayList<WaterType> parameterTypes = new ArrayList<>();
+		for(Parameter parameter : parameters) {
+			Class<?> typeClass = parameter.getType();
+
+			WaterType type = WaterType.getType(typeClass);
+			if(parameter.getAnnotation(Nullable.class) != null) {
+				type.isNullable = true;
+			}
+			parameterTypes.add(type);
+		}
+
+		return WaterType.getMethodType(WaterType.VOID_TYPE, parameterTypes.toArray(WaterType[]::new));
 	}
 }

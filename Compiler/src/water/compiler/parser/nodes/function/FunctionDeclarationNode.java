@@ -79,7 +79,7 @@ public class FunctionDeclarationNode implements Node {
 		}
 
 		MethodVisitor mv = makeGlobalFunction(context);
-		finalizeMethod(mv);
+		finalizeMethod(mv, context);
 
 		context.getScope().addFunction(new Function(FunctionType.STATIC, name.getValue(), context.getCurrentClass(), WaterType.getMethodType(descriptor)));
 	}
@@ -111,7 +111,7 @@ public class FunctionDeclarationNode implements Node {
 		}
 
 		MethodVisitor mv = makeClassFunction(context);
-		finalizeMethod(mv);
+		finalizeMethod(mv, context);
 
 		context.getScope().addFunction(new Function(FunctionType.CLASS, name.getValue(), context.getCurrentClass(), WaterType.getMethodType(descriptor)));
 	}
@@ -124,6 +124,8 @@ public class FunctionDeclarationNode implements Node {
 		else mv = makeClassFunction(context.getContext());
 		createMainMethod(context.getContext());
 		mv.visitCode();
+
+		addNullableAnnotations(mv, context.getContext());
 
 		context.getContext().setMethodVisitor(mv);
 
@@ -175,14 +177,34 @@ public class FunctionDeclarationNode implements Node {
 		return context.getCurrentClassWriter().visitMethod(access | staticAccess, name.getValue(), descriptor, null, exceptions);
 	}
 
-	private void finalizeMethod(MethodVisitor mv) {
+	private void finalizeMethod(MethodVisitor mv, Context context) throws SemanticException {
 		mv.visitCode();
+
+		addNullableAnnotations(mv, context);
 
 		if(!returnType.equals(WaterType.VOID_TYPE)) mv.visitInsn(returnType.dummyConstant());
 		mv.visitInsn(returnType.getOpcode(Opcodes.IRETURN));
 
 		mv.visitMaxs(0, 0);
 		mv.visitEnd();
+	}
+
+	private void addNullableAnnotations(MethodVisitor visitor, Context context) throws SemanticException {
+		if(returnType.isNullable()) {
+			visitor.visitAnnotation("Lwater/runtime/annotation/Nullable;", true);
+		}
+
+		int nullableParameterCount = (int) parameters.stream().map(Pair::getSecond).map(n -> Unthrow.wrap(() -> n.getReturnType(context)))
+				.filter(WaterType::isNullable).count();
+
+		visitor.visitAnnotableParameterCount(nullableParameterCount, true);
+
+		for(int i = 0; i < parameters.size(); i++) {
+			WaterType parameterType = parameters.get(i).getSecond().getReturnType(context);
+			if(parameterType.isNullable()) {
+				visitor.visitParameterAnnotation(i, "Lwater/runtime/annotation/Nullable;", true);
+			}
+		}
 	}
 
 	private void makeDescriptor(Context context) {

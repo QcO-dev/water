@@ -30,10 +30,21 @@ public class MemberAccessNode implements Node {
 
 	@Override
 	public void visit(FileContext context) throws SemanticException {
+		getLeftType(context.getContext()); // Initializes the variable access node to a static state (if in a static access)
+		left.visit(context);
+
+		WaterType returnType = left.getReturnType(context.getContext());
+		if(returnType.isNullable()) {
+			throw new SemanticException(name, "Cannot use '.' to access members on a nullable type ('%s')".formatted(returnType));
+		}
+
+		visitAccess(context);
+	}
+
+	public void visitAccess(FileContext context) throws SemanticException {
 		WaterType leftType = getLeftType(context.getContext());
 
 		if(leftType.isArray() && name.getValue().equals("length")) {
-			left.visit(context);
 			context.getContext().getMethodVisitor().visitInsn(Opcodes.ARRAYLENGTH);
 			return;
 		}
@@ -41,8 +52,6 @@ public class MemberAccessNode implements Node {
 		if(!leftType.isObject()) {
 			throw new SemanticException(name, "Cannot access member on type '%s'".formatted(leftType));
 		}
-
-		left.visit(context);
 
 		resolve(leftType, context.getContext(), true);
 	}
@@ -114,7 +123,7 @@ public class MemberAccessNode implements Node {
 	private WaterType attemptMethodCall(Class<?> klass, WaterType leftType, String methodName, boolean generate, Context context) throws NoSuchMethodException, SemanticException {
 		Method m = klass.getMethod(methodName);
 
-		WaterType returnType = WaterType.getType(m.getReturnType());
+		WaterType returnType = WaterType.getType(m).getReturnType();
 
 		if(!isStaticAccess && Modifier.isStatic(m.getModifiers())) {
 			throw new SemanticException(name, "Cannot access static member from non-static object.");

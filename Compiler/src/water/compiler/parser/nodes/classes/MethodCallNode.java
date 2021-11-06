@@ -40,10 +40,21 @@ public class MethodCallNode implements Node {
 
 	@Override
 	public void visit(FileContext context) throws SemanticException {
+		getLeftType(context.getContext()); // Initializes the variable access node to a static state (if in a static access)
+		left.visit(context);
+
+		WaterType returnType = left.getReturnType(context.getContext());
+		if(returnType.isNullable()) {
+			throw new SemanticException(name, "Cannot use '.' to call methods on a nullable type ('%s')".formatted(returnType));
+		}
+
+		visitCall(context);
+	}
+
+	public void visitCall(FileContext context) throws SemanticException {
 		WaterType leftType = getLeftType(context.getContext());
 
 		if(leftType.isArray() && name.getValue().equals("length") && args.size() == 0) {
-			left.visit(context);
 			context.getContext().getMethodVisitor().visitInsn(Opcodes.ARRAYLENGTH);
 			return;
 		}
@@ -51,8 +62,6 @@ public class MethodCallNode implements Node {
 		if(!leftType.isObject()) {
 			throw new SemanticException(name, "Cannot invoke method on type '%s'".formatted(leftType));
 		}
-
-		left.visit(context);
 
 		Method toCall = resolve(leftType, context.getContext());
 
@@ -76,7 +85,6 @@ public class MethodCallNode implements Node {
 				.formatted(paramTypes.map(WaterType::getDescriptor).collect(Collectors.joining()), Type.getType(toCall.getReturnType()).getDescriptor());
 
 		context.getContext().getMethodVisitor().visitMethodInsn(isSuper ? Opcodes.INVOKESPECIAL : TypeUtil.getInvokeOpcode(toCall), leftType.getInternalName(), name.getValue(), descriptor, false);
-
 	}
 
 	@Override
@@ -85,7 +93,7 @@ public class MethodCallNode implements Node {
 
 		if(leftType.isArray() && name.getValue().equals("length") && args.size() == 0) return WaterType.INT_TYPE;
 
-		return WaterType.getType(resolve(leftType, context).getReturnType());
+		return WaterType.getType(resolve(leftType, context)).getReturnType();
 	}
 
 	private WaterType getLeftType(Context context) throws SemanticException {

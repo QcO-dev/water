@@ -34,15 +34,7 @@ public class Scope {
 		this.localIndex = 0;
 		this.returnType = WaterType.VOID_TYPE;
 
-		addFunction(new Function(FunctionType.SOUT, "println", "java/io/PrintStream", WaterType.getMethodType("()V")));
-		addFunction(new Function(FunctionType.SOUT, "println", "java/io/PrintStream", WaterType.getMethodType("(D)V")));
-		addFunction(new Function(FunctionType.SOUT, "println", "java/io/PrintStream", WaterType.getMethodType("(F)V")));
-		addFunction(new Function(FunctionType.SOUT, "println", "java/io/PrintStream", WaterType.getMethodType("(I)V")));
-		addFunction(new Function(FunctionType.SOUT, "println", "java/io/PrintStream", WaterType.getMethodType("(Z)V")));
-		addFunction(new Function(FunctionType.SOUT, "println", "java/io/PrintStream", WaterType.getMethodType("(C)V")));
-		addFunction(new Function(FunctionType.SOUT, "println", "java/io/PrintStream", WaterType.getMethodType("(J)V")));
-		addFunction(new Function(FunctionType.SOUT, "println", "java/io/PrintStream", WaterType.getMethodType("(Ljava/lang/Object;)V")));
-
+		addPrintlnFunctions();
 		updateCurrentClassMethods(context);
 	}
 
@@ -51,6 +43,10 @@ public class Scope {
 		this.functionMap = new HashMap<>();
 		this.variables = new HashMap<>();
 
+		addPrintlnFunctions();
+	}
+
+	private void addPrintlnFunctions() {
 		addFunction(new Function(FunctionType.SOUT, "println", "java/io/PrintStream", WaterType.getMethodType("()V")));
 		addFunction(new Function(FunctionType.SOUT, "println", "java/io/PrintStream", WaterType.getMethodType("(D)V")));
 		addFunction(new Function(FunctionType.SOUT, "println", "java/io/PrintStream", WaterType.getMethodType("(F)V")));
@@ -58,7 +54,7 @@ public class Scope {
 		addFunction(new Function(FunctionType.SOUT, "println", "java/io/PrintStream", WaterType.getMethodType("(Z)V")));
 		addFunction(new Function(FunctionType.SOUT, "println", "java/io/PrintStream", WaterType.getMethodType("(C)V")));
 		addFunction(new Function(FunctionType.SOUT, "println", "java/io/PrintStream", WaterType.getMethodType("(J)V")));
-		addFunction(new Function(FunctionType.SOUT, "println", "java/io/PrintStream", WaterType.getMethodType("(Ljava/lang/Object;)V")));
+		addFunction(new Function(FunctionType.SOUT, "println", "java/io/PrintStream", WaterType.getMethodType(WaterType.VOID_TYPE, WaterType.NULLABLE_OBJECT_TYPE)));
 	}
 
 	private Scope() {}

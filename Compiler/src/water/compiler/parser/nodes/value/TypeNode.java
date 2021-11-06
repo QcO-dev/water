@@ -1,6 +1,5 @@
 package water.compiler.parser.nodes.value;
 
-import org.objectweb.asm.Type;
 import water.compiler.FileContext;
 import water.compiler.compiler.Context;
 import water.compiler.compiler.SemanticException;
@@ -15,6 +14,7 @@ public class TypeNode implements Node {
 	private final boolean isPrimitive;
 	private final int dimensions;
 	private final TypeNode element;
+	private boolean isNullable;
 
 	public TypeNode(Token value) {
 		this.root = value;
@@ -22,6 +22,7 @@ public class TypeNode implements Node {
 		this.isPrimitive = true;
 		this.dimensions = 0;
 		this.element = null;
+		this.isNullable = false;
 	}
 
 	public TypeNode(Token root, String path) {
@@ -30,6 +31,7 @@ public class TypeNode implements Node {
 		this.isPrimitive = false;
 		this.dimensions = 0;
 		this.element = null;
+		this.isNullable = false;
 	}
 
 	public TypeNode(TypeNode element, int dimensions) {
@@ -38,12 +40,16 @@ public class TypeNode implements Node {
 		this.isPrimitive = false;
 		this.dimensions = dimensions;
 		this.element = element;
+		this.isNullable = false;
 	}
 
 	@Override
 	public WaterType getReturnType(Context context) throws SemanticException {
+		if(isNullable && isPrimitive) {
+			throw new SemanticException(root, "Primitive types cannot be nullable.");
+		}
 
-		if(dimensions != 0) return WaterType.getType("[".repeat(dimensions) + element.getReturnType(context).getDescriptor());
+		if(dimensions != 0) return WaterType.getArrayType(element.getReturnType(context), dimensions).asNullable(isNullable);
 
 		if(isPrimitive) return switch (root.getType()) {
 			case VOID -> WaterType.VOID_TYPE;
@@ -59,7 +65,7 @@ public class TypeNode implements Node {
 		};
 
 		try {
-			return WaterType.getType(TypeUtil.classForName(path, context));
+			return WaterType.getType(TypeUtil.classForName(path, context)).asNullable(isNullable);
 		} catch (ClassNotFoundException e) {
 			throw new SemanticException(root, "Could not resolve class '%s'".formatted(e.getMessage()));
 		}
@@ -68,7 +74,11 @@ public class TypeNode implements Node {
 	public WaterType getRawClassType() throws SemanticException {
 		if(isPrimitive) throw new SemanticException(root, "Unexpected primitive type");
 
-		return WaterType.getObjectType(path.replace('.', '/'));
+		return WaterType.getObjectType(path.replace('.', '/')).asNullable(isNullable);
+	}
+
+	public void setNullable(boolean isNullable) {
+		this.isNullable = isNullable;
 	}
 
 	@Override
@@ -78,8 +88,8 @@ public class TypeNode implements Node {
 
 	@Override
 	public String toString() {
-		if(dimensions != 0) return element.toString() + "[]".repeat(dimensions);
+		if(dimensions != 0) return element.toString() + "[]".repeat(dimensions) + (isNullable ? "?" : "");
 
-		return isPrimitive ? root.getValue() : path;
+		return isPrimitive ? root.getValue() : path + (isNullable ? "?" : "");
 	}
 }

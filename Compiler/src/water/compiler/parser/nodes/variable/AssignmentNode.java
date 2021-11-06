@@ -1,5 +1,6 @@
 package water.compiler.parser.nodes.variable;
 
+import org.objectweb.asm.Label;
 import org.objectweb.asm.MethodVisitor;
 import org.objectweb.asm.Opcodes;
 import org.objectweb.asm.Type;
@@ -12,15 +13,21 @@ import water.compiler.lexer.Token;
 import water.compiler.lexer.TokenType;
 import water.compiler.parser.LValue;
 import water.compiler.parser.Node;
+import water.compiler.parser.nodes.nullability.NullableMemberAccessNode;
 import water.compiler.parser.nodes.operation.ArithmeticOperationNode;
 import water.compiler.parser.nodes.operation.IntegerOperationNode;
 import water.compiler.parser.nodes.value.ThisNode;
+import water.compiler.util.Pair;
 import water.compiler.util.TypeUtil;
 import water.compiler.util.WaterType;
 
+import java.io.File;
 import java.lang.reflect.Field;
 import java.lang.reflect.Method;
 import java.lang.reflect.Modifier;
+import java.util.ArrayList;
+import java.util.Comparator;
+import java.util.List;
 
 public class AssignmentNode implements Node {
 
@@ -50,14 +57,11 @@ public class AssignmentNode implements Node {
 
 		context.getContext().updateLine(op.getLine());
 
-		if(valueType == LValue.VARIABLE) {
-			variable(context, returnType);
-		}
-		else if(valueType == LValue.PROPERTY) {
-			property(context, returnType);
-		}
-		else if(valueType == LValue.ARRAY) {
-			array(context, returnType);
+		switch (valueType) {
+			case VARIABLE -> variable(context, returnType);
+			case PROPERTY -> property(context, returnType);
+			case ARRAY -> array(context, returnType);
+			case NULLABLE_PROPERTY -> nullableProperty(context, returnType);
 		}
 	}
 
@@ -122,71 +126,11 @@ public class AssignmentNode implements Node {
 			throw new SemanticException(name, "Cannot access member on type '%s'".formatted(objType));
 		}
 
-		Class<?> klass;
-
-		try {
-			klass = Class.forName(objType.getClassName(), false, context.getContext().getLoader());
-		} catch (ClassNotFoundException e) {
-			throw new SemanticException(name, "Could not resolve class '%s'".formatted(e.getMessage()));
+		if(objType.isNullable()) {
+			throw new SemanticException(name, "Cannot use '.' to access members on a nullable type ('%s')".formatted(objType));
 		}
 
-		if(!isExpressionStatementBody) context.getContext().getMethodVisitor().visitInsn(returnType.getDupX1Opcode());
-
-		try {
-			Field f = klass.getDeclaredField(name.getValue());
-
-			try {
-				if(!WaterType.getType(f.getType()).isAssignableFrom(returnType, context.getContext(), true)) {
-					throw new SemanticException(op,
-							"Cannot assign type '%s' to variable of type '%s'"
-									.formatted(returnType, Type.getType(f.getType())));
-				}
-			} catch (ClassNotFoundException e) {
-				throw new SemanticException(op, "Could not resolve class '%s'".formatted(e.getMessage()));
-			}
-
-			//TODO Protected
-			if(!Modifier.isPublic(f.getModifiers()) && !objType.equals(WaterType.getObjectType(context.getContext().getCurrentClass()))) {
-				throw new NoSuchFieldException();
-			}
-
-			if(!isStaticAccess && Modifier.isStatic(f.getModifiers())) {
-				throw new SemanticException(name, "Cannot access static member from non-static object.");
-			}
-
-			if(Modifier.isFinal(f.getModifiers())) {
-				if (!(obj instanceof ThisNode) || !context.getContext().isConstructor())
-					throw new SemanticException(name, "Cannot assign final member '%s'".formatted(name.getValue()));
-			}
-
-			context.getContext().getMethodVisitor().visitFieldInsn(TypeUtil.getMemberPutOpcode(f),
-					objType.getInternalName(), name.getValue(), Type.getType(f.getType()).getDescriptor());
-
-		} catch (NoSuchFieldException e) {
-			String base = name.getValue().substring(0, 1).toUpperCase() + name.getValue().substring(1);
-			String setName = "set" + (name.getValue().matches("^is[\\p{Lu}].*") ? base.substring(2) : base);
-
-			try {
-				Method m = klass.getMethod(setName, returnType.toClass(context.getContext()));
-
-				if(!isStaticAccess && Modifier.isStatic(m.getModifiers())) {
-					throw new SemanticException(name, "Cannot access static member from non-static object.");
-				}
-
-				String descriptor = "(%s)V".formatted(WaterType.getType(m.getParameterTypes()[0]).getDescriptor());
-
-				context.getContext().getMethodVisitor().visitMethodInsn(TypeUtil.getInvokeOpcode(m),
-						objType.getInternalName(), setName, descriptor, false);
-
-			} catch (NoSuchMethodException noSuchMethodException) {
-				throw new SemanticException(name, "Could not resolve field '%s' in class '%s' with type '%s'"
-						.formatted(name.getValue(), objType, returnType));
-			} catch (ClassNotFoundException classNotFoundException) {
-				throw new SemanticException(op, "Could not resolve class '%s'".formatted(e.getMessage()));
-			}
-
-		}
-
+		handlePropertySettingLogic(obj, objType, name, returnType, context);
 	}
 
 	private void array(FileContext context, WaterType returnType) throws SemanticException {
@@ -224,6 +168,151 @@ public class AssignmentNode implements Node {
 		if(!isExpressionStatementBody) methodVisitor.visitInsn(returnType.getDupX2Opcode());
 
 		methodVisitor.visitInsn(arrayType.getElementType().getOpcode(Opcodes.IASTORE));
+	}
+
+	private void nullableProperty(FileContext context, WaterType returnType) throws SemanticException {
+		Object[] lValueData = left.getLValueData();
+
+		Node obj = (Node) lValueData[0];
+		Token name = (Token) lValueData[1];
+
+		WaterType objType = getObjectType(obj, context.getContext());
+
+		if(!objType.isObject()) {
+			throw new SemanticException(name, "Cannot access member on type '%s'".formatted(objType));
+		}
+
+		if(!objType.isNullable()) {
+			throw new SemanticException(name, "Cannot use '?.' to access members on a non-nullable type ('%s')".formatted(objType));
+		}
+
+		Label nullJump = new Label();
+		Label end = new Label();
+
+		context.getContext().setNullJumpLabel(nullJump);
+
+		obj.visit(context);
+
+		context.getContext().setNullJumpLabel(null);
+
+		MethodVisitor methodVisitor = context.getContext().getMethodVisitor();
+
+		methodVisitor.visitInsn(Opcodes.DUP);
+		methodVisitor.visitJumpInsn(Opcodes.IFNULL, nullJump);
+
+		generateSyntheticOperation().visit(context);
+
+		handlePropertySettingLogic(obj, objType, name, returnType, context);
+
+		methodVisitor.visitJumpInsn(Opcodes.GOTO, end);
+
+		methodVisitor.visitLabel(nullJump);
+		methodVisitor.visitInsn(Opcodes.POP);
+		methodVisitor.visitLabel(end);
+	}
+
+	private void handlePropertySettingLogic(Node obj, WaterType objType, Token name, WaterType returnType, FileContext context) throws SemanticException {
+		Class<?> klass;
+
+		try {
+			klass = Class.forName(objType.getClassName(), false, context.getContext().getLoader());
+		} catch (ClassNotFoundException e) {
+			throw new SemanticException(name, "Could not resolve class '%s'".formatted(e.getMessage()));
+		}
+
+		if(!isExpressionStatementBody) context.getContext().getMethodVisitor().visitInsn(returnType.getDupX1Opcode());
+
+		try {
+			Field f = klass.getDeclaredField(name.getValue());
+
+			try {
+				if(!WaterType.getType(f).isAssignableFrom(returnType, context.getContext(), true)) {
+					throw new SemanticException(op,
+							"Cannot assign type '%s' to variable of type '%s'"
+									.formatted(returnType, WaterType.getType(f.getType())));
+				}
+			} catch (ClassNotFoundException e) {
+				throw new SemanticException(op, "Could not resolve class '%s'".formatted(e.getMessage()));
+			}
+
+			//TODO Protected
+			if(!Modifier.isPublic(f.getModifiers()) && !objType.equals(WaterType.getObjectType(context.getContext().getCurrentClass()))) {
+				throw new NoSuchFieldException();
+			}
+
+			if(!isStaticAccess && Modifier.isStatic(f.getModifiers())) {
+				throw new SemanticException(name, "Cannot access static member from non-static object.");
+			}
+
+			if(Modifier.isFinal(f.getModifiers())) {
+				if (!(obj instanceof ThisNode) || !context.getContext().isConstructor())
+					throw new SemanticException(name, "Cannot assign final member '%s'".formatted(name.getValue()));
+			}
+
+			context.getContext().getMethodVisitor().visitFieldInsn(TypeUtil.getMemberPutOpcode(f),
+					objType.getInternalName(), name.getValue(), Type.getType(f.getType()).getDescriptor());
+
+		} catch (NoSuchFieldException e) {
+			String base = name.getValue().substring(0, 1).toUpperCase() + name.getValue().substring(1);
+			String setName = "set" + (name.getValue().matches("^is[\\p{Lu}].*") ? base.substring(2) : base);
+
+			Method m = resolveSetMethod(klass, name, setName, returnType, context.getContext());
+
+			String descriptor = "(%s)V".formatted(WaterType.getType(m.getParameterTypes()[0]).getDescriptor());
+
+			context.getContext().getMethodVisitor().visitMethodInsn(TypeUtil.getInvokeOpcode(m),
+					objType.getInternalName(), setName, descriptor, false);
+		}
+	}
+
+	private Method resolveSetMethod(Class<?> klass, Token location, String name, WaterType arg, Context context) throws SemanticException {
+		ArrayList<Pair<Integer, Method>> possible = new ArrayList<>();
+
+		try {
+			for (Method method : klass.getMethods()) {
+				if(!method.getName().equals(name)) continue;
+				WaterType[] expectArgs = WaterType.getType(method).getArgumentTypes();
+
+				if (expectArgs.length != 1) continue;
+
+				int changes = 0;
+
+				WaterType expectArg = expectArgs[0];
+
+				if (arg.equals(WaterType.VOID_TYPE))
+					continue;
+
+				if (expectArg.isAssignableFrom(arg, context, false)) {
+					if (!expectArg.equals(arg)) changes += expectArg.assignChangesFrom(arg);
+				} else {
+					continue;
+				}
+				possible.add(new Pair<>(changes, method));
+			}
+		}
+		catch(ClassNotFoundException e) {
+			throw new SemanticException(location, "Could not resolve class '%s'".formatted(e.getMessage()));
+		}
+
+		if(possible.size() == 0) {
+			throw new SemanticException(location,
+					"Could not resolve field '%s' in class '%s' with type '%s'".formatted(name, klass.getName(),
+							arg));
+		}
+
+		List<Pair<Integer, Method>> appliedPossible = possible.stream()
+				.filter(p -> Modifier.isStatic(p.getSecond().getModifiers()) == isStaticAccess)
+				.sorted(Comparator.comparingInt(Pair::getFirst)).toList();
+
+		if(appliedPossible.size() == 0) {
+			if(isStaticAccess)
+				// Shouldn't be thrown
+				throw new SemanticException(location, "Cannot invoke non-static member from static class.");
+			else
+				throw new SemanticException(location, "Cannot access static member from non-static object.");
+		}
+
+		return appliedPossible.get(0).getSecond();
 	}
 
 	private Token makeSyntheticToken() {

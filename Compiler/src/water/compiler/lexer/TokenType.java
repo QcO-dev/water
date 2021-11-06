@@ -19,6 +19,7 @@ public enum TokenType {
 	BITWISE_OR,
 	BITWISE_XOR,
 	BITWISE_NOT,
+	QUESTION,
 
 	// Multi character
 	ARROW,
@@ -30,6 +31,9 @@ public enum TokenType {
 	BITWISE_SHL,
 	BITWISE_SHR,
 	BITWISE_USHR,
+	QUESTION_DOT,
+	QUESTION_LSQBR,
+	QUESTION_QUESTION,
 
 	// Inplace
 	IN_PLUS,

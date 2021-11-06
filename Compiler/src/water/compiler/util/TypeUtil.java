@@ -2,7 +2,6 @@ package water.compiler.util;
 
 import org.objectweb.asm.MethodVisitor;
 import org.objectweb.asm.Opcodes;
-import org.objectweb.asm.Type;
 import water.compiler.compiler.Context;
 import water.compiler.compiler.SemanticException;
 import water.compiler.lexer.Token;
@@ -195,7 +194,7 @@ public class TypeUtil {
 		try {
 			out:
 			for (Constructor<?> c : constructors) {
-				WaterType[] expectArgs = new WaterType(Type.getType(c)).getArgumentTypes();
+				WaterType[] expectArgs = WaterType.getType(c).getArgumentTypes();
 
 				if (expectArgs.length != argTypes.length) continue;
 

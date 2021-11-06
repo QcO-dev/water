@@ -1,6 +1,5 @@
 package water.compiler.parser;
 
-import water.compiler.compiler.SemanticException;
 import water.compiler.lexer.Lexer;
 import water.compiler.lexer.Token;
 import water.compiler.lexer.TokenType;
@@ -12,6 +11,7 @@ import water.compiler.parser.nodes.exception.ThrowNode;
 import water.compiler.parser.nodes.exception.TryNode;
 import water.compiler.parser.nodes.function.FunctionCallNode;
 import water.compiler.parser.nodes.function.FunctionDeclarationNode;
+import water.compiler.parser.nodes.nullability.*;
 import water.compiler.parser.nodes.operation.*;
 import water.compiler.parser.nodes.special.ImportNode;
 import water.compiler.parser.nodes.special.PackageNode;
@@ -433,6 +433,7 @@ public class Parser {
 	/*
 	Precedence:
 	assignExpr = += (etc)
+	logicalNullExpr ??
 	logicalOrExpr ||
 	logicalAndExpr &&
 	bitwiseOrExpr |
@@ -451,18 +452,32 @@ public class Parser {
 		return assignExpr();
 	}
 
-	/** Forms grammar: logicalOrExpr (('=' | INPLACE_OPERATOR) logicalOrExpr)* */
+	/** Forms grammar: logicalNullExpr (('=' | INPLACE_OPERATOR) logicalNullExpr)* */
 	private Node assignExpr() throws UnexpectedTokenException {
-		Node left = logicalOrExpr();
+		Node left = logicalNullExpr();
 
 		while(matchAssignment()) {
 			Token op = tokens.get(index - 1);
 
-			Node right = logicalOrExpr();
+			Node right = logicalNullExpr();
 
 			left = new AssignmentNode(left, op, right);
 		}
 
+		return left;
+	}
+
+	/** Forms grammar: logicalOrExpr ('??' logicalOrExpr)* */
+	private Node logicalNullExpr() throws UnexpectedTokenException {
+		Node left = logicalOrExpr();
+
+		while(match(TokenType.QUESTION_QUESTION)) {
+			Token op = tokens.get(index - 1);
+
+			Node right = logicalOrExpr();
+
+			left = new LogicalNullOperatorNode(left, op, right);
+		}
 		return left;
 	}
 
@@ -632,11 +647,15 @@ public class Parser {
 		return memberAccess();
 	}
 
-	/** Forms grammar: atom (('.' IDENTIFIER arguments?) | ('[' expression ']'))* */
+	/** Forms grammar: atom(!)? ((('.' | '?.') IDENTIFIER arguments?) | ('[' expression ']'))* */
 	private Node memberAccess() throws UnexpectedTokenException {
 		Node left = atom();
 
-		while(match(TokenType.DOT) || match(TokenType.LSQBR)) {
+		if(match(TokenType.EXCLAIM)) {
+			left = new NonNullAssertionNode(left, tokens.get(index - 1));
+		}
+
+		while(match(TokenType.DOT) || match(TokenType.QUESTION_DOT) || match(TokenType.LSQBR) || match(TokenType.QUESTION_LSQBR)) {
 			if(tokens.get(index - 1).getType() == TokenType.LSQBR) {
 				Token bracket = tokens.get(index - 1);
 				Node index = expression();
@@ -644,16 +663,24 @@ public class Parser {
 				left = new IndexAccessNode(bracket, left, index);
 				continue;
 			}
+			else if(tokens.get(index - 1).getType() == TokenType.QUESTION_LSQBR) {
+				Token bracket = tokens.get(index - 1);
+				Node index = expression();
+				consume(TokenType.RSQBR, "Expected ']' after index");
+				left = new NullableIndexAccessNode(bracket, left, index);
+				continue;
+			}
 
+			boolean nullable = tokens.get(index - 1).getType() == TokenType.QUESTION_DOT;
 			Token name = consume(TokenType.IDENTIFIER, "Expected member name");
 
 			if(tokens.get(index).getType() == TokenType.LPAREN) {
 				List<Node> args = arguments("method arguments");
 
-				left = new MethodCallNode(left, name, args, false);
+				left = nullable ? new NullableMethodCallNode(left, name, args, false) : new MethodCallNode(left, name, args, false);
 			}
 			else {
-				left = new MemberAccessNode(left, name);
+				left = nullable ? new NullableMemberAccessNode(left, name) : new MemberAccessNode(left, name);
 			}
 		}
 
@@ -737,24 +764,37 @@ public class Parser {
 
 	//============================ Utility ============================
 
-	/** Forms grammar: basicType('[' ']')* */
+	/** Forms grammar: basicType(\?)?(('[' ']')* (\?)?)? */
 	private Node type() throws UnexpectedTokenException {
-		Node type = basicType();
+		TypeNode type = basicType();
 
 		int dim = 0;
+
+		if(match(TokenType.QUESTION)) {
+			type.setNullable(true);
+		}
+		else if(match(TokenType.QUESTION_LSQBR)) {
+			type.setNullable(true);
+			dim++;
+			consume(TokenType.RSQBR, "Expected closing ']'");
+		}
+
 		while(match(TokenType.LSQBR)) {
 			consume(TokenType.RSQBR, "Expected closing ']'");
 			dim++;
 		}
 
 		if(dim != 0) {
-			type = new TypeNode((TypeNode) type, dim);
+			type = new TypeNode(type, dim);
+			if(match(TokenType.QUESTION)) {
+				type.setNullable(true);
+			}
 		}
 
 		return type;
 	}
 
-	private Node basicType() throws UnexpectedTokenException {
+	private TypeNode basicType() throws UnexpectedTokenException {
 		if(Lexer.PRIMITIVE_TYPES.contains(tokens.get(index).getType())) {
 			return new TypeNode(advance());
 		}
@@ -764,7 +804,7 @@ public class Parser {
 	}
 
 	/** Forms grammar: IDENTIFIER ('.' IDENTIFIER)* */
-	private Node classType() throws UnexpectedTokenException {
+	private TypeNode classType() throws UnexpectedTokenException {
 		ArrayList<String> parts = new ArrayList<>();
 		Token start = tokens.get(index);
 		do {
