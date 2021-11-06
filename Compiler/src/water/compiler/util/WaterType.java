@@ -27,6 +27,8 @@ public class WaterType {
 	public static final WaterType STRING_TYPE = WaterType.getObjectType("java/lang/String");
 	/** A constant defining a Type representing the java.lang.Object class */
 	public static final WaterType OBJECT_TYPE = WaterType.getObjectType("java/lang/Object");
+	/** A constant defining a Type representing the java.lang.Object class, which is nullable (java.lang.Object?) */
+	public static final WaterType NULLABLE_OBJECT_TYPE = OBJECT_TYPE.asNullable();
 
 	static {
 		NULL_TYPE.isNullable = true;
@@ -53,10 +55,18 @@ public class WaterType {
 	private final Type asmType;
 	private Sort sort;
 	private boolean isNullable;
+	private WaterType returnType;
+	private WaterType argumentTypes[];
 
 	public WaterType(Type asmType) {
 		this.asmType = asmType;
 		sort = Sort.values()[asmType.getSort()];
+		this.isNullable = false;
+	}
+
+	public WaterType(Sort sort) {
+		this.asmType = null;
+		this.sort = sort;
 		this.isNullable = false;
 	}
 
@@ -505,14 +515,21 @@ public class WaterType {
 	}
 
 	public WaterType[] getArgumentTypes() {
-		return Arrays.stream(asmType.getArgumentTypes()).map(WaterType::new).toArray(WaterType[]::new);
+		return argumentTypes;
 	}
 
 	public WaterType getReturnType() {
-		return new WaterType(asmType.getReturnType());
+		return returnType;
 	}
 
 	public String getDescriptor() {
+		if(sort == Sort.METHOD) {
+			StringBuilder builder = new StringBuilder("(");
+			for(WaterType type : argumentTypes) {
+				builder.append(type.getDescriptor());
+			}
+			return builder.append(")").append(returnType.getDescriptor()).toString();
+		}
 		return asmType.getDescriptor();
 	}
 
@@ -584,7 +601,17 @@ public class WaterType {
 	}
 
 	public static WaterType getMethodType(String descriptor) {
-		return new WaterType(Type.getMethodType(descriptor));
+		WaterType type = new WaterType(Type.getMethodType(descriptor));
+		type.argumentTypes = Arrays.stream(type.getRawType().getArgumentTypes()).map(WaterType::new).toArray(WaterType[]::new);
+		type.returnType = new WaterType(type.getRawType().getReturnType());
+		return type;
+	}
+
+	public static WaterType getMethodType(WaterType returnType, WaterType... parameterTypes) {
+		WaterType type = new WaterType(Sort.METHOD);
+		type.returnType = returnType;
+		type.argumentTypes = parameterTypes;
+		return type;
 	}
 
 	public static WaterType getObjectType(String internalName) {
