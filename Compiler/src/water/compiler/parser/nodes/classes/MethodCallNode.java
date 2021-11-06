@@ -40,6 +40,7 @@ public class MethodCallNode implements Node {
 
 	@Override
 	public void visit(FileContext context) throws SemanticException {
+		getLeftType(context.getContext()); // Initializes the variable access node to a static state (if in a static access)
 		left.visit(context);
 
 		WaterType returnType = left.getReturnType(context.getContext());
