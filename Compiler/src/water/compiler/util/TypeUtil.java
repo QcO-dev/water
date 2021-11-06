@@ -2,7 +2,6 @@ package water.compiler.util;
 
 import org.objectweb.asm.MethodVisitor;
 import org.objectweb.asm.Opcodes;
-import org.objectweb.asm.Type;
 import water.compiler.compiler.Context;
 import water.compiler.compiler.SemanticException;
 import water.compiler.lexer.Token;

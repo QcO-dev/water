@@ -15,12 +15,16 @@ import water.compiler.parser.Node;
 import water.compiler.parser.nodes.operation.ArithmeticOperationNode;
 import water.compiler.parser.nodes.operation.IntegerOperationNode;
 import water.compiler.parser.nodes.value.ThisNode;
+import water.compiler.util.Pair;
 import water.compiler.util.TypeUtil;
 import water.compiler.util.WaterType;
 
 import java.lang.reflect.Field;
 import java.lang.reflect.Method;
 import java.lang.reflect.Modifier;
+import java.util.ArrayList;
+import java.util.Comparator;
+import java.util.List;
 
 public class AssignmentNode implements Node {
 
@@ -136,7 +140,7 @@ public class AssignmentNode implements Node {
 			Field f = klass.getDeclaredField(name.getValue());
 
 			try {
-				if(!WaterType.getType(f.getType()).isAssignableFrom(returnType, context.getContext(), true)) {
+				if(!WaterType.getType(f).isAssignableFrom(returnType, context.getContext(), true)) {
 					throw new SemanticException(op,
 							"Cannot assign type '%s' to variable of type '%s'"
 									.formatted(returnType, WaterType.getType(f.getType())));
@@ -166,25 +170,12 @@ public class AssignmentNode implements Node {
 			String base = name.getValue().substring(0, 1).toUpperCase() + name.getValue().substring(1);
 			String setName = "set" + (name.getValue().matches("^is[\\p{Lu}].*") ? base.substring(2) : base);
 
-			try {
-				Method m = klass.getMethod(setName, returnType.toClass(context.getContext()));
+			Method m = resolveSetMethod(klass, name, setName, returnType, context.getContext());
 
-				if(!isStaticAccess && Modifier.isStatic(m.getModifiers())) {
-					throw new SemanticException(name, "Cannot access static member from non-static object.");
-				}
+			String descriptor = "(%s)V".formatted(WaterType.getType(m.getParameterTypes()[0]).getDescriptor());
 
-				String descriptor = "(%s)V".formatted(WaterType.getType(m.getParameterTypes()[0]).getDescriptor());
-
-				context.getContext().getMethodVisitor().visitMethodInsn(TypeUtil.getInvokeOpcode(m),
-						objType.getInternalName(), setName, descriptor, false);
-
-			} catch (NoSuchMethodException noSuchMethodException) {
-				throw new SemanticException(name, "Could not resolve field '%s' in class '%s' with type '%s'"
-						.formatted(name.getValue(), objType, returnType));
-			} catch (ClassNotFoundException classNotFoundException) {
-				throw new SemanticException(op, "Could not resolve class '%s'".formatted(e.getMessage()));
-			}
-
+			context.getContext().getMethodVisitor().visitMethodInsn(TypeUtil.getInvokeOpcode(m),
+					objType.getInternalName(), setName, descriptor, false);
 		}
 
 	}
@@ -224,6 +215,56 @@ public class AssignmentNode implements Node {
 		if(!isExpressionStatementBody) methodVisitor.visitInsn(returnType.getDupX2Opcode());
 
 		methodVisitor.visitInsn(arrayType.getElementType().getOpcode(Opcodes.IASTORE));
+	}
+
+	private Method resolveSetMethod(Class<?> klass, Token location, String name, WaterType arg, Context context) throws SemanticException {
+		ArrayList<Pair<Integer, Method>> possible = new ArrayList<>();
+
+		try {
+			for (Method method : klass.getMethods()) {
+				if(!method.getName().equals(name)) continue;
+				WaterType[] expectArgs = WaterType.getType(method).getArgumentTypes();
+
+				if (expectArgs.length != 1) continue;
+
+				int changes = 0;
+
+				WaterType expectArg = expectArgs[0];
+
+				if (arg.equals(WaterType.VOID_TYPE))
+					continue;
+
+				if (expectArg.isAssignableFrom(arg, context, false)) {
+					if (!expectArg.equals(arg)) changes += expectArg.assignChangesFrom(arg);
+				} else {
+					continue;
+				}
+				possible.add(new Pair<>(changes, method));
+			}
+		}
+		catch(ClassNotFoundException e) {
+			throw new SemanticException(location, "Could not resolve class '%s'".formatted(e.getMessage()));
+		}
+
+		if(possible.size() == 0) {
+			throw new SemanticException(location,
+					"Could not resolve field '%s' in class '%s' with type '%s'".formatted(name, klass.getName(),
+							arg));
+		}
+
+		List<Pair<Integer, Method>> appliedPossible = possible.stream()
+				.filter(p -> Modifier.isStatic(p.getSecond().getModifiers()) == isStaticAccess)
+				.sorted(Comparator.comparingInt(Pair::getFirst)).toList();
+
+		if(appliedPossible.size() == 0) {
+			if(isStaticAccess)
+				// Shouldn't be thrown
+				throw new SemanticException(location, "Cannot invoke non-static member from static class.");
+			else
+				throw new SemanticException(location, "Cannot access static member from non-static object.");
+		}
+
+		return appliedPossible.get(0).getSecond();
 	}
 
 	private Token makeSyntheticToken() {

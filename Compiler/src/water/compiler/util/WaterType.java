@@ -7,6 +7,7 @@ import water.compiler.compiler.Context;
 import water.runtime.annotation.Nullable;
 
 import java.lang.reflect.Constructor;
+import java.lang.reflect.Field;
 import java.lang.reflect.Method;
 import java.lang.reflect.Parameter;
 import java.util.ArrayList;
@@ -626,6 +627,15 @@ public class WaterType {
 
 	public static WaterType getType(Class<?> clazz) {
 		return new WaterType(Type.getType(clazz));
+	}
+
+	public static WaterType getType(Field field) {
+		WaterType type = WaterType.getType(field.getType());
+
+		if(field.getAnnotation(Nullable.class) != null) {
+			type.isNullable = true;
+		}
+		return type;
 	}
 
 	public static WaterType getType(Method method) {
