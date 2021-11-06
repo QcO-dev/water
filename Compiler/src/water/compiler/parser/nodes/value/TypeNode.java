@@ -49,7 +49,7 @@ public class TypeNode implements Node {
 			throw new SemanticException(root, "Primitive types cannot be nullable.");
 		}
 
-		if(dimensions != 0) return WaterType.getType("[".repeat(dimensions) + element.getReturnType(context).getDescriptor()).asNullable(isNullable);
+		if(dimensions != 0) return WaterType.getArrayType(element.getReturnType(context), dimensions).asNullable(isNullable);
 
 		if(isPrimitive) return switch (root.getType()) {
 			case VOID -> WaterType.VOID_TYPE;

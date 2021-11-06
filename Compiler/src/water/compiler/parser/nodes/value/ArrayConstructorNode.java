@@ -51,7 +51,7 @@ public class ArrayConstructorNode implements Node {
 
 	@Override
 	public WaterType getReturnType(Context context) throws SemanticException {
-		return WaterType.getType(getDescriptor(context));
+		return WaterType.getArrayType(type.getReturnType(context), dimensions.size());
 	}
 
 	private String getDescriptor(Context context) throws SemanticException {

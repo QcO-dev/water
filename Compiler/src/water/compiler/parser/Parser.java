@@ -764,22 +764,32 @@ public class Parser {
 
 	//============================ Utility ============================
 
-	/** Forms grammar: basicType('[' ']')*(\?)? */
+	/** Forms grammar: basicType(\?)?(('[' ']')* (\?)?)? */
 	private Node type() throws UnexpectedTokenException {
 		TypeNode type = basicType();
 
 		int dim = 0;
+
+		if(match(TokenType.QUESTION)) {
+			type.setNullable(true);
+		}
+		else if(match(TokenType.QUESTION_LSQBR)) {
+			type.setNullable(true);
+			dim++;
+			consume(TokenType.RSQBR, "Expected closing ']'");
+		}
+
 		while(match(TokenType.LSQBR)) {
 			consume(TokenType.RSQBR, "Expected closing ']'");
 			dim++;
 		}
 
-		boolean isNullable = match(TokenType.QUESTION);
-
 		if(dim != 0) {
 			type = new TypeNode(type, dim);
+			if(match(TokenType.QUESTION)) {
+				type.setNullable(true);
+			}
 		}
-		type.setNullable(isNullable);
 
 		return type;
 	}

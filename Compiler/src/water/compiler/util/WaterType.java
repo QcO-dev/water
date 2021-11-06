@@ -56,11 +56,12 @@ public class WaterType {
 	}
 
 
-	private final Type asmType;
+	private Type asmType;
 	private Sort sort;
 	private boolean isNullable;
 	private WaterType returnType;
 	private WaterType[] argumentTypes;
+	private WaterType elementType;
 
 	public WaterType(Type asmType) {
 		this.asmType = asmType;
@@ -80,9 +81,9 @@ public class WaterType {
 	 * @return If the type is of a primitive value
 	 */
 	public boolean isPrimitive() {
-		return  asmType.getSort() != Type.OBJECT &&
-				asmType.getSort() != Type.ARRAY &&
-				asmType.getSort() != Type.METHOD;
+		return  getSort() != Sort.OBJECT &&
+				getSort() != Sort.ARRAY &&
+				getSort() != Sort.METHOD;
 	}
 
 	/**
@@ -148,6 +149,9 @@ public class WaterType {
 		}
 
 		if(isArray() && from.isArray()) {
+			if(getElementType().isNullable()) {
+				return getElementType().equals(from.getElementType().asNullable());
+			}
 			return getElementType().equals(from.getElementType());
 		}
 
@@ -487,11 +491,11 @@ public class WaterType {
 	}
 
 	public boolean isObject() {
-		return asmType.getSort() == Type.OBJECT;
+		return getSort() == Sort.OBJECT;
 	}
 
 	public boolean isArray() {
-		return asmType.getSort() == Type.ARRAY;
+		return getSort() == Sort.ARRAY;
 	}
 
 	public boolean isNull() {
@@ -507,7 +511,7 @@ public class WaterType {
 	}
 
 	public WaterType getElementType() {
-		return new WaterType(asmType.getElementType());
+		return elementType;
 	}
 
 	public int getOpcode(int opcode) {
@@ -565,9 +569,13 @@ public class WaterType {
 	}
 
 	public WaterType copy() {
-		WaterType type = new WaterType(asmType);
+		WaterType type = new WaterType(sort);
+		type.asmType = asmType;
 		type.sort = sort;
 		type.isNullable = isNullable;
+		type.returnType = returnType;
+		type.argumentTypes = argumentTypes;
+		type.elementType = elementType;
 		return type;
 	}
 
@@ -594,7 +602,7 @@ public class WaterType {
 			case FLOAT -> "float";
 			case LONG -> "long";
 			case DOUBLE -> "double";
-			case ARRAY -> new WaterType(asmType.getElementType()) + "[]";
+			case ARRAY -> getElementType() + "[]";
 			case OBJECT -> asmType.getClassName();
 			case METHOD -> "method"; // Should not be reached
 			case NULL -> "null";
@@ -614,6 +622,16 @@ public class WaterType {
 		WaterType type = new WaterType(Sort.METHOD);
 		type.returnType = returnType;
 		type.argumentTypes = parameterTypes;
+		return type;
+	}
+
+	public static WaterType getArrayType(WaterType elementType, int dimensions) {
+		if(dimensions > 1) {
+			elementType = getArrayType(elementType, dimensions - 1);
+		}
+		WaterType type = new WaterType(Sort.ARRAY);
+		type.elementType = elementType;
+		type.asmType = Type.getType("[" + elementType.getRawType().getDescriptor());
 		return type;
 	}
 
