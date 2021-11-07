@@ -1,5 +1,6 @@
 package water.compiler.util;
 
+import org.objectweb.asm.AnnotationVisitor;
 import org.objectweb.asm.MethodVisitor;
 import org.objectweb.asm.Opcodes;
 import org.objectweb.asm.Type;
@@ -13,6 +14,7 @@ import java.lang.reflect.Parameter;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.List;
+import java.util.stream.Collectors;
 
 public class WaterType {
 	private static final List<Integer> TYPE_SIZE = List.of(Type.DOUBLE, Type.FLOAT, Type.LONG, Type.INT, Type.SHORT, Type.CHAR, Type.BYTE);
@@ -62,6 +64,7 @@ public class WaterType {
 	private WaterType returnType;
 	private WaterType[] argumentTypes;
 	private WaterType elementType;
+	private List<Integer> nullableDimensions;
 
 	public WaterType(Type asmType) {
 		this.asmType = asmType;
@@ -473,6 +476,27 @@ public class WaterType {
 		}
 	}
 
+	public boolean needsDimensionAnnotation() {
+		return sort == Sort.ARRAY && nullableDimensions != null;
+	}
+
+	public void writeAnnotationDimensions(AnnotationVisitor visitor) {
+		if(sort != Sort.ARRAY) return;
+
+		if(nullableDimensions == null) {
+			if(isNullable)
+				visitor.visit("d", new int[] {-1});
+			return;
+		}
+		int[] dimensions = new int[nullableDimensions.size() + (isNullable ? 1 : 0)];
+
+		for(int i = 0; i < nullableDimensions.size(); i++) {
+			dimensions[i] = nullableDimensions.get(i);
+		}
+		if(isNullable) dimensions[nullableDimensions.size()] = -1;
+		visitor.visit("d", dimensions);
+	}
+
 	public WaterType asNullable() {
 		WaterType type = copy();
 		type.isNullable = true;
@@ -577,6 +601,7 @@ public class WaterType {
 		type.returnType = returnType;
 		type.argumentTypes = argumentTypes;
 		type.elementType = elementType;
+		type.nullableDimensions = nullableDimensions;
 		return type;
 	}
 
@@ -634,6 +659,7 @@ public class WaterType {
 		WaterType type = new WaterType(Sort.ARRAY);
 		type.elementType = elementType;
 		type.asmType = Type.getType("[" + elementType.getRawType().getDescriptor());
+		type.nullableDimensions = nullableDimensions;
 		return type;
 	}
 
@@ -649,10 +675,36 @@ public class WaterType {
 		return new WaterType(Type.getType(clazz));
 	}
 
+	private static WaterType getArrayFromAnnotation(Class<?> typeClass, Nullable annotation) {
+		int dim = 1;
+		Class<?> elementClass = typeClass.getComponentType();
+
+		while(elementClass.isArray()) {
+			dim++;
+			elementClass = elementClass.getComponentType();
+		}
+		WaterType elementType = WaterType.getType(elementClass);
+
+		boolean isNullable = false;
+		List<Integer> nullableDimensions = null;
+		if(annotation != null) {
+			nullableDimensions = Arrays.stream(annotation.d()).boxed().collect(Collectors.toList());
+			if(nullableDimensions.contains(-1)) {
+				nullableDimensions.remove(Integer.valueOf(-1));
+				isNullable = true;
+			}
+		}
+		return WaterType.getArrayType(elementType, dim, nullableDimensions).asNullable(isNullable);
+	}
+
 	public static WaterType getType(Field field) {
 		WaterType type = WaterType.getType(field.getType());
 
-		if(field.getAnnotation(Nullable.class) != null) {
+		Class<?> fieldClass = field.getType();
+		if(fieldClass.isArray()) {
+			type = getArrayFromAnnotation(fieldClass, field.getAnnotation(Nullable.class));
+		}
+		else if(field.getAnnotation(Nullable.class) != null) {
 			type.isNullable = true;
 		}
 		return type;
@@ -666,13 +718,23 @@ public class WaterType {
 			Class<?> typeClass = parameter.getType();
 
 			WaterType type = WaterType.getType(typeClass);
-			if(parameter.getAnnotation(Nullable.class) != null) {
+
+			if(typeClass.isArray()) {
+				type = getArrayFromAnnotation(typeClass, parameter.getAnnotation(Nullable.class));
+			}
+			else if(parameter.getAnnotation(Nullable.class) != null) {
 				type.isNullable = true;
 			}
 			parameterTypes.add(type);
 		}
 		WaterType returnType = WaterType.getType(method.getReturnType());
-		if(method.getAnnotation(Nullable.class) != null) {
+
+		Class<?> returnClass = method.getReturnType();
+
+		if(returnClass.isArray()) {
+			returnType = getArrayFromAnnotation(returnClass, method.getAnnotation(Nullable.class));
+		}
+		else if(method.getAnnotation(Nullable.class) != null) {
 			returnType.isNullable = true;
 		}
 		return WaterType.getMethodType(returnType, parameterTypes.toArray(WaterType[]::new));
@@ -686,7 +748,10 @@ public class WaterType {
 			Class<?> typeClass = parameter.getType();
 
 			WaterType type = WaterType.getType(typeClass);
-			if(parameter.getAnnotation(Nullable.class) != null) {
+			if(typeClass.isArray()) {
+				type = getArrayFromAnnotation(typeClass, parameter.getAnnotation(Nullable.class));
+			}
+			else if(parameter.getAnnotation(Nullable.class) != null) {
 				type.isNullable = true;
 			}
 			parameterTypes.add(type);
