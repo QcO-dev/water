@@ -153,6 +153,7 @@ public class WaterType {
 		}
 
 		if(isArray() && from.isArray()) {
+			if(!isNullable() && from.isNullable()) return false;
 			if(getElementType().isNullable()) {
 				return getElementType().equals(from.getElementType().asNullable());
 			}
@@ -476,6 +477,17 @@ public class WaterType {
 		}
 	}
 
+	public WaterType getRootElementType() {
+		if(sort != Sort.ARRAY) {
+			return this;
+		}
+		WaterType element = getElementType();
+		while(element.isArray()) {
+			element = element.getElementType();
+		}
+		return element;
+	}
+
 	public boolean needsDimensionAnnotation() {
 		return sort == Sort.ARRAY && nullableDimensions != null;
 	}
@@ -483,18 +495,22 @@ public class WaterType {
 	public void writeAnnotationDimensions(AnnotationVisitor visitor) {
 		if(sort != Sort.ARRAY) return;
 
+		WaterType elementType = getRootElementType();
+
 		if(nullableDimensions == null) {
-			if(isNullable)
-				visitor.visit("d", new int[] {-1});
+			List<Integer> dimensions = new ArrayList<>();
+			if(isNullable) dimensions.add(-1);
+			if(elementType.isNullable()) dimensions.add(-2);
+			if (isNullable)
+				visitor.visit("d", dimensions.stream().mapToInt(i -> i).toArray());
 			return;
 		}
-		int[] dimensions = new int[nullableDimensions.size() + (isNullable ? 1 : 0)];
 
-		for(int i = 0; i < nullableDimensions.size(); i++) {
-			dimensions[i] = nullableDimensions.get(i);
-		}
-		if(isNullable) dimensions[nullableDimensions.size()] = -1;
-		visitor.visit("d", dimensions);
+		List<Integer> dimensions = new ArrayList<>(nullableDimensions);
+		if(isNullable) dimensions.add(-1);
+		if(elementType.isNullable()) dimensions.add(-2);
+
+		visitor.visit("d", dimensions.stream().mapToInt(i -> i).toArray());
 	}
 
 	public WaterType asNullable() {
@@ -692,6 +708,10 @@ public class WaterType {
 			if(nullableDimensions.contains(-1)) {
 				nullableDimensions.remove(Integer.valueOf(-1));
 				isNullable = true;
+			}
+			if(nullableDimensions.contains(-2)) {
+				nullableDimensions.remove(Integer.valueOf(-2));
+				elementType.isNullable = true;
 			}
 		}
 		return WaterType.getArrayType(elementType, dim, nullableDimensions).asNullable(isNullable);
