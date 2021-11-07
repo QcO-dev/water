@@ -626,9 +626,10 @@ public class WaterType {
 		return type;
 	}
 
-	public static WaterType getArrayType(WaterType elementType, int dimensions) {
+	public static WaterType getArrayType(WaterType elementType, int dimensions, List<Integer> nullableDimensions) {
 		if(dimensions > 1) {
-			elementType = getArrayType(elementType, dimensions - 1);
+			elementType = getArrayType(elementType, dimensions - 1, nullableDimensions);
+			if(nullableDimensions != null && nullableDimensions.contains(dimensions - 1)) elementType.isNullable = true;
 		}
 		WaterType type = new WaterType(Sort.ARRAY);
 		type.elementType = elementType;
