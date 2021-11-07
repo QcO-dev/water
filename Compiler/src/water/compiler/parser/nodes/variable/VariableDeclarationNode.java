@@ -1,9 +1,6 @@
 package water.compiler.parser.nodes.variable;
 
-import org.objectweb.asm.FieldVisitor;
-import org.objectweb.asm.MethodVisitor;
-import org.objectweb.asm.Opcodes;
-import org.objectweb.asm.Type;
+import org.objectweb.asm.*;
 import water.compiler.FileContext;
 import water.compiler.compiler.*;
 import water.compiler.lexer.Token;
@@ -135,8 +132,10 @@ public class VariableDeclarationNode implements Node {
 			MethodVisitor visitor = context.getCurrentClassWriter().visitMethod(Opcodes.ACC_PUBLIC | staticMod | methodFinalMod, fName, "()" + descriptor, null, null);
 			visitor.visitCode();
 
-			if(fieldType.isNullable()) {
-				visitor.visitAnnotation("Lwater/runtime/annotation/Nullable;", true);
+			if(fieldType.isNullable() || fieldType.needsDimensionAnnotation()) {
+				AnnotationVisitor av = visitor.visitAnnotation("Lwater/runtime/annotation/Nullable;", true);
+				fieldType.writeAnnotationDimensions(av);
+				av.visitEnd();
 			}
 
 			if(!isStatic) visitor.visitVarInsn(Opcodes.ALOAD, 0);
@@ -151,9 +150,11 @@ public class VariableDeclarationNode implements Node {
 			MethodVisitor visitor = context.getCurrentClassWriter().visitMethod(Opcodes.ACC_PUBLIC | staticMod | methodFinalMod, fName, "("  + descriptor + ")V", null, null);
 			visitor.visitCode();
 
-			if(fieldType.isNullable()) {
+			if(fieldType.isNullable() || fieldType.needsDimensionAnnotation()) {
 				visitor.visitAnnotableParameterCount(1, true);
-				visitor.visitParameterAnnotation(0, "Lwater/runtime/annotation/Nullable;", true);
+				AnnotationVisitor av = visitor.visitParameterAnnotation(0, "Lwater/runtime/annotation/Nullable;", true);
+				fieldType.writeAnnotationDimensions(av);
+				av.visitEnd();
 			}
 
 			if(!isStatic) visitor.visitVarInsn(Opcodes.ALOAD, 0);

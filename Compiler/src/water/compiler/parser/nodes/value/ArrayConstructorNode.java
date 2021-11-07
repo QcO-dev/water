@@ -2,13 +2,11 @@ package water.compiler.parser.nodes.value;
 
 import org.objectweb.asm.MethodVisitor;
 import org.objectweb.asm.Opcodes;
-import org.objectweb.asm.Type;
 import water.compiler.FileContext;
 import water.compiler.compiler.Context;
 import water.compiler.compiler.SemanticException;
 import water.compiler.lexer.Token;
 import water.compiler.parser.Node;
-import water.compiler.util.TypeUtil;
 import water.compiler.util.WaterType;
 
 import java.util.List;
@@ -51,7 +49,7 @@ public class ArrayConstructorNode implements Node {
 
 	@Override
 	public WaterType getReturnType(Context context) throws SemanticException {
-		return WaterType.getArrayType(type.getReturnType(context), dimensions.size());
+		return WaterType.getArrayType(type.getReturnType(context), dimensions.size(), null);
 	}
 
 	private String getDescriptor(Context context) throws SemanticException {

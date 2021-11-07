@@ -769,23 +769,26 @@ public class Parser {
 		TypeNode type = basicType();
 
 		int dim = 0;
+		ArrayList<Integer> nullableDimensions = new ArrayList<>();
 
 		if(match(TokenType.QUESTION)) {
 			type.setNullable(true);
 		}
 		else if(match(TokenType.QUESTION_LSQBR)) {
 			type.setNullable(true);
-			dim++;
 			consume(TokenType.RSQBR, "Expected closing ']'");
+			dim++;
 		}
 
-		while(match(TokenType.LSQBR)) {
+		while(match(TokenType.LSQBR) || match(TokenType.QUESTION_LSQBR)) {
+			TokenType bracketType = tokens.get(index - 1).getType();
 			consume(TokenType.RSQBR, "Expected closing ']'");
+			if(bracketType == TokenType.QUESTION_LSQBR) nullableDimensions.add(dim);
 			dim++;
 		}
 
 		if(dim != 0) {
-			type = new TypeNode(type, dim);
+			type = new TypeNode(type, dim, nullableDimensions);
 			if(match(TokenType.QUESTION)) {
 				type.setNullable(true);
 			}

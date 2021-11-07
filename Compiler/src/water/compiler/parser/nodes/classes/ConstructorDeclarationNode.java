@@ -1,9 +1,6 @@
 package water.compiler.parser.nodes.classes;
 
-import org.objectweb.asm.ClassWriter;
-import org.objectweb.asm.MethodVisitor;
-import org.objectweb.asm.Opcodes;
-import org.objectweb.asm.Type;
+import org.objectweb.asm.*;
 import water.compiler.FileContext;
 import water.compiler.compiler.*;
 import water.compiler.lexer.Token;
@@ -106,14 +103,16 @@ public class ConstructorDeclarationNode implements Node {
 
 	private void addNullableAnnotations(MethodVisitor visitor, Context context) throws SemanticException {
 		int nullableParameterCount = (int) parameters.stream().map(Pair::getSecond).map(n -> Unthrow.wrap(() -> n.getReturnType(context)))
-				.filter(WaterType::isNullable).count();
+				.filter(t -> t.isNullable() || t.needsDimensionAnnotation()).count();
 
 		visitor.visitAnnotableParameterCount(nullableParameterCount, true);
 
 		for(int i = 0; i < parameters.size(); i++) {
 			WaterType parameterType = parameters.get(i).getSecond().getReturnType(context);
-			if(parameterType.isNullable()) {
-				visitor.visitParameterAnnotation(i, "Lwater/runtime/annotation/Nullable;", true);
+			if(parameterType.isNullable() || parameterType.needsDimensionAnnotation()) {
+				AnnotationVisitor av = visitor.visitParameterAnnotation(i, "Lwater/runtime/annotation/Nullable;", true);
+				parameterType.writeAnnotationDimensions(av);
+				av.visitEnd();
 			}
 		}
 	}
