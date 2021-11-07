@@ -62,6 +62,7 @@ public class AssignmentNode implements Node {
 			case PROPERTY -> property(context, returnType);
 			case ARRAY -> array(context, returnType);
 			case NULLABLE_PROPERTY -> nullableProperty(context, returnType);
+			case NULLABLE_ARRAY -> nullableArray(context, returnType);
 		}
 	}
 
@@ -138,6 +139,7 @@ public class AssignmentNode implements Node {
 
 		Node array = (Node) lValueData[0];
 		Node index = (Node) lValueData[1];
+		Token bracket = (Token) lValueData[2];
 
 		WaterType arrayType = array.getReturnType(context.getContext());
 		WaterType indexType = index.getReturnType(context.getContext());
@@ -145,6 +147,10 @@ public class AssignmentNode implements Node {
 		if(!arrayType.isArray()) {
 			throw new SemanticException(op, "Cannot get index of type '%s'".formatted(arrayType));
 		}
+		if(arrayType.isNullable()) {
+			throw new SemanticException(bracket, "Cannot use '[' to access members on a nullable type ('%s')".formatted(arrayType));
+		}
+
 		if(!indexType.isInteger()) {
 			throw new SemanticException(op, "Index must be an integer type (got '%s')".formatted(indexType));
 		}
@@ -209,6 +215,66 @@ public class AssignmentNode implements Node {
 		methodVisitor.visitLabel(nullJump);
 		methodVisitor.visitInsn(Opcodes.POP);
 		methodVisitor.visitLabel(end);
+	}
+
+	private void nullableArray(FileContext context, WaterType returnType) throws SemanticException {
+		Object[] lValueData = left.getLValueData();
+
+		Node array = (Node) lValueData[0];
+		Node index = (Node) lValueData[1];
+		Token bracket = (Token) lValueData[2];
+
+		WaterType arrayType = array.getReturnType(context.getContext());
+		WaterType indexType = index.getReturnType(context.getContext());
+
+		if(!arrayType.isArray()) {
+			throw new SemanticException(op, "Cannot get index of type '%s'".formatted(arrayType));
+		}
+		if(!arrayType.isNullable()) {
+			throw new SemanticException(bracket, "Cannot use '?[' to access members on a non-nullable type ('%s')".formatted(arrayType));
+		}
+
+		if(!indexType.isInteger()) {
+			throw new SemanticException(op, "Index must be an integer type (got '%s')".formatted(indexType));
+		}
+
+		MethodVisitor methodVisitor = context.getContext().getMethodVisitor();
+		Label nullJump = new Label();
+		Label end = new Label();
+
+		context.getContext().setNullJumpLabel(nullJump);
+
+		array.visit(context);
+
+		context.getContext().setNullJumpLabel(null);
+
+		methodVisitor.visitInsn(arrayType.getDupOpcode());
+		methodVisitor.visitJumpInsn(Opcodes.IFNULL, nullJump);
+
+		index.visit(context);
+
+		try {
+			if(!arrayType.getElementType().isAssignableFrom(returnType, context.getContext(), true)) {
+				throw new SemanticException(op,
+						"Cannot assign type '%s' to element of type '%s'"
+								.formatted(returnType, arrayType.getElementType()));
+			}
+		} catch (ClassNotFoundException e) {
+			throw new SemanticException(op, "Could not resolve class '%s'".formatted(e.getMessage()));
+		}
+		generateSyntheticOperation().visit(context);
+
+
+		if(!isExpressionStatementBody) methodVisitor.visitInsn(returnType.getDupX2Opcode());
+
+		methodVisitor.visitInsn(arrayType.getElementType().getOpcode(Opcodes.IASTORE));
+
+		methodVisitor.visitJumpInsn(Opcodes.GOTO, end);
+
+		methodVisitor.visitLabel(nullJump);
+		methodVisitor.visitInsn(Opcodes.POP);
+		methodVisitor.visitLabel(end);
+
 	}
 
 	private void handlePropertySettingLogic(Node obj, WaterType objType, Token name, WaterType returnType, FileContext context) throws SemanticException {

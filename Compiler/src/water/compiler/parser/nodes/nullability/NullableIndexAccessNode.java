@@ -6,6 +6,7 @@ import water.compiler.FileContext;
 import water.compiler.compiler.Context;
 import water.compiler.compiler.SemanticException;
 import water.compiler.lexer.Token;
+import water.compiler.parser.LValue;
 import water.compiler.parser.Node;
 import water.compiler.parser.nodes.operation.IndexAccessNode;
 import water.compiler.util.WaterType;
@@ -62,6 +63,16 @@ public class NullableIndexAccessNode implements Node {
 
 	private IndexAccessNode synthetic() {
 		return new IndexAccessNode(bracket, left, index);
+	}
+
+	@Override
+	public LValue getLValue() {
+		return LValue.NULLABLE_ARRAY;
+	}
+
+	@Override
+	public Object[] getLValueData() {
+		return new Object[] { left, index, bracket };
 	}
 
 	@Override

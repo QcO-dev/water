@@ -66,7 +66,7 @@ public class IndexAccessNode implements Node {
 
 	@Override
 	public Object[] getLValueData() {
-		return new Object[] { left, index };
+		return new Object[] { left, index, bracket };
 	}
 
 	@Override
