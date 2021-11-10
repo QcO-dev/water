@@ -4,6 +4,7 @@ import os
 import sys
 import subprocess
 import configparser
+import re
 
 def clean_classes(directory):
 	for class_file in glob.glob(os.path.join(directory, "*.class")):
@@ -84,6 +85,12 @@ def main():
 			)
 			p_stdout += run_process.stdout
 			p_stderr += run_process.stderr
+
+		p_stderr = re.sub(
+			r"^\[.*\]",
+			"[LOC]",
+			p_stderr
+		)
 
 		if args.output_record:
 			with open(wtr_file + ".txt", "w") as f:

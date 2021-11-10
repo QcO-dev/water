@@ -56,7 +56,7 @@ public class StringNode implements Node {
 
 	@Override
 	public Object getConstantValue(Context context) {
-		return value.getValue().substring(1, value.getValue().length() - 1);
+		return escape(value.getValue().substring(1, value.getValue().length() - 1));
 	}
 
 	@Override

@@ -66,8 +66,16 @@ public class CharNode implements Node {
 	}
 
 	@Override
-	public Object getConstantValue(Context context) {
-		return value.getValue().charAt(1);
+	public Object getConstantValue(Context context) throws SemanticException {
+		String val = value.getValue().substring(1, value.getValue().length() - 1);
+
+		if(val.length() == 0 || (val.length() != 1 && val.charAt(0) != '\\') || (val.charAt(0) == '\\' && val.length() > 2)) {
+			throw new SemanticException(value, "Character literal may only represent a single character");
+		}
+
+		val = escape(val);
+
+		return val.charAt(0);
 	}
 
 	@Override
