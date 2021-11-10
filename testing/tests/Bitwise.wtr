@@ -1,0 +1,9 @@
+function main() {
+	println(10 & 3);
+	println(10 >> 2);
+	println(-5 >> 2);
+	println(-5 >>> 3);
+	println(6 << 3);
+	println(15 | 3);
+	println(16 ^ 34);
+}

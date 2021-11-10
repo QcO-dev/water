@@ -1,0 +1,8 @@
+function main() {
+	println(3 + 4);
+	println(6 - 10);
+	println(12 * 13);
+	println(56 / 7);
+	println(11 % 2);
+	println(3 + 4 * 6);
+}

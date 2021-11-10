@@ -1,0 +1,18 @@
+function x(a: String[]) -> String[] {
+	a[0] = "Hello";
+	a[1] = "World";
+	a[2] = "From";
+	a[3] = "Water";
+	return a;
+}
+
+function main() {
+	var a = new String[4];
+	
+	x(a);
+
+	println(a[0]);
+	println(a[1]);
+	println(a[2]);
+	println(a[3]);
+}

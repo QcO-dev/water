@@ -242,21 +242,25 @@ public class FunctionDeclarationNode implements Node {
 	}
 
 	private void addParameters(Context context, boolean isStatic) throws SemanticException {
+		Scope scope = context.getScope();
 		if(isStatic) {
-			context.getScope().setLocalIndex(parameters.size());
-			for (int i = 0; i < parameters.size(); i++) {
-				Pair<Token, Node> parameter = parameters.get(i);
+			for (Pair<Token, Node> parameter : parameters) {
 
-				context.getScope().addVariable(new Variable(VariableType.LOCAL, parameter.getFirst().getValue(), i, parameter.getSecond().getReturnType(context), false));
+				WaterType parameterType = parameter.getSecond().getReturnType(context);
+				scope.addVariable(new Variable(VariableType.LOCAL, parameter.getFirst().getValue(), scope.nextLocal(), parameterType, false));
+				if(parameterType.getSize() == 2)
+					scope.nextLocal();
 			}
 		}
 		else {
-			context.getScope().setLocalIndex(1 + parameters.size());
+			scope.nextLocal();
+			for (Pair<Token, Node> parameter : parameters) {
 
-			for (int i = 0; i < parameters.size(); i++) {
-				Pair<Token, Node> parameter = parameters.get(i);
+				WaterType parameterType = parameter.getSecond().getReturnType(context);
+				scope.addVariable(new Variable(VariableType.LOCAL, parameter.getFirst().getValue(), scope.nextLocal(), parameterType, false));
 
-				context.getScope().addVariable(new Variable(VariableType.LOCAL, parameter.getFirst().getValue(), i + 1, parameter.getSecond().getReturnType(context), false));
+				if(parameterType.getSize() == 2)
+					scope.nextLocal();
 			}
 		}
 	}

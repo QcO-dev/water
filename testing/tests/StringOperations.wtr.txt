@@ -1,0 +1,6 @@
+Hello World!
+12 string
+String 17.6
+hihihihihihihihihihi
+byebyebyebyebyebyebyebyebyebye
+$stderr:

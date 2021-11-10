@@ -1,0 +1,10 @@
+function a(x: double, y: double) -> double {
+	return x * 2 + y;
+}
+
+function b(x: int, y: int) = x + y;
+
+function main() {
+	println(a(10.0, 12.0));
+	println(b(5, 7));
+}

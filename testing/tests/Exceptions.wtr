@@ -1,0 +1,35 @@
+function x() {
+	throw new Exception("Oh no");
+}
+
+function y() throws Exception {
+	throw new Exception("Yikes");
+}
+
+function main() {
+
+	try {
+		x();
+	}
+	catch(e: Exception) {
+		println("oops");
+	}
+
+	try {
+		println("yay");
+	}
+	finally {
+		println("Fin");
+	}
+
+	try {
+		x();
+	}
+	catch(e: Exception) {
+		println("catch");
+	}
+	finally {
+		println("finally");
+	}
+
+}

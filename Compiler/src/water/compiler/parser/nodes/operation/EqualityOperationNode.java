@@ -89,7 +89,7 @@ public class EqualityOperationNode implements Node {
 		else if(!leftType.isPrimitive() && !rightType.isPrimitive()) {
 			left.visit(context);
 
-			if(!rightType.isNull() && op.getType() != TokenType.TRI_EQ && op.getType() != TokenType.TRI_EXEQ) right.visit(context);
+			if(!(rightType.isNull() && (op.getType() == TokenType.TRI_EQ || op.getType() == TokenType.TRI_EXEQ))) right.visit(context);
 			switch (op.getType()) {
 				case EQEQ -> {
 					isEqual(methodVisitor, leftType);

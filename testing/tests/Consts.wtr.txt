@@ -1,0 +1,2 @@
+$stderr:
+[LOC] Semantic Error @ 'x': Reassignment of constant 'x'.

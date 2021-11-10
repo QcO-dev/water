@@ -59,12 +59,14 @@ public class ConstructorDeclarationNode implements Node {
 
 		context.setScope(inner);
 
-		context.getScope().setLocalIndex(1 + parameters.size());
+		context.getScope().nextLocal();
 
-		for (int i = 0; i < parameters.size(); i++) {
-			Pair<Token, Node> parameter = parameters.get(i);
-
-			context.getScope().addVariable(new Variable(VariableType.LOCAL, parameter.getFirst().getValue(), i + 1, parameter.getSecond().getReturnType(context), false));
+		for (Pair<Token, Node> parameter : parameters) {
+			Scope scope = context.getScope();
+			WaterType parameterType = parameter.getSecond().getReturnType(context);
+			scope.addVariable(new Variable(VariableType.LOCAL, parameter.getFirst().getValue(), scope.nextLocal(), parameterType, false));
+			if(parameterType.getSize() == 2)
+				scope.nextLocal();
 		}
 
 		createSuperCall(constructor, fc);
@@ -87,6 +89,8 @@ public class ConstructorDeclarationNode implements Node {
 		context.setScope(outer);
 
 		context.setType(prev);
+
+		context.setConstructor(false);
 
 		constructor.visitInsn(Opcodes.RETURN);
 		constructor.visitMaxs(0, 0);

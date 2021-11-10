@@ -1,0 +1,2 @@
+$stderr:
+[LOC] Semantic Error @ 'a': Cannot assign type of 'int' to annotated type of 'java.lang.String'.

@@ -1,0 +1,9 @@
+function main() {
+	println("begin");
+	println("\t");
+	println("\n");
+	println("\\n");
+	println("\\r");
+	println('\t');
+	println("end");
+}

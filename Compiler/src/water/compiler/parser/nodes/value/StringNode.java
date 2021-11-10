@@ -26,14 +26,27 @@ public class StringNode implements Node {
 	}
 
 	private String escape(String value) {
-		return value.replace("\\\\", "\\")
-				.replace("\\t", "\t")
-				.replace("\\b", "\b")
-				.replace("\\n", "\n")
-				.replace("\\r", "\r")
-				.replace("\\f", "\f")
-				.replace("\\'", "\'")
-				.replace("\\\"", "\"");
+		StringBuilder builder = new StringBuilder();
+
+		for(int i = 0; i < value.length(); i++) {
+			if(value.charAt(i) == '\\') {
+				i++;
+				switch(value.charAt(i)) {
+					case 't' -> builder.append('\t');
+					case 'b' -> builder.append('\b');
+					case 'n' -> builder.append('\n');
+					case 'r' -> builder.append('\r');
+					case 'f' -> builder.append('\f');
+					case '\'' -> builder.append('\'');
+					case '\"' -> builder.append('\"');
+					default -> builder.append(value.charAt(i));
+				}
+			}
+			else {
+				builder.append(value.charAt(i));
+			}
+		}
+		return builder.toString();
 	}
 
 	@Override
@@ -43,7 +56,7 @@ public class StringNode implements Node {
 
 	@Override
 	public Object getConstantValue(Context context) {
-		return value.getValue().substring(1, value.getValue().length() - 1);
+		return escape(value.getValue().substring(1, value.getValue().length() - 1));
 	}
 
 	@Override

@@ -1,0 +1,19 @@
+private enum Days {
+	MONDAY,
+	TUESDAY,
+	WEDNESDAY,
+	THURSDAY,
+	FRIDAY,
+	SATURDAY,
+	SUNDAY
+}
+
+function m() -> Days {
+	return Days.MONDAY;
+}
+
+function main() {
+	println(m() == Days.MONDAY);
+
+	println(Days.values()[1] == Days.TUESDAY);
+}

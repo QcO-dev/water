@@ -1,0 +1,7 @@
+function main() {
+	println("Hello " + "World!");
+	println(12 + " string");
+	println("String " + 17.6);
+	println("hi" * 10);
+	println(10 * "bye");
+}

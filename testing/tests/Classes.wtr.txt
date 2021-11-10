@@ -1,0 +1,3 @@
+I say: woof
+I like: cheese
+$stderr:

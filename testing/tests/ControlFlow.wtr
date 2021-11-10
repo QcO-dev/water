@@ -1,0 +1,27 @@
+function main() {
+	if(2 == 2) {
+		println("y");
+	}
+	else {
+		println("n");
+	}
+
+	if(2 > 3) {
+		println("y");
+	}
+	else {
+		println("n");
+	}
+
+	for(var i = 0; i < 10; i += 1) {
+		println(i);
+	}
+
+	{
+		var i = 10;
+		while(i > 0) {
+			println(i);
+			i -= 1;
+		}
+	}
+}
