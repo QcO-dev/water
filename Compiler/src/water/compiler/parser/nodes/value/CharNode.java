@@ -37,14 +37,27 @@ public class CharNode implements Node {
 
 	//TODO Remove Code duplication of StringNode
 	private String escape(String value) {
-		return value.replace("\\\\", "\\")
-				.replace("\\t", "\t")
-				.replace("\\b", "\b")
-				.replace("\\n", "\n")
-				.replace("\\r", "\r")
-				.replace("\\f", "\f")
-				.replace("\\'", "\'")
-				.replace("\\\"", "\"");
+		StringBuilder builder = new StringBuilder();
+
+		for(int i = 0; i < value.length(); i++) {
+			if(value.charAt(i) == '\\') {
+				i++;
+				switch(value.charAt(i)) {
+					case 't' -> builder.append('\t');
+					case 'b' -> builder.append('\b');
+					case 'n' -> builder.append('\n');
+					case 'r' -> builder.append('\r');
+					case 'f' -> builder.append('\f');
+					case '\'' -> builder.append('\'');
+					case '\"' -> builder.append('\"');
+					default -> builder.append(value.charAt(i));
+				}
+			}
+			else {
+				builder.append(value.charAt(i));
+			}
+		}
+		return builder.toString();
 	}
 
 	@Override
