@@ -4,8 +4,13 @@ function h() = "He" + "llo";
 function main() {
 	println(2 == 2);
 	println("Hello" == h());
+	println("hi" != h());
 	println("Hello" === h());
+	println("hi" !== h());
 	println(5 != 5);
+
+	println(h() === null);
+	println(h() !== null);
 
 	println(2 < 3);
 	println(3 > 2);

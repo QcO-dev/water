@@ -87,7 +87,8 @@ public class WaterType {
 	public boolean isPrimitive() {
 		return  getSort() != Sort.OBJECT &&
 				getSort() != Sort.ARRAY &&
-				getSort() != Sort.METHOD;
+				getSort() != Sort.METHOD &&
+				getSort() != Sort.NULL;
 	}
 
 	/**
