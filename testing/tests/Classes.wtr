@@ -16,7 +16,7 @@ private class Dog : Animal {
 		this.food = food;
 	}
 
-	function toString() {
+	function toString() -> String {
 		const say = super.toString();
 		const food = "I like: " + food;
 

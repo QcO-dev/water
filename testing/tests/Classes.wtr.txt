@@ -1,2 +1,5 @@
 $stderr:
-[D:\Programming\Java\Water\testing\tests\Classes.wtr:23:9] Semantic Error @ 'return': Cannot return value from void function
+Exception in thread "main" java.lang.NoSuchFieldError: food
+	at ClassesWtr$Dog.<init>(Classes.wtr:13)
+	at ClassesWtr.main(Classes.wtr:29)
+	at ClassesWtr.main(Classes.wtr)
