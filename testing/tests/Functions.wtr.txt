@@ -1,0 +1,16 @@
+$stderr:
+Error: Unable to initialize main class FunctionsWtr
+Caused by: java.lang.VerifyError: Bad local variable type
+Exception Details:
+  Location:
+    FunctionsWtr.a(DD)D @4: dload_1
+  Reason:
+    Type double_2nd (current frame, locals[1]) is not assignable to double
+  Current Frame:
+    bci: @4
+    flags: { }
+    locals: { double, double_2nd, double, double_2nd }
+    stack: { double, double_2nd }
+  Bytecode:
+    0000000: 2605 876b 2763 af                      
+

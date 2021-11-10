@@ -1,0 +1,9 @@
+$stderr:
+Exception in thread "main" java.lang.NegativeArraySizeException: -1
+	at org.objectweb.asm@9.0.0/org.objectweb.asm.Frame.merge(Frame.java:1222)
+	at org.objectweb.asm@9.0.0/org.objectweb.asm.MethodWriter.computeAllFrames(MethodWriter.java:1610)
+	at org.objectweb.asm@9.0.0/org.objectweb.asm.MethodWriter.visitMaxs(MethodWriter.java:1546)
+	at water.compiler/water.compiler.parser.nodes.function.FunctionDeclarationNode.visit(FunctionDeclarationNode.java:163)
+	at water.compiler/water.compiler.parser.nodes.block.ProgramNode.visit(ProgramNode.java:114)
+	at water.compiler/water.compiler.Main.run(Main.java:171)
+	at water.compiler/water.compiler.Main.main(Main.java:78)

@@ -1,0 +1,6 @@
+import java.util.ArrayList;
+
+function main() {
+	var sb = new StringBuilder(); // Implicit
+	var al = new ArrayList(); // Explicit
+}

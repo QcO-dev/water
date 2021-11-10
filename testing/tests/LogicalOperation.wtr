@@ -1,0 +1,21 @@
+function t() -> boolean {
+	println("true");
+	return true;
+}
+
+function f() -> boolean {
+	println("false");
+	return true;
+}
+
+function main() {
+
+	// &&
+	println(t() && f());
+	println(f() && t());
+
+	// ||
+	println(t() && f());
+	println(f() && t());
+
+}

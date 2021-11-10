@@ -1,0 +1,9 @@
+var a = "Global";
+
+function main() {
+	println(a);
+	{
+		var a = "Local";
+		println(a);
+	}
+}

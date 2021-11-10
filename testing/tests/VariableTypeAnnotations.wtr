@@ -1,0 +1,3 @@
+function main() {
+	var a: String = 12;
+}

@@ -1,0 +1,6 @@
+oops
+yay
+Fin
+catch
+finally
+$stderr:

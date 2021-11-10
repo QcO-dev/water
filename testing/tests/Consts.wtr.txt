@@ -1,0 +1,2 @@
+$stderr:
+[D:\Programming\Java\Water\testing\tests\Consts.wtr:3:3] Semantic Error @ 'x': Reassignment of constant 'x'.

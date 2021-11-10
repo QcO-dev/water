@@ -1,0 +1,2 @@
+$stderr:
+[D:\Programming\Java\Water\testing\tests\Classes.wtr:23:9] Semantic Error @ 'return': Cannot return value from void function

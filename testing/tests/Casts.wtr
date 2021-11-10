@@ -1,0 +1,6 @@
+function main() {
+	println(12 as double);
+	println(14.6 as int);
+	println('c' as boolean);
+	println("15" as int);
+}

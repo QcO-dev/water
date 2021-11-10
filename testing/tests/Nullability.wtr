@@ -1,0 +1,24 @@
+function nn(s: String) {
+	println("nn");
+}
+
+function main() {
+
+	var s: String? = "hi";
+
+	nn(s!);
+
+	var s1: String? = null;
+
+	println(s1 ?? "Null");
+
+	var s2: String? = null;
+
+	println(s1?.length);
+
+	println(s1?.length());
+
+	var sa: String[]? = null;
+
+	println(sa?[0]);
+}

@@ -1,0 +1,10 @@
+function main() {
+
+	println(-2);
+	println(--2);
+	println(!true);
+	println(!false);
+	println(~5);
+	println(~-5);
+
+}

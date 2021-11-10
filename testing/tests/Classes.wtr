@@ -1,0 +1,31 @@
+private class Animal {
+	var noise: String = "";
+
+	constructor(noise: String) {
+		this.noise = noise;
+	}
+
+	function toString() = "I say: " + noise;
+
+}
+
+private class Dog : Animal {
+	var food: String = "";
+
+	constructor(food: String) : ("woof") {
+		this.food = food;
+	}
+
+	function toString() {
+		const say = super.toString();
+		const food = "I like: " + food;
+
+		return say + "\n" + food;
+	}
+
+}
+
+function main() {
+	var animal: Animal = new Dog("cheese");
+	println(animal);
+}

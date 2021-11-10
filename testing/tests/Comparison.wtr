@@ -1,0 +1,14 @@
+/* Avoids matching string addresses */
+function h() = "He" + "llo";
+
+function main() {
+	println(2 == 2);
+	println("Hello" == h());
+	println("Hello" === h());
+	println(5 != 5);
+
+	println(2 < 3);
+	println(3 > 2);
+	println(5 <= 5);
+	println(4 <= 2);
+}
