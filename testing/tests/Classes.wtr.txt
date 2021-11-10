@@ -1,18 +1,2 @@
+I say: woof\nI like: cheese
 $stderr:
-Exception in thread "main" java.lang.VerifyError: Bad type on operand stack
-Exception Details:
-  Location:
-    ClassesWtr$Dog.toString()Ljava/lang/String; @6: getfield
-  Reason:
-    Type 'java/lang/String' (current frame, stack[0]) is not assignable to 'ClassesWtr$Dog'
-  Current Frame:
-    bci: @6
-    flags: { }
-    locals: { 'java/lang/String' }
-    stack: { 'java/lang/String' }
-  Bytecode:
-    0000000: 2ab7 0009 4b2a b400 0dba 0019 0000 4c2a
-    0000010: 2bba 001e 0000 b0                      
-
-	at ClassesWtr.main(Classes.wtr:29)
-	at ClassesWtr.main(Classes.wtr)

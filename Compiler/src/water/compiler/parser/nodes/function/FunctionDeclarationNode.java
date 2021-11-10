@@ -253,8 +253,8 @@ public class FunctionDeclarationNode implements Node {
 			}
 		}
 		else {
+			scope.nextLocal();
 			for (Pair<Token, Node> parameter : parameters) {
-				scope.nextLocal();
 
 				WaterType parameterType = parameter.getSecond().getReturnType(context);
 				scope.addVariable(new Variable(VariableType.LOCAL, parameter.getFirst().getValue(), scope.nextLocal(), parameterType, false));

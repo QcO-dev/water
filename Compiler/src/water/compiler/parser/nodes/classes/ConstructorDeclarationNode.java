@@ -90,6 +90,8 @@ public class ConstructorDeclarationNode implements Node {
 
 		context.setType(prev);
 
+		context.setConstructor(false);
+
 		constructor.visitInsn(Opcodes.RETURN);
 		constructor.visitMaxs(0, 0);
 		constructor.visitEnd();
