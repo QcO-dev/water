@@ -723,8 +723,13 @@ public class Parser {
 		ArrayList<Node> dimensions = new ArrayList<>();
 
 		do {
-			dimensions.add(expression());
-			consume(TokenType.RSQBR, "Expected ']' after array size");
+			if(match(TokenType.RSQBR)) {
+				dimensions.add(null);
+			}
+			else {
+				dimensions.add(expression());
+				consume(TokenType.RSQBR, "Expected ']' after array size");
+			}
 		} while(match(TokenType.LSQBR));
 
 

@@ -7,6 +7,7 @@ import water.compiler.compiler.Context;
 import water.compiler.compiler.SemanticException;
 import water.compiler.lexer.Token;
 import water.compiler.parser.Node;
+import water.compiler.util.TypeUtil;
 import water.compiler.util.WaterType;
 
 import java.util.List;
@@ -26,24 +27,34 @@ public class ArrayConstructorNode implements Node {
 	@Override
 	public void visit(FileContext fileContext) throws SemanticException {
 		Context context = fileContext.getContext();
+		if(dimensions.get(0) == null) {
+			throw new SemanticException(newToken, "Array must have first dimension initialized");
+		}
+
+		int size = 0;
 		for(Node n : dimensions) {
+			if(n == null) continue;
 			if(!n.getReturnType(context).isInteger()) {
 				throw new SemanticException(newToken, "Array size must be an integer");
 			}
 			n.visit(fileContext);
+			size++;
 		}
 
 		WaterType elementType = type.getReturnType(context);
 
 		MethodVisitor methodVisitor = context.getMethodVisitor();
-		int size = dimensions.size();
 
-		if(size == 1) {
+		if(size == 1 && dimensions.size() == 1) {
 			if(elementType.isPrimitive()) methodVisitor.visitIntInsn(Opcodes.NEWARRAY, elementType.primitiveToTType());
 			else methodVisitor.visitTypeInsn(Opcodes.ANEWARRAY, elementType.getInternalName());
 		}
+		else if(size == 1) {
+			methodVisitor.visitTypeInsn(Opcodes.ANEWARRAY,
+					WaterType.getArrayType(elementType, dimensions.size() - size, null).getDescriptor());
+		}
 		else {
-			methodVisitor.visitMultiANewArrayInsn(getDescriptor(context), size);
+			methodVisitor.visitMultiANewArrayInsn(getDescriptor(context), dimensions.size());
 		}
 	}
 
@@ -58,6 +69,6 @@ public class ArrayConstructorNode implements Node {
 
 	@Override
 	public String toString() {
-		return "new %s%s".formatted(type, dimensions.stream().map(Node::toString).map(d -> "[" + d + "]").collect(Collectors.joining()));
+		return "new %s%s".formatted(type, dimensions.stream().map(n -> n == null ? "" : n.toString()).map(d -> "[" + d + "]").collect(Collectors.joining()));
 	}
 }
