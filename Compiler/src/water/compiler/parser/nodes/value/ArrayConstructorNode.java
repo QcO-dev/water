@@ -10,24 +10,49 @@ import water.compiler.parser.Node;
 import water.compiler.util.TypeUtil;
 import water.compiler.util.WaterType;
 
+import java.util.ArrayList;
 import java.util.List;
 import java.util.stream.Collectors;
 
 public class ArrayConstructorNode implements Node {
+
+	public static class InitValue {
+		public boolean isSubList;
+		public ArrayList<InitValue> subValues;
+		public Node value;
+
+		public InitValue(Node value) {
+			this.value = value;
+			this.isSubList = false;
+		}
+
+		public InitValue(ArrayList<InitValue> subValues) {
+			this.subValues = subValues;
+			this.isSubList = true;
+		}
+
+		@Override
+		public String toString() {
+			return isSubList ? "{%s}".formatted(subValues.stream().map(InitValue::toString).collect(Collectors.joining(", "))) : value.toString();
+		}
+	}
+
 	private final Token newToken;
 	private final Node type;
 	private final List<Node> dimensions;
+	private final InitValue initValues;
 
-	public ArrayConstructorNode(Token newToken, Node type, List<Node> dimensions) {
+	public ArrayConstructorNode(Token newToken, Node type, List<Node> dimensions, InitValue initValues) {
 		this.newToken = newToken;
 		this.type = type;
 		this.dimensions = dimensions;
+		this.initValues = initValues;
 	}
 
 	@Override
 	public void visit(FileContext fileContext) throws SemanticException {
 		Context context = fileContext.getContext();
-		if(dimensions.get(0) == null) {
+		if(dimensions.get(0) == null && initValues == null) {
 			throw new SemanticException(newToken, "Array must have first dimension initialized");
 		}
 
@@ -45,6 +70,10 @@ public class ArrayConstructorNode implements Node {
 
 		MethodVisitor methodVisitor = context.getMethodVisitor();
 
+		if(dimensions.get(0) == null) {
+			TypeUtil.generateCorrectInt(initValues.subValues.size(), context);
+		}
+
 		if(size == 1 && dimensions.size() == 1) {
 			if(elementType.isPrimitive()) methodVisitor.visitIntInsn(Opcodes.NEWARRAY, elementType.primitiveToTType());
 			else methodVisitor.visitTypeInsn(Opcodes.ANEWARRAY, elementType.getInternalName());
@@ -55,6 +84,19 @@ public class ArrayConstructorNode implements Node {
 		}
 		else {
 			methodVisitor.visitMultiANewArrayInsn(getDescriptor(context), dimensions.size());
+		}
+
+		if(initValues != null) {
+			for(int i = 0; i < initValues.subValues.size(); i++) {
+				InitValue value = initValues.subValues.get(i);
+
+				methodVisitor.visitInsn(getReturnType(context).getDupOpcode());
+				TypeUtil.generateCorrectInt(i, context);
+
+				value.value.visit(fileContext);
+
+				methodVisitor.visitInsn(getReturnType(context).getElementType().getOpcode(Opcodes.IASTORE));
+			}
 		}
 	}
 
@@ -69,6 +111,9 @@ public class ArrayConstructorNode implements Node {
 
 	@Override
 	public String toString() {
-		return "new %s%s".formatted(type, dimensions.stream().map(n -> n == null ? "" : n.toString()).map(d -> "[" + d + "]").collect(Collectors.joining()));
+		return "new %s%s %s".formatted(type,
+				dimensions.stream().map(n -> n == null ? "" : n.toString()).map(d -> "[" + d + "]").collect(Collectors.joining()),
+				initValues == null ? "" : initValues
+		);
 	}
 }

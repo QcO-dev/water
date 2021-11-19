@@ -732,8 +732,19 @@ public class Parser {
 			}
 		} while(match(TokenType.LSQBR));
 
+		ArrayConstructorNode.InitValue valueList = null;
 
-		return new ArrayConstructorNode(newToken, type, dimensions);
+		if(match(TokenType.LBRACE)) {
+			valueList = new ArrayConstructorNode.InitValue(new ArrayList<>());
+			if(tokens.get(index).getType() != TokenType.RBRACE) {
+				do {
+					valueList.subValues.add(new ArrayConstructorNode.InitValue(expression()));
+				} while(match(TokenType.COMMA));
+			}
+			consume(TokenType.RBRACE, "Expected '}' after array initialization");
+		}
+
+		return new ArrayConstructorNode(newToken, type, dimensions, valueList);
 	}
 
 	/** Forms grammar: '(' expression ')' */
