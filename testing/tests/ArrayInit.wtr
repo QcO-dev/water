@@ -1,0 +1,30 @@
+function multi() {
+
+	const s = new String[][] {
+		{ "Hi", "Salut", "Bonjour" },
+		{ "Goodbye", "Au revoir" }
+	};
+
+	for(var i = 0; i < s.length; i += 1) {
+		const arr = s[i];
+		for(var j = 0; j < arr.length; j += 1) {
+			println(arr[j]);
+		}
+	}
+}
+
+function single() {
+	const s = new String[] {
+		"Hello",
+		"World"
+	};
+
+	for(var i = 0; i < s.length; i += 1) {
+		println(s[i]);
+	}
+}
+
+function main() {
+	single();
+	multi();
+}

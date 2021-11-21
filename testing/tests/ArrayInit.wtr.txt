@@ -1,0 +1,8 @@
+Hello
+World
+Hi
+Salut
+Bonjour
+Goodbye
+Au revoir
+$stderr:
