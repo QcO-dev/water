@@ -185,9 +185,9 @@ public class UpdateExpressionNode implements Node {
 
 		obj.visit(context);
 
-		visitor.visitInsn(Opcodes.DUP);
-
 		WaterType objType = getObjectType(obj, context.getContext());
+
+		if(!isStaticAccess) visitor.visitInsn(Opcodes.DUP);
 
 		if(!objType.isObject()) {
 			throw new SemanticException(name, "Cannot access member on type '%s'".formatted(objType));
@@ -207,8 +207,13 @@ public class UpdateExpressionNode implements Node {
 		syntheticAccess.visitAccess(context);
 
 		if(!prefix) {
-			visitor.visitInsn(Opcodes.DUP_X1);
-			visitor.visitInsn(type.getDupX1Opcode());
+			if(!isStaticAccess) {
+				visitor.visitInsn(Opcodes.DUP_X1);
+				visitor.visitInsn(type.getDupX1Opcode());
+			}
+			else {
+				visitor.visitInsn(type.getDupOpcode());
+			}
 		}
 
 		type.generateAsInteger(1, context.getContext());
@@ -216,9 +221,13 @@ public class UpdateExpressionNode implements Node {
 		if(increment) visitor.visitInsn(type.getOpcode(Opcodes.IADD));
 		else visitor.visitInsn(type.getOpcode(Opcodes.ISUB));
 
-		AssignmentNode.handlePropertySettingLogic(obj, objType, name, type, context, operation, isStaticAccess, !prefix);
+		if(prefix && isStaticAccess) {
+			visitor.visitInsn(Opcodes.DUP);
+		}
 
-		if(!prefix) {
+		AssignmentNode.handlePropertySettingLogic(obj, objType, name, type, context, operation, isStaticAccess, !(prefix && !isStaticAccess));
+
+		if(!prefix && !isStaticAccess) {
 			type.swap(objType, context.getContext().getMethodVisitor());
 			visitor.visitInsn(Opcodes.POP);
 		}
