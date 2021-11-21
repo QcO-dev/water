@@ -67,7 +67,8 @@ public class UpdateExpressionNode implements Node {
 		}
 
 		if(!variable.getType().isNumeric()) {
-			throw new SemanticException(operation, "Update expression ('%s') target must be numeric".formatted(operation.getValue()));
+			throw new SemanticException(operation, "Update expression ('%s') target must be numeric (got '%s')".formatted(operation.getValue(),
+					variable.getType()));
 		}
 
 		WaterType type = variable.getType();
@@ -153,7 +154,7 @@ public class UpdateExpressionNode implements Node {
 		MethodVisitor visitor = context.getContext().getMethodVisitor();
 
 		if(!elementType.isNumeric()) {
-			throw new SemanticException(operation, "Update expression ('%s') target must be numeric".formatted(operation.getValue()));
+			throw new SemanticException(operation, "Update expression ('%s') target must be numeric (got '%s')".formatted(operation.getValue(), elementType));
 		}
 
 		array.visit(context);
@@ -201,7 +202,7 @@ public class UpdateExpressionNode implements Node {
 
 		WaterType type = syntheticAccess.getReturnType(context.getContext());
 		if(!type.isNumeric()) {
-			throw new SemanticException(operation, "Update expression ('%s') target must be numeric".formatted(operation.getValue()));
+			throw new SemanticException(operation, "Update expression ('%s') target must be numeric (got '%s')".formatted(operation.getValue(), type));
 		}
 
 		syntheticAccess.visitAccess(context);
@@ -248,7 +249,7 @@ public class UpdateExpressionNode implements Node {
 	public WaterType getReturnType(Context context) throws SemanticException {
 		WaterType returnType = expression.getReturnType(context);
 		if(!returnType.isNumeric()) {
-			throw new SemanticException(operation, "Update expression ('%s') target must be numeric".formatted(operation.getValue()));
+			throw new SemanticException(operation, "Update expression ('%s') target must be numeric (got '%s')".formatted(operation.getValue(), returnType));
 		}
 		return returnType;
 	}
