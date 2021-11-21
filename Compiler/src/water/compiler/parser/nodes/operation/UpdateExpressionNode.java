@@ -15,10 +15,10 @@ import water.compiler.util.WaterType;
 
 public class UpdateExpressionNode implements Node {
 
-	private Node expression;
-	private Token operation;
-	private boolean prefix;
-	private boolean increment;
+	private final Node expression;
+	private final Token operation;
+	private final boolean prefix;
+	private final boolean increment;
 
 	public UpdateExpressionNode(Node expression, Token operation, boolean prefix) {
 		this.expression = expression;
@@ -67,6 +67,7 @@ public class UpdateExpressionNode implements Node {
 
 		MethodVisitor visitor = context.getContext().getMethodVisitor();
 
+		// Optimise local variables and integers with iinc instruction
 		if(variable.getVariableType() == VariableType.LOCAL && type.getSort() == WaterType.Sort.INT) {
 			int value = increment ? 1 : -1;
 
@@ -79,10 +80,13 @@ public class UpdateExpressionNode implements Node {
 			return;
 		}
 
-		//TODO OTHER VARIABLE TYPES
 		switch (variable.getVariableType()) {
 			case LOCAL ->  {
 				visitor.visitVarInsn(type.getOpcode(Opcodes.ILOAD), variable.getIndex());
+				if(!prefix) visitor.visitInsn(type.getDupOpcode());
+			}
+			case STATIC ->  {
+				visitor.visitFieldInsn(Opcodes.GETSTATIC, variable.getOwner(), variable.getName(), variable.getType().getDescriptor());
 				if(!prefix) visitor.visitInsn(type.getDupOpcode());
 			}
 			case CLASS -> {
@@ -93,16 +97,20 @@ public class UpdateExpressionNode implements Node {
 			}
 		}
 
+		// Either add or subtract 1 of the specified type
 		type.generateAsInteger(1, context.getContext());
 
 		if(increment) visitor.visitInsn(type.getOpcode(Opcodes.IADD));
 		else visitor.visitInsn(type.getOpcode(Opcodes.ISUB));
 
-		//TODO OTHER VARIABLE TYPES
 		switch (variable.getVariableType()) {
 			case LOCAL -> {
 				if(prefix) visitor.visitInsn(type.getDupOpcode());
 				visitor.visitVarInsn(type.getOpcode(Opcodes.ISTORE), variable.getIndex());
+			}
+			case STATIC ->  {
+				if(prefix) visitor.visitInsn(type.getDupOpcode());
+				visitor.visitFieldInsn(Opcodes.PUTSTATIC, variable.getOwner(), variable.getName(), variable.getType().getDescriptor());
 			}
 			case CLASS -> {
 				if(prefix) visitor.visitInsn(type.getDupX1Opcode());
