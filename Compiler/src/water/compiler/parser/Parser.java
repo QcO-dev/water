@@ -635,8 +635,16 @@ public class Parser {
 		return left;
 	}
 
-	/** Forms grammar: ('!' | '-') unary | memberAccess */
+	/** Forms grammar: ('++' | '--') ('!' | '-') unary | memberAccess */
 	private Node unary() throws UnexpectedTokenException {
+		if(match(TokenType.INCREMENT) || match(TokenType.DECREMENT)) {
+			Token op = tokens.get(index - 1);
+
+			Node right = unary();
+
+			return new UpdateExpressionNode(right, op, true);
+		}
+
 		if(match(TokenType.EXCLAIM) || match(TokenType.MINUS) || match(TokenType.BITWISE_NOT)) {
 			Token op = tokens.get(index - 1);
 
@@ -682,6 +690,10 @@ public class Parser {
 			else {
 				left = nullable ? new NullableMemberAccessNode(left, name) : new MemberAccessNode(left, name);
 			}
+		}
+
+		if(match(TokenType.INCREMENT) || match(TokenType.DECREMENT)) {
+			left = new UpdateExpressionNode(left, tokens.get(index - 1), false);
 		}
 
 		return left;

@@ -34,6 +34,8 @@ public enum TokenType {
 	QUESTION_DOT,
 	QUESTION_LSQBR,
 	QUESTION_QUESTION,
+	INCREMENT,
+	DECREMENT,
 
 	// Inplace
 	IN_PLUS,

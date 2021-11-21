@@ -92,8 +92,8 @@ public class Lexer {
 					case ']' -> TokenType.RSQBR;
 					case ';' -> TokenType.SEMI;
 					case ',' -> TokenType.COMMA;
-					case '+' -> next('=') ? TokenType.IN_PLUS : TokenType.PLUS;
-					case '-' -> next('>') ? TokenType.ARROW : next('=') ? TokenType.IN_MINUS :TokenType.MINUS;
+					case '+' -> next('=') ? TokenType.IN_PLUS : next('+') ? TokenType.INCREMENT : TokenType.PLUS;
+					case '-' -> next('>') ? TokenType.ARROW : next('=') ? TokenType.IN_MINUS : next('-') ? TokenType.DECREMENT : TokenType.MINUS;
 					case '*' -> next('=') ? TokenType.IN_MUL : TokenType.STAR;
 					case '/' -> next('=') ? TokenType.IN_DIV : TokenType.SLASH;
 					case '%' -> next('=') ? TokenType.IN_MOD : TokenType.PERCENT;

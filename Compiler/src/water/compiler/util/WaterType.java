@@ -4,6 +4,7 @@ import org.objectweb.asm.AnnotationVisitor;
 import org.objectweb.asm.MethodVisitor;
 import org.objectweb.asm.Opcodes;
 import org.objectweb.asm.Type;
+import water.compiler.FileContext;
 import water.compiler.compiler.Context;
 import water.runtime.annotation.Nullable;
 
@@ -447,6 +448,15 @@ public class WaterType {
 	 */
 	public boolean isNumeric() {
 		return isInteger() || isFloat();
+	}
+
+	public void generateAsInteger(int value, Context context) {
+		switch (sort) {
+			case LONG -> TypeUtil.generateCorrectLong(value, context);
+			case DOUBLE -> TypeUtil.generateCorrectDouble(value, context);
+			case FLOAT -> TypeUtil.generateCorrectFloat(value, context);
+			default -> TypeUtil.generateCorrectInt(value, context);
+		}
 	}
 
 	/**
