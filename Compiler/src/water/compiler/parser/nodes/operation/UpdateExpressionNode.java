@@ -35,6 +35,7 @@ public class UpdateExpressionNode implements Node {
 
 		switch (expression.getLValue()) {
 			case VARIABLE -> variable(context);
+			case ARRAY -> array(context);
 			default -> throw new SemanticException(operation, "Invalid lvalue - cannot perform operation");
 		}
 
@@ -118,6 +119,54 @@ public class UpdateExpressionNode implements Node {
 			}
 		}
 
+	}
+
+	private void array(FileContext context) throws SemanticException {
+		Object[] lValueData = expression.getLValueData();
+
+		Node array = (Node) lValueData[0];
+		Node index = (Node) lValueData[1];
+		Token bracket = (Token) lValueData[2];
+
+		WaterType arrayType = array.getReturnType(context.getContext());
+		WaterType indexType = index.getReturnType(context.getContext());
+
+		if(!arrayType.isArray()) {
+			throw new SemanticException(bracket, "Cannot get index of type '%s'".formatted(arrayType));
+		}
+		if(arrayType.isNullable()) {
+			throw new SemanticException(bracket, "Cannot use '[' to access members on a nullable type ('%s')".formatted(arrayType));
+		}
+
+		if(!indexType.isRepresentedAsInteger()) {
+			throw new SemanticException(bracket, "Index must be an integer type (got '%s')".formatted(indexType));
+		}
+
+		WaterType elementType = arrayType.getElementType();
+
+		MethodVisitor visitor = context.getContext().getMethodVisitor();
+
+		if(!elementType.isNumeric()) {
+			throw new SemanticException(operation, "Update expression ('%s') target must be numeric".formatted(operation.getValue()));
+		}
+
+		array.visit(context);
+		index.visit(context);
+
+		visitor.visitInsn(Opcodes.DUP2);
+
+		visitor.visitInsn(elementType.getOpcode(Opcodes.IALOAD));
+
+		if(!prefix) visitor.visitInsn(elementType.getDupX2Opcode());
+
+		elementType.generateAsInteger(1, context.getContext());
+
+		if(increment) visitor.visitInsn(elementType.getOpcode(Opcodes.IADD));
+		else visitor.visitInsn(elementType.getOpcode(Opcodes.ISUB));
+
+		if(prefix) visitor.visitInsn(elementType.getDupX2Opcode());
+
+		visitor.visitInsn(elementType.getOpcode(Opcodes.IASTORE));
 	}
 
 	@Override

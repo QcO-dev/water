@@ -130,6 +130,7 @@ public class ArrayConstructorNode implements Node {
 		else {
 			WaterType valueType = value.value.getReturnType(context.getContext());
 
+			value.value.visit(context);
 			try {
 				if(!baseType.isAssignableFrom(valueType, context.getContext(), true)) {
 					throw new SemanticException(newToken, "Value of type '%s' cannot initialize array of type '%s'".formatted(
@@ -140,7 +141,6 @@ public class ArrayConstructorNode implements Node {
 			} catch (ClassNotFoundException e) {
 				throw new SemanticException(newToken, "Could not resolve class '%s'".formatted(e.getMessage()));
 			}
-			value.value.visit(context);
 		}
 	}
 

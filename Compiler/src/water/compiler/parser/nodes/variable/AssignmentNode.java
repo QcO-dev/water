@@ -151,7 +151,7 @@ public class AssignmentNode implements Node {
 			throw new SemanticException(bracket, "Cannot use '[' to access members on a nullable type ('%s')".formatted(arrayType));
 		}
 
-		if(!indexType.isInteger()) {
+		if(!indexType.isRepresentedAsInteger()) {
 			throw new SemanticException(op, "Index must be an integer type (got '%s')".formatted(indexType));
 		}
 
