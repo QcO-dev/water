@@ -1,0 +1,28 @@
+private class X {
+	var y = 0;
+	static var z = 0;
+}
+
+function main() {
+
+	var i = 0;
+	println(i++);
+	println(++i);
+
+	var d = 0.0;
+	println(d--);
+	println(--d);
+
+	const ia = new int[] { 0 };
+
+	println(ia[0]++);
+	println(++ia[0]);
+
+	const x = new X();
+	println(x.y--);
+	println(--x.y);
+
+	println(X.z++);
+	println(++X.z);
+
+}

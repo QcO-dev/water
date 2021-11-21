@@ -131,7 +131,7 @@ public class AssignmentNode implements Node {
 			throw new SemanticException(name, "Cannot use '.' to access members on a nullable type ('%s')".formatted(objType));
 		}
 
-		handlePropertySettingLogic(obj, objType, name, returnType, context);
+		handlePropertySettingLogic(obj, objType, name, returnType, context, op, isStaticAccess, isExpressionStatementBody);
 	}
 
 	private void array(FileContext context, WaterType returnType) throws SemanticException {
@@ -151,7 +151,7 @@ public class AssignmentNode implements Node {
 			throw new SemanticException(bracket, "Cannot use '[' to access members on a nullable type ('%s')".formatted(arrayType));
 		}
 
-		if(!indexType.isInteger()) {
+		if(!indexType.isRepresentedAsInteger()) {
 			throw new SemanticException(op, "Index must be an integer type (got '%s')".formatted(indexType));
 		}
 
@@ -208,7 +208,7 @@ public class AssignmentNode implements Node {
 
 		generateSyntheticOperation().visit(context);
 
-		handlePropertySettingLogic(obj, objType, name, returnType, context);
+		handlePropertySettingLogic(obj, objType, name, returnType, context, op, isStaticAccess, isExpressionStatementBody);
 
 		methodVisitor.visitJumpInsn(Opcodes.GOTO, end);
 
@@ -277,7 +277,8 @@ public class AssignmentNode implements Node {
 
 	}
 
-	private void handlePropertySettingLogic(Node obj, WaterType objType, Token name, WaterType returnType, FileContext context) throws SemanticException {
+	public static void handlePropertySettingLogic(Node obj, WaterType objType, Token name, WaterType returnType, FileContext context,
+												   Token op, boolean isStaticAccess, boolean isExpressionStatementBody) throws SemanticException {
 		Class<?> klass;
 
 		try {
@@ -322,7 +323,7 @@ public class AssignmentNode implements Node {
 			String base = name.getValue().substring(0, 1).toUpperCase() + name.getValue().substring(1);
 			String setName = "set" + (name.getValue().matches("^is[\\p{Lu}].*") ? base.substring(2) : base);
 
-			Method m = resolveSetMethod(klass, name, setName, returnType, context.getContext());
+			Method m = resolveSetMethod(klass, name, setName, returnType, context.getContext(), isStaticAccess);
 
 			String descriptor = "(%s)V".formatted(WaterType.getType(m.getParameterTypes()[0]).getDescriptor());
 
@@ -331,7 +332,7 @@ public class AssignmentNode implements Node {
 		}
 	}
 
-	private Method resolveSetMethod(Class<?> klass, Token location, String name, WaterType arg, Context context) throws SemanticException {
+	private static Method resolveSetMethod(Class<?> klass, Token location, String name, WaterType arg, Context context, boolean isStaticAccess) throws SemanticException {
 		ArrayList<Pair<Integer, Method>> possible = new ArrayList<>();
 
 		try {
