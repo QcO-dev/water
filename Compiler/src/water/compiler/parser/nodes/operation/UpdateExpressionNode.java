@@ -11,6 +11,9 @@ import water.compiler.lexer.Token;
 import water.compiler.lexer.TokenType;
 import water.compiler.parser.LValue;
 import water.compiler.parser.Node;
+import water.compiler.parser.nodes.classes.MemberAccessNode;
+import water.compiler.parser.nodes.variable.AssignmentNode;
+import water.compiler.parser.nodes.variable.VariableAccessNode;
 import water.compiler.util.WaterType;
 
 public class UpdateExpressionNode implements Node {
@@ -19,12 +22,14 @@ public class UpdateExpressionNode implements Node {
 	private final Token operation;
 	private final boolean prefix;
 	private final boolean increment;
+	private boolean isStaticAccess;
 
 	public UpdateExpressionNode(Node expression, Token operation, boolean prefix) {
 		this.expression = expression;
 		this.operation = operation;
 		this.prefix = prefix;
 		this.increment = operation.getType() == TokenType.INCREMENT;
+		this.isStaticAccess = false;
 	}
 
 	@Override
@@ -36,6 +41,7 @@ public class UpdateExpressionNode implements Node {
 		switch (expression.getLValue()) {
 			case VARIABLE -> variable(context);
 			case ARRAY -> array(context);
+			case PROPERTY -> property(context);
 			default -> throw new SemanticException(operation, "Invalid lvalue - cannot perform operation");
 		}
 
@@ -167,6 +173,66 @@ public class UpdateExpressionNode implements Node {
 		if(prefix) visitor.visitInsn(elementType.getDupX2Opcode());
 
 		visitor.visitInsn(elementType.getOpcode(Opcodes.IASTORE));
+	}
+
+	private void property(FileContext context) throws SemanticException {
+		Object[] lValueData = expression.getLValueData();
+
+		Node obj = (Node) lValueData[0];
+		Token name = (Token) lValueData[1];
+
+		MethodVisitor visitor = context.getContext().getMethodVisitor();
+
+		obj.visit(context);
+
+		visitor.visitInsn(Opcodes.DUP);
+
+		WaterType objType = getObjectType(obj, context.getContext());
+
+		if(!objType.isObject()) {
+			throw new SemanticException(name, "Cannot access member on type '%s'".formatted(objType));
+		}
+
+		if(objType.isNullable()) {
+			throw new SemanticException(name, "Cannot use '.' to access members on a nullable type ('%s')".formatted(objType));
+		}
+
+		MemberAccessNode syntheticAccess = new MemberAccessNode(obj, name);
+
+		WaterType type = syntheticAccess.getReturnType(context.getContext());
+		if(!type.isNumeric()) {
+			throw new SemanticException(operation, "Update expression ('%s') target must be numeric".formatted(operation.getValue()));
+		}
+
+		syntheticAccess.visitAccess(context);
+
+		if(!prefix) {
+			visitor.visitInsn(Opcodes.DUP_X1);
+			visitor.visitInsn(type.getDupX1Opcode());
+		}
+
+		type.generateAsInteger(1, context.getContext());
+
+		if(increment) visitor.visitInsn(type.getOpcode(Opcodes.IADD));
+		else visitor.visitInsn(type.getOpcode(Opcodes.ISUB));
+
+		AssignmentNode.handlePropertySettingLogic(obj, objType, name, type, context, operation, isStaticAccess, !prefix);
+
+		if(!prefix) {
+			type.swap(objType, context.getContext().getMethodVisitor());
+			visitor.visitInsn(Opcodes.POP);
+		}
+	}
+
+	private WaterType getObjectType(Node obj, Context context) throws SemanticException {
+		if(obj instanceof VariableAccessNode) {
+			VariableAccessNode van = (VariableAccessNode) obj;
+			van.setMemberAccess(true);
+			WaterType leftType = obj.getReturnType(context);
+			isStaticAccess = van.isStaticClassAccess();
+			return leftType;
+		}
+		return obj.getReturnType(context);
 	}
 
 	@Override
