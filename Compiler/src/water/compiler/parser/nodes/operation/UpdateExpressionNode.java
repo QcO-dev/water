@@ -54,6 +54,11 @@ public class UpdateExpressionNode implements Node {
 			throw new SemanticException(operation, "Reassignment of constant '%s'.".formatted(name.getValue()));
 		}
 
+		if(variable.getVariableType() == VariableType.CLASS) {
+			if (context.getContext().isStaticMethod())
+				throw new SemanticException(name, "Cannot access instance member '%s' in a static context".formatted(name.getValue()));
+		}
+
 		if(!variable.getType().isNumeric()) {
 			throw new SemanticException(operation, "Update expression ('%s') target must be numeric".formatted(operation.getValue()));
 		}
@@ -76,21 +81,33 @@ public class UpdateExpressionNode implements Node {
 
 		//TODO OTHER VARIABLE TYPES
 		switch (variable.getVariableType()) {
-			case LOCAL -> visitor.visitVarInsn(type.getOpcode(Opcodes.ILOAD), variable.getIndex());
+			case LOCAL ->  {
+				visitor.visitVarInsn(type.getOpcode(Opcodes.ILOAD), variable.getIndex());
+				if(!prefix) visitor.visitInsn(type.getDupOpcode());
+			}
+			case CLASS -> {
+				visitor.visitVarInsn(Opcodes.ALOAD, 0);
+				visitor.visitInsn(Opcodes.DUP);
+				visitor.visitFieldInsn(Opcodes.GETFIELD, variable.getOwner(), variable.getName(), variable.getType().getDescriptor());
+				if(!prefix) visitor.visitInsn(type.getDupX1Opcode());
+			}
 		}
-
-		if(!prefix) visitor.visitInsn(type.getDupOpcode());
 
 		type.generateAsInteger(1, context.getContext());
 
 		if(increment) visitor.visitInsn(type.getOpcode(Opcodes.IADD));
 		else visitor.visitInsn(type.getOpcode(Opcodes.ISUB));
 
-		if(prefix) visitor.visitInsn(type.getDupOpcode());
-
 		//TODO OTHER VARIABLE TYPES
 		switch (variable.getVariableType()) {
-			case LOCAL -> visitor.visitVarInsn(type.getOpcode(Opcodes.ISTORE), variable.getIndex());
+			case LOCAL -> {
+				if(prefix) visitor.visitInsn(type.getDupOpcode());
+				visitor.visitVarInsn(type.getOpcode(Opcodes.ISTORE), variable.getIndex());
+			}
+			case CLASS -> {
+				if(prefix) visitor.visitInsn(type.getDupX1Opcode());
+				visitor.visitFieldInsn(Opcodes.PUTFIELD, variable.getOwner(), variable.getName(), variable.getType().getDescriptor());
+			}
 		}
 
 	}
