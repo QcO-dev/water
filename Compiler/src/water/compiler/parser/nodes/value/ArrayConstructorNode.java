@@ -68,6 +68,12 @@ public class ArrayConstructorNode implements Node {
 
 		WaterType elementType = getReturnType(context).getElementType();
 
+		WaterType baseType = getReturnType(context);
+
+		while(baseType.getElementType() != null) {
+			baseType = baseType.getElementType();
+		}
+
 		MethodVisitor methodVisitor = context.getMethodVisitor();
 
 		if(dimensions.get(0) == null) {
@@ -87,11 +93,11 @@ public class ArrayConstructorNode implements Node {
 		}
 
 		if(initValues != null) {
-			compileInitializer(initValues, 0, methodVisitor, fileContext);
+			compileInitializer(initValues, 0, methodVisitor, baseType, fileContext);
 		}
 	}
 
-	private void compileInitializer(InitValue value, int dimension, MethodVisitor visitor, FileContext context) throws SemanticException {
+	private void compileInitializer(InitValue value, int dimension, MethodVisitor visitor, WaterType baseType, FileContext context) throws SemanticException {
 		if(value.isSubList) {
 
 			WaterType dataType = getReturnType(context.getContext()).getElementType();
@@ -116,12 +122,24 @@ public class ArrayConstructorNode implements Node {
 				visitor.visitInsn(Opcodes.DUP);
 				TypeUtil.generateCorrectInt(i, context.getContext());
 
-				compileInitializer(subValue, dimension + 1, visitor, context);
+				compileInitializer(subValue, dimension + 1, visitor, baseType, context);
 
 				visitor.visitInsn(dataType.getOpcode(Opcodes.IASTORE));
 			}
 		}
 		else {
+			WaterType valueType = value.value.getReturnType(context.getContext());
+
+			try {
+				if(!baseType.isAssignableFrom(valueType, context.getContext(), true)) {
+					throw new SemanticException(newToken, "Value of type '%s' cannot initialize array of type '%s'".formatted(
+							valueType,
+							baseType
+					));
+				}
+			} catch (ClassNotFoundException e) {
+				throw new SemanticException(newToken, "Could not resolve class '%s'".formatted(e.getMessage()));
+			}
 			value.value.visit(context);
 		}
 	}
