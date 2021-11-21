@@ -248,6 +248,7 @@ public class Lexer {
 			case "try" -> TokenType.TRY;
 			case "catch" -> TokenType.CATCH;
 			case "finally" -> TokenType.FINALLY;
+			case "instanceof" -> TokenType.INSTANCEOF;
 			default -> TokenType.IDENTIFIER;
 		});
 	}

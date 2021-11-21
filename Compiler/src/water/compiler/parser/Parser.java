@@ -565,16 +565,24 @@ public class Parser {
 		return left;
 	}
 
-	/** Forms grammar: shiftExpr (({@literal '<' | '<=' | '>' '>='}) shiftExpr)* */
+	/** Forms grammar: shiftExpr (({@literal '<' | '<=' | '>' | '>=' | 'instanceof'}) shiftExpr)* */
 	private Node relativeExpr() throws UnexpectedTokenException {
 		Node left = shiftExpr();
 
-		while(match(TokenType.LESS) || match(TokenType.LESS_EQ) || match(TokenType.GREATER) || match(TokenType.GREATER_EQ)) {
+		while(match(TokenType.LESS) || match(TokenType.LESS_EQ) || match(TokenType.GREATER) || match(TokenType.GREATER_EQ)
+			|| match(TokenType.INSTANCEOF)) {
 			Token op = tokens.get(index - 1);
 
-			Node right = shiftExpr();
+			if(op.getType() == TokenType.INSTANCEOF) {
+				Node right = type();
 
-			left = new RelativeOperationNode(left, op, right);
+				left = new InstanceOfNode(left, op, right);
+			}
+			else {
+				Node right = shiftExpr();
+
+				left = new RelativeOperationNode(left, op, right);
+			}
 		}
 		return left;
 	}
