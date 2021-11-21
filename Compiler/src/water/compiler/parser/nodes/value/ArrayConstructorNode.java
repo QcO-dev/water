@@ -33,7 +33,7 @@ public class ArrayConstructorNode implements Node {
 
 		@Override
 		public String toString() {
-			return isSubList ? "{%s}".formatted(subValues.stream().map(InitValue::toString).collect(Collectors.joining(", "))) : value.toString();
+			return isSubList ? "❴%s❵".formatted(subValues.stream().map(InitValue::toString).collect(Collectors.joining(", "))) : value.toString();
 		}
 	}
 
@@ -66,7 +66,7 @@ public class ArrayConstructorNode implements Node {
 			size++;
 		}
 
-		WaterType elementType = type.getReturnType(context);
+		WaterType elementType = getReturnType(context).getElementType();
 
 		MethodVisitor methodVisitor = context.getMethodVisitor();
 
@@ -74,7 +74,7 @@ public class ArrayConstructorNode implements Node {
 			TypeUtil.generateCorrectInt(initValues.subValues.size(), context);
 		}
 
-		if(size == 1 && dimensions.size() == 1) {
+		if((size == 1 && dimensions.size() == 1) || initValues != null) {
 			if(elementType.isPrimitive()) methodVisitor.visitIntInsn(Opcodes.NEWARRAY, elementType.primitiveToTType());
 			else methodVisitor.visitTypeInsn(Opcodes.ANEWARRAY, elementType.getInternalName());
 		}
@@ -87,16 +87,42 @@ public class ArrayConstructorNode implements Node {
 		}
 
 		if(initValues != null) {
-			for(int i = 0; i < initValues.subValues.size(); i++) {
-				InitValue value = initValues.subValues.get(i);
+			compileInitializer(initValues, 0, methodVisitor, fileContext);
+		}
+	}
 
-				methodVisitor.visitInsn(getReturnType(context).getDupOpcode());
-				TypeUtil.generateCorrectInt(i, context);
+	private void compileInitializer(InitValue value, int dimension, MethodVisitor visitor, FileContext context) throws SemanticException {
+		if(value.isSubList) {
 
-				value.value.visit(fileContext);
+			WaterType dataType = getReturnType(context.getContext()).getElementType();
 
-				methodVisitor.visitInsn(getReturnType(context).getElementType().getOpcode(Opcodes.IASTORE));
+			for(int i = 0; i < dimension; i++) {
+				dataType = dataType.getElementType();
 			}
+
+			if(dimension > 0) {
+				TypeUtil.generateCorrectInt(value.subValues.size(), context.getContext());
+
+				if(dataType.isPrimitive()) {
+					visitor.visitIntInsn(Opcodes.NEWARRAY, dataType.primitiveToTType());
+				}
+				else {
+					visitor.visitTypeInsn(Opcodes.ANEWARRAY, dataType.getInternalName());
+				}
+			}
+
+			for(int i = 0; i < value.subValues.size(); i++) {
+				InitValue subValue = value.subValues.get(i);
+				visitor.visitInsn(Opcodes.DUP);
+				TypeUtil.generateCorrectInt(i, context.getContext());
+
+				compileInitializer(subValue, dimension + 1, visitor, context);
+
+				visitor.visitInsn(dataType.getOpcode(Opcodes.IASTORE));
+			}
+		}
+		else {
+			value.value.visit(context);
 		}
 	}
 

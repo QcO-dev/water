@@ -735,16 +735,29 @@ public class Parser {
 		ArrayConstructorNode.InitValue valueList = null;
 
 		if(match(TokenType.LBRACE)) {
-			valueList = new ArrayConstructorNode.InitValue(new ArrayList<>());
-			if(tokens.get(index).getType() != TokenType.RBRACE) {
-				do {
-					valueList.subValues.add(new ArrayConstructorNode.InitValue(expression()));
-				} while(match(TokenType.COMMA));
-			}
-			consume(TokenType.RBRACE, "Expected '}' after array initialization");
+			valueList = arrayInitializeDimension(dimensions.size());
 		}
 
 		return new ArrayConstructorNode(newToken, type, dimensions, valueList);
+	}
+
+	private ArrayConstructorNode.InitValue arrayInitializeDimension(int dimension) throws UnexpectedTokenException {
+		ArrayConstructorNode.InitValue valueList = new ArrayConstructorNode.InitValue(new ArrayList<>());
+
+		if(tokens.get(index).getType() != TokenType.RBRACE) {
+			do {
+				if(dimension == 1) {
+					valueList.subValues.add(new ArrayConstructorNode.InitValue(expression()));
+				}
+				else {
+					consume(TokenType.LBRACE, "Expected '{' in multi-dimensional array initializer");
+					valueList.subValues.add(arrayInitializeDimension(dimension - 1));
+				}
+			} while(match(TokenType.COMMA));
+		}
+
+		consume(TokenType.RBRACE, "Expected '}' after array initialization");
+		return valueList;
 	}
 
 	/** Forms grammar: '(' expression ')' */
