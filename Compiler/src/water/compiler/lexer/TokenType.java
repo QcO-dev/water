@@ -89,6 +89,7 @@ public enum TokenType {
 	TRY,
 	CATCH,
 	FINALLY,
+	INSTANCEOF,
 
 	// Literals
 	NUMBER,

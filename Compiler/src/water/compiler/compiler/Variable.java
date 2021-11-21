@@ -9,7 +9,7 @@ import water.compiler.util.WaterType;
 public class Variable {
 	private final String name;
 	private final String owner;
-	private final WaterType type;
+	private WaterType type;
 	private final VariableType variableType;
 	private final int index;
 	private final boolean isConst;
@@ -54,5 +54,9 @@ public class Variable {
 
 	public boolean isConst() {
 		return isConst;
+	}
+
+	public void setType(WaterType type) {
+		this.type = type;
 	}
 }

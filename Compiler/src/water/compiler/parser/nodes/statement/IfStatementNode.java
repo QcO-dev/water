@@ -4,12 +4,16 @@ import org.objectweb.asm.Label;
 import org.objectweb.asm.MethodVisitor;
 import org.objectweb.asm.Opcodes;
 import water.compiler.FileContext;
+import water.compiler.compiler.Scope;
 import water.compiler.compiler.SemanticException;
+import water.compiler.compiler.Variable;
 import water.compiler.lexer.Token;
 import water.compiler.parser.Node;
 import water.compiler.parser.nodes.operation.EqualityOperationNode;
+import water.compiler.parser.nodes.operation.InstanceOfNode;
 import water.compiler.parser.nodes.operation.LogicalOperationNode;
 import water.compiler.parser.nodes.operation.RelativeOperationNode;
+import water.compiler.util.Pair;
 import water.compiler.util.WaterType;
 
 public class IfStatementNode implements Node {
@@ -41,6 +45,12 @@ public class IfStatementNode implements Node {
 		Label falseL = new Label();
 		Label end = new Label();
 
+		boolean instanceofNode = false;
+		if(condition instanceof InstanceOfNode) {
+			((InstanceOfNode) condition).setShouldReScope(true);
+			instanceofNode = true;
+		}
+
 		if(condition instanceof EqualityOperationNode) {
 			if(!((EqualityOperationNode) condition).generateConditional(context, falseL)) {
 				methodVisitor.visitJumpInsn(Opcodes.IFEQ, falseL);
@@ -58,6 +68,12 @@ public class IfStatementNode implements Node {
 		}
 
 		body.visit(context);
+
+		if(instanceofNode) {
+			Pair<Variable, WaterType> pastVariable = ((InstanceOfNode) condition).getPastVariable();
+			pastVariable.getFirst().setType(pastVariable.getSecond());
+		}
+
 		methodVisitor.visitJumpInsn(Opcodes.GOTO, end);
 		methodVisitor.visitLabel(falseL);
 		if(elseBody != null) {

@@ -1,0 +1,17 @@
+private class A {
+
+}
+
+private class X : A {
+	function x() {
+		println("Nice casts!");
+	}
+}
+
+function main() {
+	var b: A? = new X();
+
+	if(b instanceof X) {
+		b.x();
+	}
+}
