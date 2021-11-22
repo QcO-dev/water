@@ -1,6 +1,8 @@
 import java.util.ArrayList;
+import java.util.LinkedList as LL;
 
 function main() {
 	var sb = new StringBuilder(); // Implicit
 	var al = new ArrayList(); // Explicit
+	var ll = new LL();
 }
