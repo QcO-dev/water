@@ -1,22 +1,13 @@
 package water.compiler.parser.nodes.special;
 
-import org.objectweb.asm.Type;
 import water.compiler.FileContext;
 import water.compiler.compiler.Context;
 import water.compiler.compiler.SemanticException;
 import water.compiler.lexer.Token;
 import water.compiler.parser.Node;
-import water.compiler.util.TypeUtil;
 import water.compiler.util.WaterType;
 
-public class ImportNode implements Node {
-	private final Token importTok;
-	private final Node type;
-
-	public ImportNode(Token importTok, Node type) {
-		this.importTok = importTok;
-		this.type = type;
-	}
+public record ImportNode(Token importTok, Node type, Token as) implements Node {
 
 	@Override
 	public void visit(FileContext context) throws SemanticException {
@@ -27,7 +18,7 @@ public class ImportNode implements Node {
 	public void preprocess(Context context) throws SemanticException {
 		WaterType importType = type.getReturnType(context);
 
-		if(importType.isPrimitive()) {
+		if (importType.isPrimitive()) {
 			throw new SemanticException(importTok, "Cannot import primitive type");
 		}
 
@@ -38,11 +29,13 @@ public class ImportNode implements Node {
 			throw new SemanticException(importTok, "Could not resolve class '%s'".formatted(e.getMessage()));
 		}
 
-		context.getImports().put(klass.getSimpleName(), importType.getClassName());
+		String name = as == null ? klass.getSimpleName() : as.getValue();
+		context.getImports().put(name, importType.getClassName());
 	}
 
 	@Override
 	public String toString() {
-		return "import %s;".formatted(type);
+		return "import %s%s;".formatted(type,
+				as == null ? "" : (" as " + as.getValue()));
 	}
 }

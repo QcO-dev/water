@@ -98,9 +98,14 @@ public class Parser {
 		Token importTok = tokens.get(index - 1);
 		Node type = classType();
 
+		Token as = null;
+		if(match(TokenType.AS)) {
+			as = consume(TokenType.IDENTIFIER, "Expected import alias");
+		}
+
 		consume(TokenType.SEMI, "Expected ';' after import");
 
-		return new ImportNode(importTok, type);
+		return new ImportNode(importTok, type, as);
 	}
 
 
